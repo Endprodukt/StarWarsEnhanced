@@ -8,6 +8,7 @@
  *              [--dvg [PORT] | --window | --windowed]
  */
 #include "avg/avg.h"
+#include "mbox/mbox.h"
 #include "core/sched.h"
 #include "platform/app.h"
 #include "render/config.h"
@@ -174,7 +175,17 @@ int main(int argc, char **argv)
     int npaths = rom_paths(argc, argv, paths);
     int roms_ok = sw_romset_load(&roms, paths, npaths) == 0;
     char missing[512];
-    if (roms_ok) printf("starwarsvp: ROM set starwars1 complete\n");
+    int mbox_ok = 0;
+    if (roms_ok) {
+        printf("starwarsvp: ROM set starwars1 complete\n");
+        /* The native math box against the cabinet's own micro-code PROMs. */
+        static uint16_t prom[1024];
+        sw_mbox_join_proms(roms.mbox_prom, prom);
+        int bad = sw_mbox_selftest(prom, 50);
+        mbox_ok = bad == 0;
+        if (mbox_ok) printf("starwarsvp: math box matches the PROMs\n");
+        else fprintf(stderr, "starwarsvp: math box: %d program(s) differ from the PROMs\n", bad);
+    }
     else fprintf(stderr, "starwarsvp: ROMs missing: %s\n", sw_romset_missing(&roms, missing, sizeof missing));
 
     sw_app app;
@@ -212,7 +223,8 @@ int main(int argc, char **argv)
             char line[96];
             snprintf(line, sizeof line, "CLOCK %.1f S  GAME TICK %llu", sched.game_count / (SW_IRQ_HZ / SW_GAME_DIV),
                      (unsigned long long)sched.game_count);
-            const char *text[] = { "STAR WARS VP", "ROMS OK", "GAME CORE IN PROGRESS", line,
+            const char *text[] = { "STAR WARS VP", mbox_ok ? "ROMS OK  MATH BOX OK" : "ROMS OK  MATH BOX DIFFERS",
+                                   "GAME CORE IN PROGRESS", line,
                                    "--CALIBRATE FOR THE MONITOR" };
             draw_text_lines(app.dvg, text, 5, 2600);
         }

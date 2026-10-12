@@ -39,6 +39,8 @@ add_library(swcore STATIC
     src/core/sched.c
     src/rom/romset.c
     src/avg/avg.c
+    src/mbox/mbox.c
+    src/mbox/mbox_programs.c
 )
 target_include_directories(swcore PUBLIC src)
 target_link_libraries(swcore PUBLIC miniz)
@@ -81,6 +83,11 @@ if(BUILD_TESTING)
     add_executable(test_sched tests/test_sched.c)
     target_link_libraries(test_sched PRIVATE swcore)
     add_test(NAME sched COMMAND test_sched)
+
+    add_executable(test_mbox tests/test_mbox.c)
+    target_link_libraries(test_mbox PRIVATE swcore)
+    target_include_directories(test_mbox PRIVATE tests)
+    add_test(NAME mbox COMMAND test_mbox)
 
     add_executable(test_capture tests/test_capture.c src/capture/capture.c)
     target_link_libraries(test_capture PRIVATE swcore)

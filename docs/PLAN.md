@@ -70,10 +70,14 @@ Eingaben und Zufallszahlen (`PRNG`, 0x4703) mitgeschnitten und eingespeist.
       AVG-Interpreter (Befehlssatz aus WSVGMC.MAC), Abbildung auf den DVG mit
       Konfiguration für den WG6100, Kalibrierbild, MAME-Aufnahme und
       `avgreplay`, Symboltabelle aus WSROOT.MAP, Tests
-- [ ] **2 Math Box**: Q2.14-Bibliothek nach SWMP.DOC (ROLL, PTCH, YAW, PSUB,
-      CNCT, PAD, S1UN, PSB2, DLD1, DLD2, PERS, PRS2/PR2I), dazu ein
-      Interpreter für den Mikrocode aus den PROMs (136021-110…113) als
-      Referenz und Tests gegen ihn; Divider (REH/REL)
+- [x] **2 Math Box**: `tools/mbasm.py` assembliert SWMP.MAC nach den Makros
+      von TCODE2.MAC. Das Ergebnis trifft die CRCs aller vier PROMs
+      (136021-110…113), und alle 13 Einsprünge liegen dort, wo das Spiel sie
+      aufruft. Daraus wird `src/mbox/mbox_programs.c` erzeugt: eine
+      C-Funktion pro Programm, Mikrobefehl für Mikrobefehl, mit den
+      Originalkommentaren. Dazu ein Mikrocode-Interpreter als Referenz,
+      Tests gegen ihn und gegen die Formeln aus SWMP.DOC, der Divider, und
+      beim Start ein Selbsttest gegen die PROMs des eigenen ROM-Satzes
 - [ ] **3 Takte und Steuerung**: WSINT nativ (Entprellen, `DOPOTS`, `RHLIM`,
       `RHPOS`, `GNSITE`), Joch über `vp_input_axis`, Münzen und Credits
       über `vp_credits`, LEDs über `vp_lamps`

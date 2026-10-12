@@ -11,7 +11,7 @@ USB-DVG, Vektormonitor (Wells-Gardner 6100).
 * Remaster: verdeckte Linien, neue Modelle, Sound wahlweise original
   (POKEY/TMS5220) oder neu
 
-Stand: **Schritt 1 von 8** (Grundgerüst). Plan und Hintergründe:
+Stand: **Schritt 2 von 8** (Grundgerüst, Math Box). Plan und Hintergründe:
 [docs/PLAN.md](docs/PLAN.md).
 
 ## ROMs
@@ -62,6 +62,17 @@ build-linux/avgreplay attract.swcap --lerp --windowed
 Pro Spieltick werden VG-RAM, RAM und Math-Box-RAM gespeichert, Format in
 `src/capture/capture.h`. Die Aufnahmen dienen zum Kalibrieren und als
 Referenz für den nativen Kern.
+
+## Math Box
+
+`tools/mbasm.py` assembliert den originalen Mikrocode (SWMP.MAC aus
+historicalsource/star-wars) und prüft ihn gegen die CRCs der PROMs. Daraus
+erzeugt es `src/mbox/mbox_programs.c`:
+
+```sh
+python3 -I tools/mbasm.py SWMP.MAC --check
+python3 -I tools/mbasm.py SWMP.MAC --c src/mbox/mbox_programs.c --prom-header tests/mbox_prom.h
+```
 
 ## Symbole
 
