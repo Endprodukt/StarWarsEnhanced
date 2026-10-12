@@ -83,6 +83,9 @@ erzeugt.
 ## Rechtliches
 
 Star Wars ist ein Warenzeichen von Lucasfilm, das Spiel stammt von Atari.
-Dieses Projekt enthält keinen Code und keine Daten aus den ROMs. Es braucht
-einen eigenen ROM-Satz und ist für den privaten Einsatz am eigenen Automaten
+Programm-ROMs, Vektor-ROM und Sound-ROMs sind nicht enthalten, sie kommen
+aus dem eigenen ROM-Satz. Der Math-Box-Mikrocode ist dagegen enthalten, als
+generierter C-Code und als Testdatei (`tests/mbox_prom.h`). Er ist aus dem
+veröffentlichten Quelltext (SWMP.MAC) erzeugt und entspricht inhaltlich den
+PROMs. Das Projekt ist für den privaten Einsatz am eigenen Automaten
 gedacht.
