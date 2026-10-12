@@ -1,0 +1,44 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": { "major": 3, "minor": 21, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "linux",
+      "displayName": "Linux (native, development)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build-linux",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "RelWithDebInfo" }
+    },
+    {
+      "name": "pc",
+      "displayName": "PC: Windows .exe (MinGW-w64, from WSL2)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build-pc",
+      "toolchainFile": "${sourceDir}/external/VectorPie/sdk/cmake/toolchain-mingw-w64.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "SDL2_DIR": "/opt/sdl2-mingw/cmake",
+        "BUILD_TESTING": "OFF"
+      }
+    },
+    {
+      "name": "pi",
+      "displayName": "Pi: Linux arm64 (Debian trixie), the cabinet",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build-pi",
+      "toolchainFile": "${sourceDir}/external/VectorPie/sdk/cmake/toolchain-pi-arm64.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "BUILD_TESTING": "OFF"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "linux", "configurePreset": "linux" },
+    { "name": "pc", "configurePreset": "pc" },
+    { "name": "pi", "configurePreset": "pi" }
+  ],
+  "testPresets": [
+    { "name": "linux", "configurePreset": "linux", "output": { "outputOnFailure": true } }
+  ]
+}

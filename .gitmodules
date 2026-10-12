@@ -1,0 +1,3 @@
+[submodule "external/VectorPie"]
+	path = external/VectorPie
+	url = https://github.com/Goldfinch2/VectorPie.git
