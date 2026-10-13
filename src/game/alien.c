@@ -117,8 +117,10 @@ static uint16_t wave_set(sw_machine *m)
     return R16(x);                          /* POINTS TO CURRENT SET OF WAVES */
 }
 
-/* NWASHP: a live ship in slot X from WV.SHP, WV.CHP, WV.BGP */
-static void nwashp(sw_machine *m, uint16_t x)
+/* NWASHP: a live ship in slot X from WV.SHP, WV.CHP, WV.BGP. ADASHP has a
+ * copy of this in line that leaves the ADBOBJ at the end out (the shapes
+ * are all in the math box by then). */
+static void nwashp(sw_machine *m, uint16_t x, int add_object)
 {
     W8(x + A_TYP, 1);                       /* LIVE ALIEN */
     uint16_t u = R16(x + A_UVP);
@@ -141,7 +143,7 @@ static void nwashp(sw_machine *m, uint16_t x)
     x = R16(SW_S1_PRM);
     uint8_t b = R8(R16(SW_WV_SHP));
     W8(x + A_PIC, b);                       /* CURRENT SHIP PICTURE */
-    sw_adbobj(m, b);
+    if (add_object) sw_adbobj(m, b);
 }
 
 /* ADASHP: one more ship into an empty slot, from the wave's table; at the
@@ -172,7 +174,7 @@ void sw_adashp(sw_machine *m)
     W16(SW_WV_CHP, R16(u + 2));             /* CHOREOGRAPHY */
     W16(SW_WV_BGP, R16(u + 4));             /* BEGIN LOCATION */
     W16(SW_WV_LP, u + 6);
-    nwashp(m, x);
+    nwashp(m, x, 0);
 }
 
 /* NWNSHP: the ships of the current wave and level */
@@ -196,7 +198,7 @@ void sw_nwnshp(sw_machine *m)
             W16(SW_WV_CHP, R16(u + 2));     /* CHOREOGRAPHY */
             W16(SW_WV_BGP, R16(u + 4));     /* BEGIN LOCATION */
             W16(SW_WV_LP, u + 6);
-            nwashp(m, x);
+            nwashp(m, x, 1);
         }
         x = (uint16_t)(R16(SW_S1_PRM) + A_IZE);
     } while (x < SW_ALIENZ);
