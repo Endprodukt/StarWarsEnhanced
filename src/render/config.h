@@ -73,6 +73,13 @@ typedef struct sw_display_cfg {
      * comes near, its lines cut at the edge of the screen. 0: as the arcade
      * machine, which pushes the points of a near object to the edge. */
     int enh_clip;
+    /* Enhanced, in the trench: 1: shortly before the exhaust port the
+     * Millennium Falcon flies over the player and on down the trench. */
+    int enh_falcon;
+    /* Enhanced: 1: the camera's turns (the ship turning towards the enemy
+     * it tracks, or the Death Star) gather speed and slow down, in place of
+     * the arcade machine's turns at full rate from the first frame. */
+    int enh_camera;
     /* Enhanced: 1: the STAR WARS logo of the attract mode is yellow, as in
      * the films. 0: blue, as the arcade machine has it. */
     int logo_yellow;

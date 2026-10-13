@@ -35,6 +35,8 @@ void sw_display_cfg_defaults(sw_display_cfg *c)
     c->enh_surface = c->enh_stars = c->enh_towers = c->enh_dogfights = 1;
     c->logo_yellow = 1;
     c->enh_clip = 1;
+    c->enh_falcon = 1;
+    c->enh_camera = 1;
     c->sound_replace = 1;
 }
 
@@ -64,7 +66,8 @@ static int set(sw_display_cfg *c, const char *key, const char *val)
         { "occlusion", &c->occlusion },
         { "enh_surface", &c->enh_surface }, { "enh_stars", &c->enh_stars },
         { "enh_towers", &c->enh_towers }, { "enh_dogfights", &c->enh_dogfights },
-        { "enh_clip", &c->enh_clip }, { "logo_yellow", &c->logo_yellow }, { "sound_replace", &c->sound_replace },
+        { "enh_clip", &c->enh_clip }, { "enh_falcon", &c->enh_falcon }, { "enh_camera", &c->enh_camera },
+        { "logo_yellow", &c->logo_yellow }, { "sound_replace", &c->sound_replace },
     };
     if (strcmp(key, "sort_strokes") == 0) return 0;     /* (gone: settings files from before may still have it) */
     for (size_t i = 0; i < sizeof floats / sizeof floats[0]; i++)
@@ -148,6 +151,12 @@ int sw_display_cfg_save(const sw_display_cfg *c, const char *path)
             c->enh_surface, c->enh_stars, c->enh_towers, c->enh_dogfights);
     fprintf(f, "\n; enhanced, in the trench: near objects keep their shape, cut at the edge of the screen\n"
                "enh_clip = %d\n", c->enh_clip);
+    fprintf(f, "\n; enhanced, in the trench: shortly before the exhaust port the Millennium Falcon\n"
+               "; flies over the player\n"
+               "enh_falcon = %d\n", c->enh_falcon);
+    fprintf(f, "\n; enhanced: the camera's turns towards the enemy it tracks gather speed and slow\n"
+               "; down (0: at full rate from the first frame, as the arcade machine)\n"
+               "enh_camera = %d\n", c->enh_camera);
     fprintf(f, "\n; enhanced: the STAR WARS logo yellow (0: blue, as the arcade machine)\n"
                "logo_yellow = %d\n", c->logo_yellow);
     fprintf(f, "\n; enhanced: play sounds/NAME.wav in place of the sound NAME where there is such a file\n"

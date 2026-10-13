@@ -138,8 +138,14 @@ int sw_subframe_render(const sw_subframe *f, const sw_machine *live, float t, sw
         lerp(s, f, SW_ST_UX, 1, t, 0x4000);
         lerp(s, f, SW_ST_UY, 1, t, 0x4000);
         lerp(s, f, SW_ST_UZ, 1, t, 0x4000);
-        for (uint16_t x = SW_M_STAD; x < SW_M_STAZ; x += STAR_IZE)
+        for (uint16_t x = SW_M_STAD; x < SW_M_STAZ; x += STAR_IZE) {
+            /* (one replaced in the frame, having left the view, is a new
+             * star in the old one's place: not on its way there, which
+             * would streak it across the screen) */
+            unsigned i = ((x - SW_M_STAD) / STAR_IZE) & 63;
+            if (a->star_gen[i] != b->star_gen[i]) continue;
             lerp(s, f, x, 3, t, 0x1000);
+        }
         /* the other ships */
         for (uint16_t x = SW_ALIEN; x < SW_ALIENZ; x += A_IZE) {
             if (rd8(a, x + A_TYP) == 0 || rd8(a, x + A_TYP) != rd8(b, x + A_TYP)) continue;

@@ -1,6 +1,7 @@
 /* enhance.c - see enhance.h. */
 #include "render/enhance.h"
 
+#include "core/sched.h"
 #include "game/game.h"
 #include "game/m6809.h"
 #include "render/view.h"
@@ -52,6 +53,7 @@ static int16_t mb16(const sw_machine *m, unsigned a)
 }
 
 static uint8_t ram8(const sw_machine *m, unsigned a) { return m->ram[(a - 0x4800) & 0x7ff]; }
+static uint16_t ram16(const sw_machine *m, unsigned a) { return (uint16_t)((ram8(m, a) << 8) | ram8(m, a + 1)); }
 
 static uint32_t hash(uint32_t v)
 {
@@ -125,14 +127,14 @@ static void line(sw_enhance *e, vec a, vec b, unsigned color, float lum, unsigne
     l->inst = e->inst;
 }
 
-/* A face of four corners (V), for what is behind it not to show. */
-static void face(sw_enhance *e, const vec *corner)
+/* A face of n corners (V, up to 6), for what is behind it not to show. */
+static void face_n(sw_enhance *e, const vec *corner, int n)
 {
     /* what of it is nearer than the nearest seen is cut off */
-    vec c[6];
+    vec c[8];
     int nc = 0;
-    for (int i = 0; i < 4; i++) {
-        const vec *a = &corner[i], *b = &corner[(i + 1) & 3];
+    for (int i = 0; i < n; i++) {
+        const vec *a = &corner[i], *b = &corner[(i + 1) % n];
         if (a->x >= NEAR) c[nc++] = *a;
         if ((a->x >= NEAR) != (b->x >= NEAR)) {
             double k = (NEAR - a->x) / (b->x - a->x);
@@ -140,6 +142,7 @@ static void face(sw_enhance *e, const vec *corner)
         }
     }
     if (nc < 3) return;
+    if (nc > 6) nc = 6;                     /* (a hexagon cut by the near plane: its last corner or two lost) */
     if (e->n_faces == e->cap_faces) {
         int cap = e->cap_faces ? e->cap_faces * 2 : 256;
         sw_solid_extra *f = (sw_solid_extra *)realloc(e->faces, (size_t)cap * sizeof *f);
@@ -160,6 +163,8 @@ static void face(sw_enhance *e, const vec *corner)
         }
     }
 }
+
+static void face(sw_enhance *e, const vec *corner) { face_n(e, corner, 4); }
 
 /* --- the view ------------------------------------------------------------------------ */
 
@@ -185,7 +190,7 @@ static void stars(sw_enhance *e, int trench, double now)
 {
     /* over the surface a few (the owner found more too much), over the
      * trench all (only a strip of sky shows); each twinkles in its own time */
-    int n = trench ? SW_ENHANCE_STARS : 28;
+    int n = trench ? SW_ENHANCE_STARS : 64;
     for (int i = 0; i < n; i++) {
         float twinkle = 0.55f + 0.45f * (float)sin(now * (2.0 + (double)(i & 7) * 0.7) + (double)i * 1.7);
         if (trench && e->t[2] < 0.0) {
@@ -212,13 +217,13 @@ static void ground_line(sw_enhance *e, double ax, double ay, double bx, double b
         double k0 = (double)i / pieces, k1 = (double)(i + 1) / pieces;
         vec p0 = vec3((ax + (bx - ax) * k0) / 2.0, (ay + (by - ay) * k0 - e->t[1]) / 2.0, -e->t[2] / 2.0);
         vec p1 = vec3((ax + (bx - ax) * k1) / 2.0, (ay + (by - ay) * k1 - e->t[1]) / 2.0, -e->t[2] / 2.0);
-        /* The plating lies near the player only, fading out by 7000: the
-         * towers are sized as the arcade machine sizes them (a linear
-         * scale with the distance, about the foot), so against a ground
-         * drawn out to the horizon a far one would visibly grow out of it
-         * as it came. On dark ground it does not show. */
+        /* The plating lies near the player only, full to 6000 and gone by
+         * 11000: the towers are sized as the arcade machine sizes them (a
+         * linear scale with the distance, about the foot), so against a
+         * ground drawn out to the horizon a far one would visibly grow out
+         * of it as it came. On dark ground it does not show. */
         double far = (p0.x + p1.x) * 0.5;
-        float fade = (float)((7000.0 - far) / 3500.0);
+        float fade = (float)((11000.0 - far) / 5000.0);
         if (fade <= 0.0f) continue;
         if (fade > 1.0f) fade = 1.0f;
         line(e, turn(e, p0), turn(e, p1), GRN, lum * fade * fade * e->plate, SW_TAG_TRENCH);
@@ -422,8 +427,10 @@ static void towers(sw_enhance *e, const sw_machine *m, double now)
              * at its top, 720 high; a tower 960, 720, 600 and 480 at the
              * heights of its points, its hat 480 and 720 high. */
             if (pc == PC_BNK) {
-                /* (plain: there are many of them, low on the ground) */
-                block(e, c, 960.0, -3840.0, 720.0, -3120.0, RED, lum, B_FOOT | B_TOP, 1.0f, 0.0f);
+                /* (seams on its sides and a hatch on its roof, but no more:
+                 * there are many of them, low on the ground) */
+                block(e, c, 960.0, -3840.0, 720.0, -3120.0, RED, lum, B_FOOT | B_TOP | B_SEAMS, 1.0f, seams);
+                block(e, c, 430.0, -3120.0, 430.0, -3120.0, RED, lum * 0.7f, B_TOP, 1.0f, 0.0f);
                 e->shrink = 1.0f;
                 continue;
             }
@@ -535,10 +542,311 @@ static void dogfights(sw_enhance *e, double now)
     }
 }
 
+/* --- the Millennium Falcon ---------------------------------------------------------------- */
+
+/* A line of the model: its ends in the ship's own units (the hull's radius
+ * is 1; its nose to +x, its left to +y, up +z), and the normals of the
+ * faces it lies on (none, one or two): it is drawn when one of them is
+ * towards the viewer, so that the far side of the hull does not show
+ * through the near one. */
+typedef struct mline { float a[3], b[3], n[2][3]; uint8_t nn, color; } mline;
+/* A face of the model, for what is behind the ship not to show. */
+typedef struct mface { float p[6][3]; uint8_t n; } mface;
+
+#define FALCON_LINES 240
+#define FALCON_FACES 64
+static mline falcon_model[FALCON_LINES];
+static mface falcon_faces[FALCON_FACES];
+static int   falcon_lines, falcon_nfaces;
+
+static void set3(float *o, vec v) { o[0] = (float)v.x; o[1] = (float)v.y; o[2] = (float)v.z; }
+
+static void mline_add(vec a, vec b, vec n1, vec n2, int nn, unsigned color)
+{
+    if (falcon_lines == FALCON_LINES) return;
+    mline *l = &falcon_model[falcon_lines++];
+    set3(l->a, a);
+    set3(l->b, b);
+    set3(l->n[0], n1);
+    set3(l->n[1], n2);
+    l->nn = (uint8_t)nn;
+    l->color = (uint8_t)color;
+}
+
+static void mface_add(const vec *p, int n)
+{
+    if (falcon_nfaces == FALCON_FACES || n > 6) return;
+    mface *f = &falcon_faces[falcon_nfaces++];
+    for (int i = 0; i < n; i++) set3(f->p[i], p[i]);
+    f->n = (uint8_t)n;
+}
+
+/* A box, its edges with the normals of the two faces each lies on. */
+static void mbox(double x0, double x1, double y0, double y1, double z0, double z1, unsigned color)
+{
+    const vec px = { 1, 0, 0 }, py = { 0, 1, 0 }, pz = { 0, 0, 1 }, mx = { -1, 0, 0 }, my = { 0, -1, 0 }, mz = { 0, 0, -1 };
+    for (int i = 0; i < 4; i++) {
+        double y = (i & 1) ? y1 : y0, z = (i & 2) ? z1 : z0, x = (i & 1) ? x1 : x0;
+        mline_add(vec3(x0, y, z), vec3(x1, y, z), (i & 1) ? py : my, (i & 2) ? pz : mz, 2, color);
+        mline_add(vec3(x, y0, z), vec3(x, y1, z), (i & 1) ? px : mx, (i & 2) ? pz : mz, 2, color);
+        y = (i & 2) ? y1 : y0;
+        mline_add(vec3(x, y, z0), vec3(x, y, z1), (i & 1) ? px : mx, (i & 2) ? py : my, 2, color);
+    }
+    vec c[4];
+    c[0] = vec3(x0, y0, z1); c[1] = vec3(x1, y0, z1); c[2] = vec3(x1, y1, z1); c[3] = vec3(x0, y1, z1); mface_add(c, 4);
+    c[0] = vec3(x0, y0, z0); c[1] = vec3(x1, y0, z0); c[2] = vec3(x1, y1, z0); c[3] = vec3(x0, y1, z0); mface_add(c, 4);
+    c[0] = vec3(x0, y0, z0); c[1] = vec3(x1, y0, z0); c[2] = vec3(x1, y0, z1); c[3] = vec3(x0, y0, z1); mface_add(c, 4);
+    c[0] = vec3(x0, y1, z0); c[1] = vec3(x1, y1, z0); c[2] = vec3(x1, y1, z1); c[3] = vec3(x0, y1, z1); mface_add(c, 4);
+}
+
+static vec unit(vec v)
+{
+    double n = sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+    return n < 1e-9 ? v : vec3(v.x / n, v.y / n, v.z / n);
+}
+
+static vec cross(vec a, vec b) { return vec3(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x); }
+static vec scaled(vec v, double k) { return vec3(v.x * k, v.y * k, v.z * k); }
+
+/* The ship: a flat hull, round but for the jaws at its front, a plateau
+ * on top and one below; the cockpit a tube on its right; the dish on top
+ * to the left; the engine's band across its back. */
+static void falcon_build(void)
+{
+    const double PI = 3.14159265358979;
+    const int N = 14;                           /* segments of the rim, the gap of the jaws left out */
+    const double A0 = 40.0 * PI / 180.0, A1 = 320.0 * PI / 180.0;
+    const double TOP = 0.17, RT = 0.62;         /* the plateaus: their height and radius */
+    const vec UP = { 0, 0, 1 }, DOWN = { 0, 0, -1 };
+    vec rim[15], top[15], bot[15];
+    for (int i = 0; i <= N; i++) {
+        double a = A0 + (A1 - A0) * i / N;
+        rim[i] = vec3(cos(a), sin(a), 0.0);
+        top[i] = vec3(RT * cos(a), RT * sin(a), TOP);
+        bot[i] = vec3(RT * cos(a), RT * sin(a), -TOP);
+    }
+    for (int i = 0; i < N; i++) {
+        double am = A0 + (A1 - A0) * (i + 0.5) / N, a = A0 + (A1 - A0) * i / N;
+        vec up = vec3(0.45 * cos(am), 0.45 * sin(am), 1.0), dn = vec3(0.45 * cos(am), 0.45 * sin(am), -1.0);
+        mline_add(rim[i], rim[i + 1], up, dn, 2, WHT);
+        mline_add(top[i], top[i + 1], UP, up, 2, WHT);
+        mline_add(bot[i], bot[i + 1], DOWN, dn, 2, WHT);
+        if ((i & 1) == 0) {                     /* the spokes of the slopes */
+            vec ua = vec3(0.45 * cos(a - 0.2), 0.45 * sin(a - 0.2), 1.0), ub = vec3(0.45 * cos(a + 0.2), 0.45 * sin(a + 0.2), 1.0);
+            vec da = vec3(ua.x, ua.y, -1.0), db = vec3(ub.x, ub.y, -1.0);
+            mline_add(rim[i], top[i], ua, ub, 2, WHT);
+            mline_add(rim[i], bot[i], da, db, 2, WHT);
+        }
+        vec q[4] = { rim[i], rim[i + 1], top[i + 1], top[i] };
+        mface_add(q, 4);
+        vec r[4] = { rim[i], rim[i + 1], bot[i + 1], bot[i] };
+        mface_add(r, 4);
+    }
+    /* the plateaus, in pieces of up to six corners */
+    for (int k = 0; k < N; k += 4) {
+        vec p[6], q[6];
+        int n = 0;
+        p[n] = vec3(0.0, 0.0, TOP); q[n++] = vec3(0.0, 0.0, -TOP);
+        for (int i = k; i <= k + 4 && i <= N; i++) { p[n] = top[i]; q[n++] = bot[i]; }
+        mface_add(p, n);
+        mface_add(q, n);
+    }
+    /* the front: the hull's rim and plateaus run in to the jaws and the notch between them */
+    mline_add(rim[0], vec3(0.72, 0.6, 0.0), vec3(0.5, 0.5, 1.0), vec3(0.5, 0.5, -1.0), 2, WHT);
+    mline_add(rim[N], vec3(0.72, -0.6, 0.0), vec3(0.5, -0.5, 1.0), vec3(0.5, -0.5, -1.0), 2, WHT);
+    mline_add(top[0], vec3(0.6, 0.2, 0.12), UP, vec3(0.6, 0.3, 1.0), 2, WHT);
+    mline_add(top[N], vec3(0.6, -0.2, 0.12), UP, vec3(0.6, -0.3, 1.0), 2, WHT);
+    mline_add(bot[0], vec3(0.6, 0.2, -0.12), DOWN, vec3(0.6, 0.3, -1.0), 2, WHT);
+    mline_add(bot[N], vec3(0.6, -0.2, -0.12), DOWN, vec3(0.6, -0.3, -1.0), 2, WHT);
+    mline_add(vec3(0.6, -0.2, 0.12), vec3(0.6, 0.2, 0.12), vec3(1, 0, 0), UP, 2, WHT);
+    mline_add(vec3(0.6, -0.2, -0.12), vec3(0.6, 0.2, -0.12), vec3(1, 0, 0), DOWN, 2, WHT);
+    mline_add(vec3(0.6, 0.2, -0.12), vec3(0.6, 0.2, 0.12), vec3(1, 0, 0), vec3(0, -1, 0), 2, WHT);
+    mline_add(vec3(0.6, -0.2, -0.12), vec3(0.6, -0.2, 0.12), vec3(1, 0, 0), vec3(0, 1, 0), 2, WHT);
+    {
+        vec p[6] = { top[N], top[0], vec3(0.6, 0.2, 0.12), vec3(0.6, -0.2, 0.12) };
+        mface_add(p, 4);
+        vec q[6] = { bot[N], bot[0], vec3(0.6, 0.2, -0.12), vec3(0.6, -0.2, -0.12) };
+        mface_add(q, 4);
+    }
+    /* the jaws */
+    mbox(0.72, 1.38, 0.2, 0.6, -0.09, 0.09, WHT);
+    mbox(0.72, 1.38, -0.6, -0.2, -0.09, 0.09, WHT);
+    /* on top: the hub, panel seams out from it, two pits; below, seams */
+    for (int i = 0; i < 6; i++) {
+        double a = i * PI / 3.0, b = a + PI / 3.0;
+        mline_add(vec3(0.18 * cos(a), 0.18 * sin(a), TOP + 0.03), vec3(0.18 * cos(b), 0.18 * sin(b), TOP + 0.03), UP, UP, 1, WHT);
+    }
+    for (int i = 1; i < 6; i++) {
+        double a = i * PI / 3.0;
+        mline_add(vec3(0.18 * cos(a), 0.18 * sin(a), TOP), vec3(RT * cos(a), RT * sin(a), TOP), UP, UP, 1, WHT);
+    }
+    for (int s = -1; s <= 1; s += 2) {
+        double cx = -0.42, cy = s * 0.3, h = 0.07;
+        mline_add(vec3(cx - h, cy - h, TOP), vec3(cx + h, cy - h, TOP), UP, UP, 1, WHT);
+        mline_add(vec3(cx + h, cy - h, TOP), vec3(cx + h, cy + h, TOP), UP, UP, 1, WHT);
+        mline_add(vec3(cx + h, cy + h, TOP), vec3(cx - h, cy + h, TOP), UP, UP, 1, WHT);
+        mline_add(vec3(cx - h, cy + h, TOP), vec3(cx - h, cy - h, TOP), UP, UP, 1, WHT);
+    }
+    for (int i = 0; i < 3; i++) {
+        double a = PI * (0.5 + i * 0.5);
+        mline_add(vec3(0.0, 0.0, -TOP), vec3(RT * cos(a), RT * sin(a), -TOP), DOWN, DOWN, 1, WHT);
+    }
+    /* the cockpit: a tube on the right, six-sided, its window at its end */
+    {
+        vec c0 = vec3(0.2, -0.74, 0.07), c1 = vec3(0.98, -0.9, 0.1);
+        vec d = unit(vec3(c1.x - c0.x, c1.y - c0.y, c1.z - c0.z));
+        vec s = unit(cross(UP, d)), u = cross(d, s);
+        const double R = 0.09;
+        vec ring0[6], ring1[6], ring2[6], rad[6];
+        for (int i = 0; i < 6; i++) {
+            double a = i * PI / 3.0;
+            rad[i] = add(scaled(s, cos(a)), scaled(u, sin(a)));
+            ring0[i] = add(c0, scaled(rad[i], R));
+            ring1[i] = add(c1, scaled(rad[i], R));
+            ring2[i] = add(vec3(c1.x - d.x * 0.1, c1.y - d.y * 0.1, c1.z - d.z * 0.1), scaled(rad[i], R));
+        }
+        for (int i = 0; i < 6; i++) {
+            int j = (i + 1) % 6;
+            vec nm = add(rad[i], rad[j]);
+            mline_add(ring0[i], ring1[i], rad[i], rad[i], 1, WHT);
+            mline_add(ring0[i], ring0[j], nm, scaled(d, -1.0), 2, WHT);
+            mline_add(ring1[i], ring1[j], nm, d, 2, TRQ);
+            mline_add(ring2[i], ring2[j], nm, nm, 1, TRQ);
+            vec q[4] = { ring0[i], ring0[j], ring1[j], ring1[i] };
+            mface_add(q, 4);
+        }
+    }
+    /* the dish, on a stem, looking ahead and up */
+    {
+        vec c = vec3(-0.05, 0.3, 0.3), e1 = vec3(0.0, 1.0, 0.0), e2 = vec3(-0.6, 0.0, 0.8);
+        const vec NONE = { 0, 0, 0 };
+        mline_add(vec3(-0.05, 0.3, TOP), c, NONE, NONE, 0, WHT);
+        vec p[8];
+        for (int i = 0; i < 8; i++) {
+            double a = i * PI / 4.0;
+            p[i] = add(c, add(scaled(e1, 0.13 * cos(a)), scaled(e2, 0.13 * sin(a))));
+        }
+        for (int i = 0; i < 8; i++) mline_add(p[i], p[(i + 1) % 8], NONE, NONE, 0, WHT);
+        mline_add(p[0], p[4], NONE, NONE, 0, WHT);
+        mline_add(p[2], p[6], NONE, NONE, 0, WHT);
+    }
+    /* the engine's band across the back, blue */
+    {
+        const vec BACK = { -1, 0, 0 };
+        const double X = -0.985, W = 0.55, H = 0.06;
+        mline_add(vec3(X, -W, -H), vec3(X, W, -H), BACK, BACK, 1, BLU);
+        mline_add(vec3(X, -W, H), vec3(X, W, H), BACK, BACK, 1, BLU);
+        mline_add(vec3(X, -W, -H), vec3(X, -W, H), BACK, BACK, 1, BLU);
+        mline_add(vec3(X, W, -H), vec3(X, W, H), BACK, BACK, 1, BLU);
+        for (int i = -1; i <= 1; i++) mline_add(vec3(X, i * 0.28, -H), vec3(X, i * 0.28, H), BACK, BACK, 1, BLU);
+    }
+}
+
+/* The ship at `at` (from the player, not turned with him, in V), looking
+ * along f with its left to l and its up to u, its hull's radius `size`. */
+static void falcon_draw(sw_enhance *e, vec at, vec f, vec l, vec u, double size, float lum)
+{
+    if (++e->inst == 0) e->inst = 0x8000;
+    for (int i = 0; i < falcon_lines; i++) {
+        const mline *ml = &falcon_model[i];
+        vec p[2];
+        for (int k = 0; k < 2; k++) {
+            const float *q = k ? ml->b : ml->a;
+            p[k] = add(at, add(scaled(f, q[0] * size), add(scaled(l, q[1] * size), scaled(u, q[2] * size))));
+        }
+        if (ml->nn) {
+            /* towards the viewer, who is at the origin, from the line's middle */
+            vec mid = scaled(add(p[0], p[1]), -0.5);
+            int seen = 0;
+            for (int k = 0; k < ml->nn && !seen; k++) {
+                vec n = add(scaled(f, ml->n[k][0]), add(scaled(l, ml->n[k][1]), scaled(u, ml->n[k][2])));
+                seen = n.x * mid.x + n.y * mid.y + n.z * mid.z > 0.0;
+            }
+            if (!seen) continue;
+        }
+        float lm = ml->color == BLU ? lum * 1.2f : ml->color == TRQ ? lum * 0.9f : lum;
+        line(e, turn(e, p[0]), turn(e, p[1]), ml->color, lm, SW_TAG_OBJECT);
+    }
+    for (int i = 0; i < falcon_nfaces; i++) {
+        const mface *mf = &falcon_faces[i];
+        vec c[6];
+        for (int k = 0; k < mf->n; k++)
+            c[k] = turn(e, add(at, add(scaled(f, mf->p[k][0] * size), add(scaled(l, mf->p[k][1] * size), scaled(u, mf->p[k][2] * size)))));
+        face_n(e, c, mf->n);
+    }
+}
+
+/* A byte of the game's memory, RAM or ROM (the trench's tables lie in both). */
+static uint8_t any8(const sw_machine *m, unsigned a)
+{
+    if (a >= 0x4800 && a < 0x5000) return ram8(m, a);
+    if (a >= 0x6000 && m->rom) return (uint8_t)(sw_rom16(m, (uint16_t)a) >> 8);
+    return 0;
+}
+
+/* How far ahead the exhaust port of this trench is, from the wedges still
+ * to come (WSBASE.MAC: the near wedge, the ones after it in its pie, the
+ * next pies), or -1 if there is none before the trench ends. The game
+ * itself learns of it only as its far wedge, 7000h ahead. */
+static double port_ahead(const sw_machine *m)
+{
+    enum { WG_TYP = 0, WG_IZ = 3, PI_IZ = 2, TYP_SHORT = 1, TYP_END = 3, TYP_PORT = 4, TYP_NXT = 5 };
+    unsigned u = ram16(m, SW_WG_NRP), pie = ram16(m, SW_PI_NRW);
+    double loc = (double)(int16_t)ram16(m, SW_WG_NRL);
+    for (int i = 0; i < 64; i++) {
+        uint8_t typ = any8(m, u + WG_TYP);
+        if (typ == TYP_PORT) return loc - (double)(int16_t)mb16(m, SW_M_S1 + M_TX);
+        if (typ == TYP_END || typ == 0) return -1.0;
+        loc += typ == TYP_SHORT ? 0x800 : 0x1000;
+        u += WG_IZ;
+        if (any8(m, u + WG_TYP) == TYP_NXT) {
+            pie += PI_IZ;
+            u = (unsigned)((any8(m, pie) << 8) | any8(m, pie + 1));
+        }
+    }
+    return -1.0;
+}
+
+/* Shortly before the exhaust port the Falcon comes from behind and above
+ * the player, passes over him and flies on down the trench ahead, a
+ * little lower, weaving a little and banked into the weave. Once in each
+ * run at the port: it begins when the player is BEFORE seconds from the
+ * port at his speed, and is far ahead and gone as he reaches it. */
+static void falcon_fly(sw_enhance *e, const sw_machine *m, double now)
+{
+    const double RUN = 3.2, BEFORE = 3.4;       /* seconds */
+    if (e->falcon_at == 0.0 && !e->falcon_done) {
+        double fps = SW_IRQ_HZ / (m->frame_irqs ? m->frame_irqs : 12);     /* (13 a second in the trench) */
+        double dist = port_ahead(m), speed = (double)mb16(m, SW_M_S1 + M_VX) * fps;
+        if (dist > 0.0 && speed > 0.0 && dist / speed < BEFORE) e->falcon_at = now;
+    }
+    if (e->falcon_at == 0.0) return;
+    double t = now - e->falcon_at;
+    if (t < 0.0 || t > RUN) {
+        e->falcon_done = 1;
+        e->falcon_at = 0.0;
+        return;
+    }
+    /* its way, in the world's units: x ahead of the player, y across the
+     * trench (0 its middle), z up (0 the tops of the walls) */
+    double x = -1600.0 + 6500.0 * t, y = 300.0 * sin(t * 1.1 + 0.4), z = 2500.0 - 280.0 * t;
+    double dy = 300.0 * 1.1 * cos(t * 1.1 + 0.4);
+    vec f = unit(vec3(6500.0, dy, -280.0));
+    vec l = unit(vec3(-f.y, f.x, 0.0)), u = cross(f, l);
+    double bank = -0.0025 * dy;                 /* banked into the weave */
+    vec lb = add(scaled(l, cos(bank)), scaled(u, sin(bank))), ub = add(scaled(u, cos(bank)), scaled(l, -sin(bank)));
+    vec at = vec3(x / 2.0, (y - e->t[1]) / 2.0, (z - e->t[2]) / 2.0);
+    float lum = 230.0f;
+    if (t < 0.25) lum *= (float)(t / 0.25);
+    if (t > RUN - 0.5) lum *= (float)((RUN - t) / 0.5);
+    falcon_draw(e, at, f, lb, ub, 300.0, lum);
+}
+
 /* --- all of it ----------------------------------------------------------------------------- */
 
 void sw_enhance_init(sw_enhance *e, const sw_machine *m)
 {
+    if (!falcon_lines) falcon_build();
     /* the stars: the same sky every time, none below the horizon */
     int n = (int)(sizeof e->star / sizeof e->star[0]);
     for (int i = 0; i < n; i++) {
@@ -590,12 +898,14 @@ int sw_enhance_run(sw_enhance *e, const sw_machine *m, double now, const sw_line
     int in_trench = phase == SW_PHSBS + 1 || phase == SW_PHSB0D + 1;
     int trench = in_trench && e->stars;
     int clip = in_trench && e->clip;
+    int falcon = in_trench && e->falcon;
     int logo = e->logo && phase >= SW_PHSBNR && phase <= SW_PHSHIS + 1;     /* (the attract mode) */
-    if (!ground && !logo && !trench && !clip) {
+    if (!in_trench) e->falcon_at = 0.0, e->falcon_done = 0;
+    if (!ground && !logo && !trench && !clip && !falcon) {
         *out = in;
         return n;
     }
-    if (ground || trench) view_of(e, m);
+    if (ground || trench || falcon) view_of(e, m);
 
     /* the game's picture, without its buildings if they are drawn here */
     if (e->cap < n + 64) {
@@ -621,6 +931,7 @@ int sw_enhance_run(sw_enhance *e, const sw_machine *m, double now, const sw_line
         e->n++;
     }
     if (trench) stars(e, 1, now);
+    if (falcon) falcon_fly(e, m, now);
     if (ground && e->stars) stars(e, 0, now);
     if (ground && e->surface) {
         /* As the ground ends the game takes its buildings away and the
