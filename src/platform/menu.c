@@ -55,7 +55,7 @@ int sw_menu_update(sw_menu *u, sw_display_cfg *cfg, vp_input *in, double now)
     }
     u->dir_x = x;
     u->dir_y = y;
-    int fire = vp_input_pressed(in, "p1_button1") || vp_input_pressed(in, "start1");
+    int fire = vp_input_pressed(in, "p1_button1");     /* (not the start button: held, it leaves the menu) */
 
     if (dy) u->item = step(u->item, dy, 0, N_ITEMS - 1);
     int d = dx ? dx : (fire ? 1 : 0);
@@ -155,5 +155,5 @@ void sw_menu_draw(const sw_menu *u, const sw_display_cfg *cfg, vp_dvg *d)
         if (value[i][0]) vp_text(d, value[i], 3500, y, 80, VP_TEXT_RIGHT);
     }
     vp_color(d, 110, 110, 110);
-    vp_text(d, "YOKE CHOOSE AND CHANGE   FIRE DO   TEST BUTTON EXIT", 2048, 330, 60, VP_TEXT_CENTER);
+    vp_text(d, "YOKE CHOOSE AND CHANGE   FIRE DO   LAST LINE EXIT", 2048, 330, 60, VP_TEXT_CENTER);
 }

@@ -10,6 +10,11 @@
  *   yoke left / right   change its value
  *   fire                change it, or do what the line says
  *   self-test button    save the settings and go back to the game
+ *
+ * For cabinets without a self-test button: the start button held for two
+ * seconds does the same, and so does the trigger held for three seconds
+ * in the attract mode (to open the menu), on the calibration screen and
+ * on the operator screens (to go back).
  */
 #ifndef SWVP_MENU_H
 #define SWVP_MENU_H

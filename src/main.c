@@ -452,7 +452,33 @@ int main(int argc, char **argv)
         /* The self-test button: out of where it led (the arcade program's
          * operator screens, the calibration), else the menu open or shut. */
         int menu_left = 0;
-        if (roms_ok && !calibrate && vp_input_pressed(app.in, "p1_button6")) {
+        /* A cabinet may have no such button (the VectorPie's yoke has only
+         * triggers, all of them the fire button): the start button held
+         * for two seconds does the same, and so does the trigger held for
+         * three where it has nothing else to do: in the attract mode, on
+         * the calibration screen and on the arcade program's operator
+         * screens. (In the menu itself the trigger acts on the line chosen;
+         * SAVE AND EXIT leaves it.) */
+        static double start_held, fire_held;
+        int start_long = 0;
+        if (vp_input_held(app.in, "start1")) {
+            if (start_held >= 0.0 && (start_held += dt) >= 2.0) {
+                start_long = 1;
+                start_held = -1.0;          /* (once a hold) */
+            }
+        } else {
+            start_held = 0.0;
+        }
+        int fire_free = menu_calibrate || brd.ctl.self_test || (!menu.open && brd.ctl.learn);
+        if (fire_free && vp_input_held(app.in, "p1_button1")) {
+            if (fire_held >= 0.0 && (fire_held += dt) >= 3.0) {
+                start_long = 1;
+                fire_held = -1.0;
+            }
+        } else if (!vp_input_held(app.in, "p1_button1")) {
+            fire_held = 0.0;
+        }
+        if (roms_ok && !calibrate && (vp_input_pressed(app.in, "p1_button6") || start_long)) {
             if (brd.ctl.self_test) brd.ctl.self_test = 0;
             else if (menu_calibrate) menu_calibrate = 0;
             else if (menu.open) menu_left = 1;
@@ -526,7 +552,7 @@ int main(int argc, char **argv)
             sw_draw_lines(app.dvg, &cfg, cal.lines, cal.count);
             static const char *const modes[] = { "SIZE", "POSITION", "GAMMA FLOOR", "BRIGHTNESS" };
             char line[64];
-            snprintf(line, sizeof line, calibrate ? "%s  B1 MODE  B2 SAVE" : "%s  FIRE MODE  TEST BUTTON BACK", modes[cal.mode]);
+            snprintf(line, sizeof line, calibrate ? "%s  B1 MODE  B2 SAVE" : "%s  FIRE MODE  HOLD FIRE 3 S BACK", modes[cal.mode]);
             const char *text[] = { line };
             draw_text_lines(app.dvg, text, 1, 700);
         } else if (menu.open) {
