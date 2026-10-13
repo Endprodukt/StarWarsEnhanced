@@ -29,7 +29,7 @@ void sw_display_cfg_defaults(sw_display_cfg *c)
     }
     c->defocus_mode = 1;
     c->yoke_autocenter = 1;
-    c->smooth = 1;
+    c->smooth = 3;
     c->sort_strokes = 1;
 }
 
@@ -117,7 +117,8 @@ int sw_display_cfg_save(const sw_display_cfg *c, const char *path)
     fprintf(f, "\n; FUZZ glow: 0 ignore, 1 double-draw\ndefocus_mode = %d\n", c->defocus_mode);
     fprintf(f, "\n; sight centered from the first frame (0: learns the yoke anew, as the arcade machine)\n"
                "yoke_autocenter = %d\n", c->yoke_autocenter);
-    fprintf(f, "\n; motion between the game's frames: 0 off, 1 between the last two, 2 ahead of the last\n"
+    fprintf(f, "\n; motion between the game's frames: 0 off, 1 lines between the last two frames,\n"
+               "; 2 lines ahead of the last, 3 computed from the state of the game\n"
                "smooth = %d\n", c->smooth);
     fprintf(f, "\n; draw strokes in an order that saves the beam dark travel\nsort_strokes = %d\n", c->sort_strokes);
     fclose(f);

@@ -74,6 +74,7 @@ add_library(swcore STATIC
     src/game/base.c
     src/game/panel.c
     src/game/ground.c
+    src/game/subframe.c
     src/game/gas.c
     src/render/smooth.c
     src/cpu/m6809.c
@@ -144,6 +145,10 @@ if(BUILD_TESTING)
     add_executable(test_attract tests/test_attract.c)
     target_link_libraries(test_attract PRIVATE swcore)
     add_test(NAME attract COMMAND test_attract)
+
+    add_executable(test_subframe tests/test_subframe.c)
+    target_link_libraries(test_subframe PRIVATE swcore)
+    add_test(NAME subframe COMMAND test_subframe)
 
     add_executable(test_capture tests/test_capture.c src/capture/capture.c)
     target_link_libraries(test_capture PRIVATE swcore)

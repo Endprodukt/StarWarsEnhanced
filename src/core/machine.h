@@ -101,6 +101,10 @@ typedef struct sw_machine {
     uint8_t    sound_board;      /* a sound board takes the requests (else they are dropped) */
     void     (*sound_wait)(void *user, int cycles);    /* let the sound board run that long */
     void      *sound_user;
+    /* Called by the main line around a frame's phase (after: 0 before it
+     * runs, 1 when it has): for the pictures in between (game/subframe.h). */
+    void     (*frame_hook)(void *user, int after);
+    void      *frame_user;
     uint8_t    unported_phase;   /* the last phase asked for that is not ported yet */
     uint32_t   frames;           /* game frames run */
 

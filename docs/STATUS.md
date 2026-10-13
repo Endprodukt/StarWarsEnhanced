@@ -45,10 +45,22 @@ mit dem Programm aus den Sound-ROMs, RIOT, vier POKEYs, TMS5220).
   Phase null. Im freien Lauf: Graben 18,6 Interrupts je Frame gegen 18,2 im
   Original, Weltraum 16,1 gegen 17,4 (anderer Spielverlauf), Attract
   12,2/12,4 (Banner), 18,6/18,6 (Anleitung), 18,0/17,9 (Highscores).
-* **Flüssige Darstellung** (`src/render/smooth.c`): Zwischen zwei
-  Spielframes wird jede Linie bewegt; das Bild kommt mit der Rate der
-  Platine statt 12 bis 20 Mal pro Sekunde. Im freien Lauf werden 92 % der
-  Linien im nächsten Frame wiedergefunden (Attract: 99 %).
+* **Flüssige Darstellung aus dem Spielzustand** (`src/game/subframe.c`,
+  Einstellung `smooth = 3`, Standard): Das Spiel bewegt alles einmal pro
+  Frame (12 bis 20 Mal pro Sekunde). Für jedes Bild der Platine dazwischen
+  werden Spieler, Schiffe, Schüsse, Trümmer und Sterne auf ihrem Weg vom
+  Zustand vor dem Frame zum Zustand danach eingesetzt, und die Zeichenroutinen
+  des Spiels rechnen das Bild dieses Augenblicks neu, auf einer Kopie der
+  Maschine: mit richtiger Perspektive, ohne Verzögerung, und was ins Bild
+  kommt, kommt ins Bild. Das Spiel selbst merkt davon nichts. Geprüft
+  (`tests/test_subframe.c`, 2640 Spielframes eines gespielten Laufs): Zum
+  Zeitpunkt des Frames ist das berechnete Bild Wort für Wort dessen
+  Displayliste, dazwischen liegt es dazwischen (31 % des Wegs nach einem
+  Drittel der Zeit), und am Übergang zum nächsten Frame bleibt kein Sprung.
+  Gilt für Weltraum, Anflug, Boden, Graben und die Tode; die Attract-Seiten
+  und einzelne Übergangsframes nutzen weiter das Verschieben der Linien
+  (`src/render/smooth.c`, `smooth = 1` oder `2`), bei dem 92 % der Linien im
+  nächsten Frame wiedergefunden werden (Attract: 99 %).
 * **Strich-Sortierung**: 3-mal weniger Leerweg auf der Highscore-Seite.
 * **Fadenkreuz zentriert** ab dem ersten Bild (`yoke_autocenter`).
 * **NOVRAM** (Optionen, Buchhaltung, beste drei Scores) in `save/nvram.bin`.
@@ -59,7 +71,9 @@ Der Automat war bei dieser Arbeit aus. Aufgespielt ist der Stand vom
 Attract-Modus davor. Ungeprüft am Gerät, also nur gerechnet und gemessen:
 
 * das ganze Spiel in C am Gerät (Münzen, Start, Joch, Feuer),
-* die Zwischenbilder (Aussehen, Artefakte bei auftauchenden Objekten),
+* die neu gerechneten Zwischenbilder (`smooth = 3`): Aussehen, Rechenzeit
+  auf dem Pi, Fadenkreuz. Steht in der Einstellungsdatei am Automaten noch
+  `smooth = 1`, bleibt es dabei, bis man es dort ändert.
 * der Ton überhaupt: Die Platine erzeugt plausible Pegel zur richtigen Zeit
   (Sprache beim Münzeinwurf und Start, Musik ab der Welle), aber niemand
   hat ihn gehört. POKEY ohne Hochpassfilter, TMS5220 vereinfacht.
@@ -67,12 +81,15 @@ Attract-Modus davor. Ungeprüft am Gerät, also nur gerechnet und gemessen:
 
 ## Bekannte Grenzen
 
+* `smooth = 3`: Unstetiges (Laser, Blinken, Zähler, neu erscheinende
+  Dinge) wechselt wie im Original im Takt der Spielframes; Drehungen werden
+  geradlinig überblendet (bei 10 Grad pro Frame 0,4 % zu klein in der
+  Mitte). Das Fadenkreuz folgt dem Joch im Takt der Neustarts des
+  Vektorgenerators (wie im Original), nicht mit jedem Bild.
 * `smooth = 1` zeigt die Welt einen Spielframe (50 bis 90 ms) später; das
   Fadenkreuz nicht. `smooth = 2` hat keine Verzögerung, schießt aber bei
-  Richtungswechseln über. Am Automaten ausprobieren.
-* Linien ohne Partner im vorigen Frame springen (wie im Original).
-* Die Zwischenbilder verschieben fertige Linien. Der eigentliche Plan
-  (Bild aus dem Spielzustand neu rechnen) ist noch nicht begonnen.
+  Richtungswechseln über.
+* Linien ohne Partner im vorigen Frame springen dort (wie im Original).
 * Das Tempo-Modell ist an fünf Aufnahmen bis Welle 4 angepasst. Spätere
   Wellen (mehr Türme, Zufallsgräben) liegen etwas außerhalb davon; der
   Fehler dort ist nicht gemessen.
@@ -89,11 +106,9 @@ Attract-Modus davor. Ungeprüft am Gerät, also nur gerechnet und gemessen:
 
 1. Am Automaten: `sh tools/deploy.sh`, dann Bild, Ton und Steuerung prüfen;
    `smooth` 1 gegen 2 vergleichen.
-2. Der Renderer aus dem Spielzustand: Schiffe, Sterne, Graben und Türme aus
-   ihren Matrizen und Positionen mit der Rate der Platine neu rechnen,
-   statt fertige Linien zu verschieben. Die Routinen dafür sind jetzt alle
-   in C da (`shipview.c`, `star.c`, `base.c`, `panel.c`, `ground.c`,
-   `obj.c`); die Marken der Linien (`core/tags.h`) sagen, was was ist.
+2. Die Zwischenbilder aus dem Spielzustand auch für die Attract-Seiten
+   (Banner, Anleitung, Highscores), die Explosion des Todessterns (DX2, DX3)
+   und den Wellenwechsel (NXT); das Fadenkreuz mit jedem Bild nachführen.
 3. Den Ton nativ: SNDAUD, SNDPM, SNDSPK (Sound-Programm) portieren, wie das
    Spielprogramm. Vorher nach Gehör prüfen: POKEY-Hochpass, TMS5220 genauer
    (Vergleich mit einer MAME-Aufnahme, `-wavwrite`).

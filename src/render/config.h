@@ -38,8 +38,11 @@ typedef struct sw_display_cfg {
      * position). 0: as the arcade machine, which learns the yoke's range
      * anew after every power-on. */
     int yoke_autocenter;
-    /* 1: the picture moves between the game's frames (render/smooth.h).
-     * 0: every game frame is shown as it is. */
+    /* How the picture moves between the game's frames. 0: not at all, every
+     * game frame is shown as it is. 1, 2: its lines are moved
+     * (render/smooth.h). 3: it is computed from the state of the game
+     * (game/subframe.h), lines moved only where a phase has no view of its
+     * own. */
     int smooth;
     /* 1: the strokes of a picture are drawn in an order that keeps the
      * beam's dark travel short (the board then manages more pictures a

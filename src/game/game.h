@@ -24,6 +24,7 @@ void sw_eeaccu(sw_machine *m);
  * frame at once: IFRAME and the current phase. */
 void sw_main_poll(sw_machine *m);
 void sw_main_frame(sw_machine *m);
+int  sw_main_view(sw_machine *m);    /* the phase's picture only (game/subframe.h); 0: the phase has none */
 /* game/pace.c: the time the 6809 took over the frame just run, in master
  * clock cycles, from the work counted; clears the counts. */
 uint32_t sw_pace_frame_cycles(sw_machine *m, uint8_t phase);

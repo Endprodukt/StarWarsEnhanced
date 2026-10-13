@@ -124,7 +124,7 @@ Belegung über die `advmame.rc` des Automaten, wie bei MAMEs Star Wars:
 
 | Schlüssel | Bedeutung |
 |---|---|
-| `smooth` | Bewegung zwischen den Spielframes: `0` aus (jedes Spielbild wie im Original), `1` zwischen den letzten beiden Frames (exakt, die Welt einen Spielframe später), `2` dem letzten Frame voraus (ohne Verzögerung, Linien schießen bei Richtungswechseln kurz über) |
+| `smooth` | Bewegung zwischen den Spielframes: `3` (Standard) aus dem Spielzustand neu gerechnet, ohne Verzögerung und mit richtiger Perspektive; `0` aus (jedes Spielbild wie im Original), `1` Linien zwischen den letzten beiden Frames verschoben (die Welt einen Spielframe später), `2` Linien dem letzten Frame voraus (ohne Verzögerung, schießen bei Richtungswechseln kurz über). Attract-Seiten nutzen auch bei `3` die verschobenen Linien. |
 | `yoke_autocenter` | `1`: Fadenkreuz ab dem ersten Bild zentriert, das Joch geht exakt durch (Ruhelage aus der Joystick-Kalibrierung des Automaten). `0`: wie der Automat von 1983, der den Bereich des Jochs nach jedem Einschalten neu lernt |
 | `sort_strokes` | `1`: Striche in einer Reihenfolge zeichnen, die dem Strahl Leerweg spart (mehr Bilder pro Sekunde auf der Platine) |
 | `avg_*`, `margin_*`, `flip_*` | Lage und Größe des Bildes, mit `--calibrate` einzustellen |

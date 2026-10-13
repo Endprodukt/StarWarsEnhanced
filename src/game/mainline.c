@@ -1874,6 +1874,29 @@ static void run_phase(sw_machine *m)
     }
 }
 
+/* The picture of the phase the machine is in, and nothing else of its
+ * frame: for the pictures in between (game/subframe.h). Only the phases
+ * that draw first and move then; returns 0 for the others. */
+int sw_main_view(sw_machine *m)
+{
+    switch (m->ram[SW_PHASE - 0x4800]) {
+    case SW_PHSSP1 + 1:
+    case SW_PHSSP2 + 1: view(m); break;
+    case SW_PHSS0G + 1: vewhpa(m); break;
+    case SW_PHSS1G + 1: vewhpb(m); break;
+    case SW_PHSGD + 1:  vewgd(m); break;
+    case SW_PHSG0B + 1: vewgnb(m, 0); break;
+    case SW_PHSG1B + 1: vewgnb(m, 1); break;
+    case SW_PHSBS + 1:  vewbs(m); break;
+    case SW_PHSS0D + 1: vews0d(m); break;
+    case SW_PHSG0D + 1: vewg0d(m); break;
+    case SW_PHSB0D + 1: vewb0d(m); break;
+    case SW_PHSDX1 + 1: vewdx1(m); break;
+    default: return 0;
+    }
+    return 1;
+}
+
 void sw_main_frame(sw_machine *m)
 {
     m->n_rd = m->n_wr = 0;                  /* the work of this frame (game/pace.c) */
@@ -1945,7 +1968,9 @@ void sw_main_poll(sw_machine *m)
         uint8_t phase = m->ram[SW_PHASE - 0x4800];
         m->n_rd = m->n_rd_iframe;           /* the work of this frame (game/pace.c) */
         memset(m->n_mb, 0, sizeof m->n_mb);
+        if (m->frame_hook) m->frame_hook(m->frame_user, 0);
         run_phase(m);
+        if (m->frame_hook) m->frame_hook(m->frame_user, 1);
         m->frames++;
         m->busy = sw_pace_frame_cycles(m, phase);
         if (m->original_cycles) {           /* the 6809 ran the phase: its own time, counted */
