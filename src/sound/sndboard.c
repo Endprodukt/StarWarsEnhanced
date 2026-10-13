@@ -32,8 +32,11 @@ static uint8_t port_a_in(const sw_sndboard *s)
 static void port_a_out(sw_sndboard *s, uint8_t old_out)
 {
     uint8_t out = (uint8_t)((s->dra & s->ddra) | ~s->ddra);
-    if ((old_out & 0x01) && !(out & 0x01))          /* WS falls: the chip takes the byte on its bus */
-        tms5220_write(&s->tms, (uint8_t)((s->drb & s->ddrb) | ~s->ddrb));
+    if ((old_out & 0x01) && !(out & 0x01)) {        /* WS falls: the chip takes the byte on its bus */
+        uint8_t v = (uint8_t)((s->drb & s->ddrb) | ~s->ddrb);
+        if (s->trace) s->trace(s->trace_user, 1, 0, v);
+        tms5220_write(&s->tms, v);
+    }
     if ((old_out & 0x02) && !(out & 0x02))          /* RS falls: it puts its status there */
         s->tms_bus = tms5220_status(&s->tms);
 }
@@ -141,14 +144,19 @@ static void bus_write(void *user, uint16_t a, uint8_t v)
         unsigned off = a - 0x1800;
         flush_pokeys(s, s->pending_ticks - s->pokey_done);
         s->pokey_done = s->pending_ticks;
+        if (s->trace) s->trace(s->trace_user, 0, off, v);
         pokey_write(&s->pokeys[(off >> 3) & 3], (off & 7) | ((off & 0x20) >> 2), v);
         return;
     }
     if (a < 0x0800) {                               /* SOUT: a byte for the main board */
+        if (s->trace) s->trace(s->trace_user, 2, 0, v);
         s->m->sound_in = v;
         s->m->sound_in_full = 1;
     }
 }
+
+uint8_t sw_snd_rd(sw_sndboard *s, uint16_t a) { return bus_read(s, a); }
+void sw_snd_wr(sw_sndboard *s, uint16_t a, uint8_t v) { bus_write(s, a, v); }
 
 /* --- set-up and running ---------------------------------------------------------------- */
 
@@ -164,7 +172,8 @@ void sw_sndboard_reset(sw_sndboard *s)
     s->pa7_flag = s->pa7_irq_enable = 0;
     s->m->sound_out_full = 0;
     s->m->sound_in_full = 0;
-    m6809_reset(&s->cpu);
+    if (s->native) sw_sndprog_init(s);
+    else m6809_reset(&s->cpu);
 }
 
 void sw_sndboard_init(sw_sndboard *s, sw_machine *m)
@@ -204,7 +213,17 @@ void sw_sndboard_run(sw_sndboard *s, int cycles)
 {
     s->budget += cycles;
     while (s->budget > 0) {
-        int cy = m6809_step(&s->cpu);
+        int cy;
+        if (s->native) {
+            /* The program in C takes no time: the board's clock goes on in
+             * small steps, and what the interrupt and the main line did is
+             * done when their cause comes up. */
+            cy = 16;
+            if (s->m->sound_out_full) sw_sndprog_command(s);
+            if (s->timer_flag) sw_sndprog_tick(s);
+        } else {
+            cy = m6809_step(&s->cpu);
+        }
         s->budget -= cy;
         riot_run(s, (uint32_t)cy);
         s->pending_ticks += (uint32_t)cy;

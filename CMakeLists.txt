@@ -82,6 +82,7 @@ add_library(swcore STATIC
     src/sound/pokey.c
     src/sound/tms5220.c
     src/sound/sndboard.c
+    src/sound/sndprog.c
 )
 target_include_directories(swcore PUBLIC src)
 target_link_libraries(swcore PUBLIC miniz)
@@ -149,6 +150,10 @@ if(BUILD_TESTING)
     add_executable(test_subframe tests/test_subframe.c)
     target_link_libraries(test_subframe PRIVATE swcore)
     add_test(NAME subframe COMMAND test_subframe)
+
+    add_executable(test_sound tests/test_sound.c)
+    target_link_libraries(test_sound PRIVATE swcore)
+    add_test(NAME sound COMMAND test_sound)
 
     add_executable(test_capture tests/test_capture.c src/capture/capture.c)
     target_link_libraries(test_capture PRIVATE swcore)

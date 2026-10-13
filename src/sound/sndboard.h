@@ -52,10 +52,29 @@ typedef struct sw_sndboard {
     int16_t  ring[SW_SOUND_RING];
     volatile uint32_t ring_w, ring_r;
     float    volume;
+
+    /* 1: the board's program is the C one (sndprog.c) and the 6809 is not
+     * run. Set before sw_sndboard_reset. */
+    int      native;
+    /* For checking one against the other: called for every byte written to
+     * a POKEY (kind 0, reg: 00-3F as on the bus), to the speech chip (kind
+     * 1) and to the main board's latch (kind 2). */
+    void   (*trace)(void *user, int kind, unsigned reg, uint8_t v);
+    void    *trace_user;
 } sw_sndboard;
 
 void sw_sndboard_init(sw_sndboard *s, sw_machine *m);
 void sw_sndboard_reset(sw_sndboard *s);
+
+/* The board's bus, for the program in C. */
+uint8_t sw_snd_rd(sw_sndboard *s, uint16_t a);
+void    sw_snd_wr(sw_sndboard *s, uint16_t a, uint8_t v);
+
+/* sndprog.c: the reset, a request waiting in the latch of the main board,
+ * and the main line's pass every 4 ms. */
+void sw_sndprog_init(sw_sndboard *s);
+void sw_sndprog_command(sw_sndboard *s);
+void sw_sndprog_tick(sw_sndboard *s);
 
 /* Run the sound CPU for `cycles` of the 1.512 MHz clock. */
 void sw_sndboard_run(sw_sndboard *s, int cycles);
