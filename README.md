@@ -169,11 +169,11 @@ ersetzen (PNG; Größe nach `advmame.rc`, `vector_aux_marquee_display_mode`).
 | `occlusion` | Enhanced. `1` (Standard): Dinge sind massiv, was hinter einem Schiff, einem Turm, dem Schriftzug oder den eigenen Kanonen liegt, wird nicht gezeichnet. `0`: durchsichtige Drahtmodelle wie am Automaten |
 | `enh_surface` | Enhanced, über der Oberfläche. `1` (Standard): der Boden wird als Plattenmuster des Todessterns gezeichnet |
 | `enh_stars` | Enhanced. `1` (Standard): ein paar funkelnde Sterne über der Oberfläche und viele über dem Graben, im Streifen zwischen den Oberkanten der Wände |
-| `enh_towers` | Enhanced. `1` (Standard): Türme und Bunker in echter Perspektive und detaillierter, so weit sichtbar wie am Automaten, fern dunkel und zur Nähe hin heller; der Laser trifft sie so, wie sie gezeichnet sind. `0`: die Türme des Automaten, die beim Näherkommen aus dem Boden wachsen |
+| `enh_towers` | Enhanced. `1` (Standard): Türme und Bunker detaillierter, in Größe und Abstand wie am Automaten (dessen Linearmaßstab mit der Entfernung eingeschlossen), fern dunkel und zur Nähe hin heller; der Laser trifft sie so, wie sie gezeichnet sind. `0`: die Türme des Automaten, die beim Näherkommen aus dem Boden wachsen |
 | `enh_dogfights` | Enhanced. `1` (Standard): in der Ferne jagen TIE Fighter einen X-Wing über den Himmel |
 | `enh_clip` | Enhanced, im Graben. `1` (Standard): Nahe Hindernisse behalten ihre Form, ihre Linien werden am Bildrand abgeschnitten. `0`: wie am Automaten, der die Punkte naher Objekte an den Rand schiebt |
 | `avg_*`, `margin_*`, `flip_*` | Lage und Größe des Bildes, mit `--calibrate` einzustellen |
-| `gamma`, `floor`, `brightness`, `color_*`, `defocus_mode` | Helligkeit und Farben |
+| `gamma`, `floor`, `brightness`, `color_*`, `defocus_mode` | Helligkeit und Farben. `brightness` bis 2,0 (Standard 1,7: eine normale Linie des Spiels, Intensität 80h, kommt bei 95 % an) |
 
 Optionen des Spiels (Münzen, Schilde, Schwierigkeit, Musik im Attract-Modus)
 stellt man im Testmenü unter GAME OPTIONS ein, oder wie am Automaten auf

@@ -89,6 +89,10 @@ static void line(sw_enhance *e, vec a, vec b, unsigned color, float lum, unsigne
     float x0 = (float)(PERSPECTIVE * a.y / a.x) * VG_SCALE, y0 = ((float)(PERSPECTIVE * a.z / a.x) + VG_OFFY) * VG_SCALE;
     float x1 = (float)(PERSPECTIVE * b.y / b.x) * VG_SCALE, y1 = ((float)(PERSPECTIVE * b.z / b.x) + VG_OFFY) * VG_SCALE;
     float w0 = (float)(W_UNIT / a.x), w1 = (float)(W_UNIT / b.x);
+    if (e->shrink != 1.0f) {
+        x0 = e->foot_x + (x0 - e->foot_x) * e->shrink; y0 = e->foot_y + (y0 - e->foot_y) * e->shrink;
+        x1 = e->foot_x + (x1 - e->foot_x) * e->shrink; y1 = e->foot_y + (y1 - e->foot_y) * e->shrink;
+    }
     /* Liang-Barsky against the screen */
     float t0 = 0.0f, t1 = 1.0f, dx = x1 - x0, dy = y1 - y0;
     float p[4] = { -dx, dx, -dy, dy };
@@ -150,6 +154,10 @@ static void face(sw_enhance *e, const vec *corner)
         f->x[i] = (float)(PERSPECTIVE * c[i].y / c[i].x) * VG_SCALE;
         f->y[i] = ((float)(PERSPECTIVE * c[i].z / c[i].x) + VG_OFFY) * VG_SCALE;
         f->w[i] = (float)w_of(c[i].x);
+        if (e->shrink != 1.0f) {
+            f->x[i] = e->foot_x + (f->x[i] - e->foot_x) * e->shrink;
+            f->y[i] = e->foot_y + (f->y[i] - e->foot_y) * e->shrink;
+        }
     }
 }
 
@@ -377,6 +385,20 @@ static void towers(sw_enhance *e, const sw_machine *m, double now)
              * that its seams could not be seen anyway are they left out.) */
             float steps = 1.0f, seams = lum >= 30.0f ? 1.0f : 0.0f;
             if (++e->inst == 0) e->inst = 0x8000;
+            /* Sized as the arcade machine sizes a building (GDVIEW, M.GDSC):
+             * on top of the perspective a linear scale with the distance,
+             * 1 - XP/4000h, about its foot; a far tower is small and grows
+             * as it comes. (In true perspective the towers stood larger
+             * and closer together than the owner knows them.) */
+            {
+                unsigned a = ((unsigned)c.x >> 8) << 2;
+                if (a > 255) a = 255;
+                e->shrink = (float)(255 - a) / 255.0f;
+                vec foot = add(c, turn(e, vec3(0.0, 0.0, -3840.0)));
+                if (foot.x < 1.0) foot.x = 1.0;
+                e->foot_x = (float)(PERSPECTIVE * foot.y / foot.x) * VG_SCALE;
+                e->foot_y = ((float)(PERSPECTIVE * foot.z / foot.x) + VG_OFFY) * VG_SCALE;
+            }
             /* The sizes are the arcade machine's, to the unit (the player
              * flies between and over them): a bunker 960 at its foot, 720
              * at its top, 720 high; a tower 960, 720, 600 and 480 at the
@@ -384,6 +406,7 @@ static void towers(sw_enhance *e, const sw_machine *m, double now)
             if (pc == PC_BNK) {
                 /* (plain: there are many of them, low on the ground) */
                 block(e, c, 960.0, -3840.0, 720.0, -3120.0, RED, lum, B_FOOT | B_TOP, 1.0f, 0.0f);
+                e->shrink = 1.0f;
                 continue;
             }
             int hat = !(state & TYP_DM) && (state & TYP_BK);
@@ -401,6 +424,7 @@ static void towers(sw_enhance *e, const sw_machine *m, double now)
                 float tl = lum * 1.15f;
                 turret(e, c, 6000.0, 480.0, WHT, tl > 255.0f ? 255.0f : tl, steps, seek + (aim - seek) * found);
             }
+            e->shrink = 1.0f;
         }
     }
 }
@@ -541,6 +565,7 @@ int sw_enhance_run(sw_enhance *e, const sw_machine *m, double now, const sw_line
     e->line_id = 0;
     e->spin_c = 1.0;
     e->spin_s = 0.0;
+    e->shrink = 1.0f;
     uint8_t phase = m->view_phase;          /* (the view that drew the picture, not the phase of the moment) */
     int ground = (phase == SW_PHSGD + 1 || phase == SW_PHSG0D + 1) &&
                  (e->surface || e->stars || e->towers || e->dogfights);
