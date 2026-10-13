@@ -87,12 +87,6 @@ typedef struct sw_machine {
      * 6809 took over it. 1: the frames of a phase come at one fixed pace,
      * the average of the arcade machine in that phase. 2: a frame every
      * 12th interrupt in every phase. */
-    /* How much the laser's hit test takes off a building's 1/X for the
-     * arcade machine's linear scale with the distance (GRLZCL: 100h, the
-     * scale 1 - XP/4000h). The enhanced towers may be sized with a weaker
-     * scale (render/enhance.h, tower_size): then less, so that the hit test
-     * meets what is drawn. */
-    uint16_t   tower_adjust;
     /* For the renderer: the phase whose view drew the list now in VG RAM
      * (set when a view begins). Between a phase's set-up and its first
      * view the phase byte is already the new one while the list, and the

@@ -33,7 +33,6 @@ void sw_display_cfg_defaults(sw_display_cfg *c)
     c->steady_frames = 1;
     c->occlusion = 1;
     c->enh_surface = c->enh_stars = c->enh_towers = c->enh_dogfights = 1;
-    c->enh_tower_size = 1;
     c->logo_yellow = 1;
     c->enh_clip = 1;
     c->sound_replace = 1;
@@ -65,7 +64,6 @@ static int set(sw_display_cfg *c, const char *key, const char *val)
         { "occlusion", &c->occlusion },
         { "enh_surface", &c->enh_surface }, { "enh_stars", &c->enh_stars },
         { "enh_towers", &c->enh_towers }, { "enh_dogfights", &c->enh_dogfights },
-        { "enh_tower_size", &c->enh_tower_size },
         { "enh_clip", &c->enh_clip }, { "logo_yellow", &c->logo_yellow }, { "sound_replace", &c->sound_replace },
     };
     if (strcmp(key, "sort_strokes") == 0) return 0;     /* (gone: settings files from before may still have it) */
@@ -148,9 +146,6 @@ int sw_display_cfg_save(const sw_display_cfg *c, const char *path)
                "; towers in true perspective with more detail and from farther, chases far off\n"
                "enh_surface = %d\nenh_stars = %d\nenh_towers = %d\nenh_dogfights = %d\n",
             c->enh_surface, c->enh_stars, c->enh_towers, c->enh_dogfights);
-    fprintf(f, "; how a far tower is sized: 0 as the arcade machine (grows out of the ground as it comes),\n"
-               "; 1 half that (the default), 2 true perspective\n"
-               "enh_tower_size = %d\n", c->enh_tower_size);
     fprintf(f, "\n; enhanced, in the trench: near objects keep their shape, cut at the edge of the screen\n"
                "enh_clip = %d\n", c->enh_clip);
     fprintf(f, "\n; enhanced: the STAR WARS logo yellow (0: blue, as the arcade machine)\n"

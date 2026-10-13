@@ -5,15 +5,11 @@
  * Over the surface of the Death Star:
  *   surface    the ground is drawn: the plating of the Death Star, lines
  *              in perspective out to the horizon
- *   towers     the towers and bunkers with more to them, dark where they
- *              come into sight and brighter as they come nearer. How a far
- *              one is sized (tower_size): as the arcade machine sizes it,
- *              a linear scale 1 - XP/4000h with the distance on top of the
- *              perspective, about the foot, so that it is small far off and
- *              grows out of the ground as it comes (0); the same with half
- *              the scale, 1 - XP/8000h, which grows far less (1, the
- *              default); or true perspective (2). The laser's hit test
- *              follows (sw_machine.tower_adjust). The game's own
+ *   towers     the towers and bunkers with more to them, sized as the
+ *              arcade machine sizes them (a linear scale with the distance
+ *              on top of the perspective, about the foot, so that a far
+ *              tower is small and grows as it comes), dark where they come
+ *              into sight and brighter as they come nearer. The game's own
  *              are taken out of the picture; the laser hits them by the
  *              game's own rule.
  *   dogfights  far off, TIE fighters chase an X-wing across the sky, two
@@ -48,7 +44,6 @@
 
 typedef struct sw_enhance {
     int surface, stars, towers, dogfights;      /* the settings */
-    int tower_size;                             /* 0 as the arcade machine, 1 between, 2 true perspective */
     int logo;                                   /* 1: the STAR WARS logo yellow */
     int clip;                                   /* 1: what stands in the trench is cut at the edge of the screen */
 

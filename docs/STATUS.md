@@ -329,24 +329,6 @@ wiederholt sich alle 8000h, jedes Gebäude wird auf dieser und der nächsten
 Runde betrachtet. Standbilder: am Start der Oberfläche nichts neben dem
 Spieler, am Horizont die kleinen dunklen Türme.
 
-## Größe ferner Türme als Einstellung (2026-10-13)
-
-Mit der Größe des Automaten wachsen die Türme beim Näherkommen aus dem
-Boden (das ist dieselbe Formel), und das störte den Besitzer. Spacious und
-nicht wachsend geht mit einem Fuß am wahren Ort nicht zugleich: Jede
-Schrumpfung um den Fuß ist ein Wachsen. Ein Versuch, die ganze Szene in
-der Tiefe zu verzerren (alles bei Entfernung x so zeichnen, als stünde es
-bei x/(1 - x/4000h)), hätte Größen und Boden konsistent gemacht, aber der
-Boden liefe dann zu einem Punkt statt zu einer Horizontlinie zusammen;
-verworfen. Stattdessen die Stärke der Formel als Einstellung
-`enh_tower_size` (Graphics: FAR TOWER SIZE): 0 wie der Automat
-(1 - XP/4000h), 1 halb so stark (1 - XP/8000h, Standard: am Rand der
-Reichweite noch halbe Größe, Wachstum über die Strecke rund 2-fach statt
-16-fach), 2 reine Perspektive. Die Trefferprüfung des Lasers folgt der
-Einstellung (`sw_machine.tower_adjust`: 100h, 80h, 0 statt immer 100h), so
-dass die Hüte bei jeder Einstellung dort getroffen werden, wo man sie
-sieht.
-
 ## Free Play (2026-10-13)
 
 Der Besitzer wünschte sich ein Spiel ohne Münzen. Das hat das Original

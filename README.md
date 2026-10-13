@@ -140,7 +140,7 @@ Seite; BACK führt zur Hauptseite, Tab speichert und kehrt ins Spiel zurück.
 
 | Seite | Zeilen |
 |---|---|
-| Graphics | Smooth Motion, Frame Pace, Occlusion, Yellow Logo; Surface Plating, Detailed Towers, Far Tower Size, Distant Dogfights; Stars, Trench Clipping (wie `smooth`, `steady_frames`, `occlusion`, `logo_yellow`, `enh_*` unten) |
+| Graphics | Smooth Motion, Frame Pace, Occlusion, Yellow Logo; Surface Plating, Detailed Towers, Distant Dogfights; Stars, Trench Clipping (wie `smooth`, `steady_frames`, `occlusion`, `logo_yellow`, `enh_*` unten) |
 | Sound | Replaced Sounds; Sound Test (Joch links/rechts wählt eine der 59 Anforderungen aus [docs/SOUNDS.md](docs/SOUNDS.md), Feuer spielt sie) |
 | Controls and Screen | Yoke Auto Center; Screen Calibration (das Testbild von `--calibrate`; Feuer wechselt Größe, Lage, Gamma, Helligkeit, das Joch stellt ein) |
 | Game Options | Coin Value, Left Mech, Right Mech, Bonus Adder; Starting Shields, Difficulty, Bonus Shields, Music in Attract: die Optionen des Spiels, dieselben wie auf der Optionsseite des Automaten; sie liegen in dessen NOVRAM (`save/nvram.bin`) und gelten sofort. Coin Value = FREE PLAY: kein Münzeinwurf, Feuer startet das Spiel |
@@ -170,7 +170,6 @@ ersetzen (PNG; Größe nach `advmame.rc`, `vector_aux_marquee_display_mode`).
 | `enh_surface` | Enhanced, über der Oberfläche. `1` (Standard): der Boden wird als Plattenmuster des Todessterns gezeichnet |
 | `enh_stars` | Enhanced. `1` (Standard): ein paar funkelnde Sterne über der Oberfläche und viele über dem Graben, im Streifen zwischen den Oberkanten der Wände |
 | `enh_towers` | Enhanced. `1` (Standard): Türme und Bunker detaillierter, in Größe und Abstand wie am Automaten (dessen Linearmaßstab mit der Entfernung eingeschlossen), aber schon von 6000h statt 3C00h voraus sichtbar, dort klein und dunkel, zur Nähe hin heller; Treffer wie am Automaten. `0`: die Türme des Automaten, die beim Näherkommen aus dem Boden wachsen |
-| `enh_tower_size` | Enhanced. Größe ferner Türme: `0` wie am Automaten (linearer Maßstab mit der Entfernung, die Türme wachsen beim Näherkommen aus dem Boden), `1` (Standard) halb so stark, `2` reine Perspektive. Die Trefferprüfung folgt |
 | `enh_dogfights` | Enhanced. `1` (Standard): in der Ferne jagen TIE Fighter einen X-Wing über den Himmel |
 | `enh_clip` | Enhanced, im Graben. `1` (Standard): Nahe Hindernisse behalten ihre Form, ihre Linien werden am Bildrand abgeschnitten. `0`: wie am Automaten, der die Punkte naher Objekte an den Rand schiebt |
 | `avg_*`, `margin_*`, `flip_*` | Lage und Größe des Bildes, mit `--calibrate` einzustellen |
