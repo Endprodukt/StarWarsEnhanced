@@ -1305,6 +1305,192 @@ static void phibs(sw_machine *m)
     phebs(m);                               /* DROP THRU -- DECREASE SCREEN FREEZE */
 }
 
+/* --- the Death Star explodes, the next wave ------------------------------------------- */
+
+/* VEWDX1: DETH STAR PARTIAL PHASE 1 */
+static void vewdx1(sw_machine *m)
+{
+    ivgen1(m);
+    is1uv(m, SW_MSS1BC);                    /* MATH BOX, PRIMARY INIT */
+    vwmes(m);
+    if ((int8_t)R8(SW_Q_FRC) > 0) sw_vwfrc(m);  /* ?SUCCESSFUL USE OF THE FORCE? */
+    sw_vwgas(m);
+    sw_vwsite(m);
+    sw_vwdthb(m);                           /* VIEW DETH STAR, ENLARGING */
+    vgdone(m);
+}
+
+/* VEWDX2: DETH STAR PARTIAL PHASE 2 */
+static void vewdx2(sw_machine *m)
+{
+    ivgen1(m);
+    is1uv(m, SW_MSS1BC);                    /* MATH BOX, PRIMARY INIT */
+    vwmes(m);
+    sw_vwgas(m);
+    sw_vwsite(m);
+    /* VIEW DETH STAR MINIATURE */
+    TAG(SW_TAG_DSTAR, 3);
+    VG(SW_VGOFFY & 0x1fff);                 /* Y OFFSET */
+    VG(0x0000);                             /* NO X OFFSET */
+    VG(0x7200);                             /* SCALE FOR MINIATURE */
+    VG(SW_VJBMIN);                          /* GET JSRL TO MINNY BASE OF DETH STAR */
+    VG(SW_VGSCAL);                          /* RESTORE BASE */
+
+    sw_vwxpln(m);                           /* DETH STAR PRETTY STARTING */
+    vgdone(m);
+}
+
+/* VEWDX3: DETH STAR PARTIAL PHASE 3 */
+static void vewdx3(sw_machine *m)
+{
+    ivgen1(m);
+    vwmes(m);
+    sw_vwgas(m);
+    sw_vwsite(m);
+    sw_vwxpln(m);
+    vgdone(m);
+}
+
+static void phidx1(sw_machine *m)
+{
+    W16(SW_DT_SCL, SW_VGSCAL + 0x100 + 0x04);   /* START DEATH STAR AT VERY LARGE */
+    W16(SW_DT_STP, 0x0aff);                 /* STEP SIZE */
+    istar(m);                               /* SETUP STARS */
+    sw_unitv(m, SW_M_U1);
+    W8(SW_PHASE, R8(SW_PHASE) + 1);
+    sw_doxmt(m, SW_IDPEND);                 /* START END OF DETH STAR MUSIC */
+}
+
+static void phedx1(sw_machine *m)
+{
+    vewdx1(m);
+
+    sw_do1gas(m);
+    sw_do1glw(m);
+
+    uint16_t d = (uint16_t)((int8_t)R8(SW_DT_STP) + R16(SW_DT_SCL) + 0x80);    /* D7 IS WRAP */
+    d &= 0xff7f;
+    W16(SW_DT_SCL, d);
+    if (d >= SW_VGSCAL + 0x400 + 0x80) W8(SW_PHASE, SW_PHSDX2);
+    d = (uint16_t)(R16(SW_DT_STP) - 0x0010);    /* CHANGE STEP SIZE */
+    if (d & 0x8000) d = 0x0000;
+    W16(SW_DT_STP, d);
+}
+
+static void phidx2(sw_machine *m)
+{
+    sw_bgxpln(m);                           /* START EXPLOSION */
+    W8(SW_PHASE, R8(SW_PHASE) + 1);
+}
+
+static void phedx2(sw_machine *m)
+{
+    vewdx2(m);
+    if (R8(SW_XP_PHS) >= 0x01) W8(SW_PHASE, SW_PHSDX3);    /* GOTO NEXT PHASE */
+}
+
+static void phedx3(sw_machine *m)
+{
+    vewdx3(m);
+    if (R8(SW_XP_PHS) == 0) W8(SW_PHASE, SW_PHSNXT);    /* DEATH STAR FINISHED EXPLODING */
+}
+
+/* VEWNXT: the picture between two Death Stars: what was earned */
+static void vewnxt(sw_machine *m)
+{
+    ivgen1(m);
+    is1uv(m, SW_MSS1BC);                    /* MATH BOX, PRIMARY INIT */
+    sw_residu(m);
+
+    vwmes(m);
+    sw_vwgas(m);
+    sw_vwsite(m);
+    sw_vwstar(m);
+
+    sw_domess(m, SW_MS_DSD);                /* "DEATH STAR DESTROYED" */
+
+    int8_t tim = (int8_t)R8(SW_PH_TIM);
+    if (tim <= 2) {
+        sw_domess(m, SW_MS_BRE);            /* "BONUS FOR REMAINING ENERGY" */
+        sw_domess(m, SW_MS_BRE + 1);        /* "5,000 X " */
+        VG(0x1fff & 144);                   /* Y POS */
+        VG(0x1fff & 112);                   /* X POS */
+        sw_vwnibl(m, R8(SW_GS_OLD));        /* SHOW ENERGY LEFT */
+        VG(SW_VGCNTR);
+    }
+
+    if (tim <= 1 && R8(SW_PT_LIV) != 0) {   /* DID PLAYER GET KILL DETH STAR: THEN GIVE BONUS TYPE MESSAGE */
+        uint8_t a = R8(SW_OPTS1) & 0x03;    /* HIGH BYTE OF 2ND OPTION BANK: BONUS FUEL UPON KILLING DETH STAR */
+        if (a != 0) {
+            uint8_t b = (uint8_t)((R8(SW_OPTS1 + 1) & 3) + 6);
+            if (b <= R8(SW_S_GAS)) {        /* ?ARE WE FULL UP ON GAS? */
+                b = SW_MS_BSE + 1;          /* SHIELD AT FULL STRENGTH */
+            } else {                        /* ELSE TELL HOW MANY ADDED */
+                VG(SW_VJMFL);               /* MAKE IT FLASHY LIKE THE REST OF THE MESSAGE */
+                VG(0x1fff & 72);            /* SHOW THE AMOUNT */
+                VG(0x1fff & (uint16_t)-320);    /* X POS */
+                W8(SW_BT_SUP, 0x01);
+                sw_vwnibl(m, a);
+                VG(SW_VGCNTR);
+                b = SW_MS_BSE;              /* "X ADDED TO DEFLECTOR SHIELD" */
+            }
+            sw_domess(m, b);
+        }
+    }
+
+    if (tim <= 0 && R8(SW_SC_FWV) == 0 &&   /* FIRST WAVE? */
+        R8(SW_GM_WAV) != 0)                 /* WASN'T WAVE 0, SO GIVE THEM MESSAGE */
+        sw_domess(m, SW_MS_BON);            /* "DEATH STAR BONUS EARNED" */
+
+    sw_vwglw(m);
+    vgdone(m);
+}
+
+static void phinxt(sw_machine *m)
+{
+    imath(m);
+    iparm(m);
+    W8(SW_M_S1 + M_AX, 0xc0);               /* TURN PLAYER AWAY FROM NEW DETH STAR */
+    W8(SW_M_S1 + M_BY, 0xc0);
+    W8(SW_PH_TIM, 4);
+    W8(SW_PHASE, R8(SW_PHASE) + 1);
+}
+
+static void phenxt(sw_machine *m)
+{
+    if ((R8(SW_FRAMEL) & 0x0f) == 0) {      /* ABOUT A SECOND */
+        W8(SW_PH_TIM, R8(SW_PH_TIM) - 1);
+        uint8_t a = R8(SW_PH_TIM);
+        if (a == 3 && R8(SW_PT_LIV) != 0)   /* ?FIRED AT THE EXHAUST PORT? */
+            sw_scrport(m);                  /* SCORE THE EXHAUST PORT */
+        if (a == 2) sw_scrshld(m);          /* ADD SHIELD ENERGY BONUS */
+        if (a == 1 && R8(SW_PT_LIV) != 0)   /* ADD BONUS ENERGY TO SHIELDS IF DESERVED: DID PLAYER KILL DETH STAR? */
+            sw_adcgas(m);                   /* ADD CANNED GAS */
+        if (a == 0) sw_scrwav(m);           /* ?ALMOST AT END OF NEXT PHASE? AND ALSO ADD WAV BONUS */
+    }
+
+    vewnxt(m);                              /* VIEW NXT PHASE STUFF */
+
+    sw_do1gas(m);                           /* WE MIGHT INC GAS */
+    sw_smvsp1(m);                           /* MOVE PLAYER (STARS) */
+
+    if (R8(SW_PH_TIM) != (uint8_t)-2) return;
+    /* WRAP TO NEXT DETH STAR */
+    uint8_t a = (uint8_t)(R8(SW_GM_WAV) + 1);
+    if (a > 98) a = 98;                     /* MAX OUT YET? YES, LIMIT IT */
+    W8(SW_GM_WAV, a);
+    if (R8(SW_GM_WAV) < 6 - 1) {            /* IGNORE BUMP WHEN ABOVE SELECTALEVEL: ?STARTING WAVE 0 TO 5? */
+        a = (uint8_t)(R8(SW_GM_BMP) + 1);   /* USED TO KILL OFF RINGERS WHO START TO EASY */
+        if (a > 4) a = 4;                   /* MAX TO BUMP */
+        W8(SW_GM_BMP, a);
+    }
+    a = (uint8_t)(R8(SW_GM_DIF) + R8(SW_GM_BMP));   /* GAME DEFAULT DIFFICULTY GOES UP EACH WAVE */
+    if (a > 15) a = 15;                     /* 0F MAX DIFFICULTY LEVELS (WORKS TO WAVE 10.) */
+    W8(SW_GM_DIF, a);
+    W8(SW_SC_FWV, 0xff);                    /* NO MORE FIRST WAVES */
+    W8(SW_PHASE, SW_PHSBGN);                /* GO TO BEGINNING OF NEW WAVE */
+}
+
 /* --- the main line ------------------------------------------------------------------ */
 
 /* MAIN: EXECUTE PHASE (TPHASE) */
@@ -1349,6 +1535,14 @@ static void run_phase(sw_machine *m)
     case SW_PHSB0B + 1: W8(SW_PHASE, SW_PHSBS); break;  /* PHEB0B */
     case SW_PHSB0D:     phib0d(m); break;
     case SW_PHSB0D + 1: if (!m->original_call) goto unported; pheb0d(m); break;
+    case SW_PHSDX1:     phidx1(m); break;
+    case SW_PHSDX1 + 1: if (!m->original_call) goto unported; phedx1(m); break;
+    case SW_PHSDX2:     phidx2(m); break;
+    case SW_PHSDX2 + 1: phedx2(m); break;
+    case SW_PHSDX3:     W8(SW_PHASE, R8(SW_PHASE) + 1); break;  /* PHIDX3 */
+    case SW_PHSDX3 + 1: phedx3(m); break;
+    case SW_PHSNXT:     phinxt(m); break;
+    case SW_PHSNXT + 1: if (!m->original_call) goto unported; phenxt(m); break;
     case SW_PHSS0D:     phis0d(m); break;
     case SW_PHSS0D + 1: if (!m->original_call) goto unported; phes0d(m); break;
     case SW_PHSEGM:     phiegm(m); break;

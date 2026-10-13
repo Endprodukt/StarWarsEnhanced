@@ -6,9 +6,8 @@
  * drawn as objects through a matrix of their own (M.MUN) that keeps
  * rolling and pitching while any piece lives.
  *
- * Ported so far: all but the Death Star's explosion (BGXPLN, VWXPLN) and
- * the start of the bunker and tower explosions (BGBKXP, BGTWXP), which
- * follow with their phases. The pieces of bunkers and towers (MVBKn,
+ * Ported so far: all but the start of the bunker and tower explosions
+ * (BGBKXP, BGTWXP), which follow with the ground. The pieces of bunkers and towers (MVBKn,
  * VWBKn, VWTWn) are ported but not yet checked against a recording.
  * Line by line after the 1983 source; comments in capitals are the
  * original's. */
@@ -306,4 +305,133 @@ void sw_vwxpld(sw_machine *m)
         }
         x = (uint16_t)(R16(SW_S2_PRM) + XP_IZE);
     } while (x < SW_XPQUEZ);
+}
+
+/* --- DETH STAR VISUALS --------------------------------------------------------------- */
+
+/* The Death Star blows up in four parts (XP.PHS 1 to 4, 0: over), each
+ * counting XP.CNT: circles that fill from the center, then rings that
+ * run outwards. */
+
+/* DCIRCL: DRAW A SERIES OF CONCENTRIC CIRCLES. D=VG COLOR COMMAND, U=VG
+ * SCALE COMMAND FOR STARTING VALUE, X=# OF CIRCLES TO BE DRAWN.
+ * OUT: U=NEXT SCALE VALUE */
+static uint16_t dcircl(sw_machine *m, uint16_t d, uint16_t u, uint16_t x)
+{
+    VG(d);
+    do {
+        VG(SW_VGOFFY & 0x1fff);             /* Y OFFSET FOR GAME'S SCREEN CENTER */
+        VG(0x0000);                         /* NO OFFSET FOR X */
+        VG(u);                              /* SCALE */
+        VG(SW_VJBCR2);                      /* BASE CIRCLE WITHOUT COLOR */
+        u -= 2;
+    } while (--x != 0);
+    return u;
+}
+
+/* DRING: DRAW RINGS. SIMILAR TO CIRCLES BUT SCALE SMOOTHLY. */
+static void dring(sw_machine *m, uint16_t d, uint16_t u, uint16_t x)
+{
+    VG(d);
+    do {
+        VG(SW_VGOFFY & 0x1fff);
+        VG(0x0000);
+        VG(u);
+        VG(SW_VJBCR2);                      /* BASE STAR CIRCLE WITHOUT COLOR COMMAND */
+        u = (uint16_t)(u - 4) & 0xff7f;
+    } while (--x != 0);
+}
+
+/* The scale the EXPANSION RINGS start at, from the count. */
+static uint16_t ring_scale(uint16_t cnt)
+{
+    uint16_t d = (uint16_t)~(uint16_t)(cnt << 3);
+    if (!(d & 0x0080)) d = (uint16_t)((d - 0x100) | 0x80);
+    d = (uint16_t)(d + SW_VGSCAL + 0x400 + 0x70);
+    if (!(d & 0x0080)) d = (uint16_t)(d - 0x100);
+    return d;
+}
+
+#define XCOLOR(c) ((SW_VGCOLR + ((c) << 8)) | 0xff)
+
+/* The count has run out: the next part. */
+static void next_part(sw_machine *m, uint16_t cnt)
+{
+    W16(SW_XP_CNT, cnt);
+    W8(SW_XP_PHS, R8(SW_XP_PHS) + 1);
+    sw_doxmt(m, SW_IDADF);                  /* FINAL DETH STAR EXPLOSION */
+}
+
+/* XP.PH0: FROM DIM TO BRIGHT */
+static void xp_ph0(sw_machine *m)
+{
+    dcircl(m, SW_VGCOLR + (VGCRED << 8), SW_VGSCAL + 0x400 + 0xf0, R16(SW_XP_CNT));
+    uint16_t d = (uint16_t)(R16(SW_XP_CNT) + 2);
+    W16(SW_XP_CNT, d);
+    if (d < 0x003f) next_part(m, 0x0001);
+}
+
+/* XP.PH1: BRIGHT BLUE FROM CENTER,RED EXPANSION */
+static void xp_ph1(sw_machine *m)
+{
+    uint16_t u = dcircl(m, XCOLOR(VGCBLU), SW_VGSCAL + 0x400 + 0xf0, R16(SW_XP_CNT));   /* DRAW BLUE CIRCLES */
+    uint16_t d = (uint16_t)(R16(SW_XP_CNT) + 2);
+    W16(SW_XP_CNT, d);
+    if (d < 0x3f) {                         /* DRAW SOME RED */
+        dcircl(m, XCOLOR(VGCRED), u, (uint8_t)(0x3f - R8(SW_XP_CNT + 1)));
+        /* RED EXPANSION RINGS */
+        d = R16(SW_XP_CNT);
+        dring(m, XCOLOR(VGCRED), ring_scale(d),
+              (d & 0xff00) | (uint8_t)(((((uint8_t)d >> 2) & 0x07) ^ 0x07) + 1));
+    }
+    if (R16(SW_XP_CNT) >= 0x3f) next_part(m, 0x0001);   /* SETUP FOR NEXT PHASE */
+}
+
+/* XP.PH2: BRIGHT WHITE FROM CENTER,BLUE EXPANSION */
+static void xp_ph2(sw_machine *m)
+{
+    uint16_t u = dcircl(m, XCOLOR(VGCWHT), SW_VGSCAL + 0x400 + 0x70, R16(SW_XP_CNT));   /* DRAW WHITE CIRCLES */
+    uint16_t d = (uint16_t)(R16(SW_XP_CNT) + 3);
+    W16(SW_XP_CNT, d);
+    if (d < 0x3f)                           /* DRAW SOME BLUE */
+        dcircl(m, XCOLOR(VGCBLU), u, (uint8_t)(0x3f - R8(SW_XP_CNT + 1)));
+    d = R16(SW_XP_CNT);                     /* BLUE EXPANSION RINGS */
+    if (d < 0x3f)                           /* DRAW EM */
+        dring(m, XCOLOR(VGCBLU), ring_scale(d),
+              (d & 0xff00) | (uint8_t)((((uint8_t)d & 0x0f) ^ 0x0f) + 1));
+    if (R16(SW_XP_CNT) >= 0x50) next_part(m, 0x0080);   /* SETUP FOR NEXT PHASE */
+}
+
+/* XP.PH3: CONTINUALLY EXPANDING WHITE RINGS */
+static void xp_ph3(sw_machine *m)
+{
+    uint16_t d = (uint16_t)(R16(SW_XP_CNT) - 4);
+    W16(SW_XP_CNT, d);
+    if (d >= 0x0008) {                      /* CONTINUE THIS EXPLOSION PHASE */
+        uint16_t u = (uint16_t)(d + SW_VGSCAL + 0x300);
+        d = R16(SW_XP_CNT) >> 1;
+        dring(m, XCOLOR(VGCWHT), u, (d & 0xff00) | (((uint8_t)d & 0x3f) ^ 0x3f));  /* FINAL EXPLOSION */
+    } else {
+        W8(SW_XP_PHS, 0);                   /* NULL PHASE, ALL DONE */
+    }
+}
+
+/* BGXPLN: the Death Star begins to explode */
+void sw_bgxpln(sw_machine *m)
+{
+    W8(SW_XP_PHS, 1);                       /* STARTING PHASE, 00 IS FLAG MEANING END */
+    W16(SW_XP_CNT, 0x0001);                 /* STARTING COUNT */
+}
+
+/* VWXPLN: the explosion in view, and on by one step */
+void sw_vwxpln(sw_machine *m)
+{
+    TAG(SW_TAG_DSTAR, 4);
+    switch (R8(SW_XP_PHS)) {
+    case 1: xp_ph0(m); break;
+    case 2: xp_ph1(m); break;
+    case 3: xp_ph2(m); break;
+    case 4: xp_ph3(m); break;
+    default: break;                         /* XP.NUL */
+    }
 }

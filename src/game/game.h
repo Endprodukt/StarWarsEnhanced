@@ -123,6 +123,8 @@ void sw_bgaxpld(sw_machine *m, uint16_t x);
 void sw_ixpld(sw_machine *m);
 void sw_doxpld(sw_machine *m);
 void sw_vwxpld(sw_machine *m);
+void sw_bgxpln(sw_machine *m);
+void sw_vwxpln(sw_machine *m);
 
 /* the score (game/gas.c) */
 void sw_aduscr(sw_machine *m, uint16_t u);
@@ -135,6 +137,8 @@ void sw_scrsht(sw_machine *m);
 void sw_scrport(sw_machine *m);
 void sw_scrall(sw_machine *m);
 void sw_scrfrc(sw_machine *m);
+void sw_scrshld(sw_machine *m);
+void sw_scrwav(sw_machine *m);
 void sw_vwfrc(sw_machine *m);
 
 /* WSGLOW.MAC (game/glow.c), WSGAS.MAC (game/gas.c) */

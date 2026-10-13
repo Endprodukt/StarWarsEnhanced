@@ -189,6 +189,34 @@ static uint16_t getfrp(sw_machine *m)
     return (uint16_t)(TSCFRC + (uint8_t)((uint8_t)(b << 1) + R8(SW_GM_WAV)));   /* *3 */
 }
 
+#define TSCSHL 0x9865       /* SHIELD SCORE FOR REMAINING ENERGY UNITS; the wave bonuses follow */
+
+/* SCRSHLD: GIVE POINTS FOR SHIELD ENERGY REMAINING */
+void sw_scrshld(sw_machine *m)
+{
+    uint8_t b = R8(SW_S_GAS);               /* SET COUNT */
+    if (b == 0) return;                     /* PROBLEM IF ZERO */
+    W8(SW_SC_ADD, 0);                       /* START WITH 000000 */
+    W8(SW_SC_ADD + 1, 0);
+    W8(SW_SC_ADD + 2, 0);
+    do {                                    /* ADD THEM ALL IN */
+        int c = 0;
+        W8(SW_SC_ADD + 2, sw_bcd_adc(R8(TSCSHL + 2), R8(SW_SC_ADD + 2), &c));
+        W8(SW_SC_ADD + 1, sw_bcd_adc(R8(TSCSHL + 1), R8(SW_SC_ADD + 1), &c));
+        W8(SW_SC_ADD + 0, sw_bcd_adc(R8(TSCSHL + 0), R8(SW_SC_ADD + 0), &c));
+    } while (--b != 0);                     /* DEC COUNT */
+    sw_aduscr(m, SW_SC_ADD);                /* POINT TO SCORE WE JUST BUILT */
+}
+
+/* SCRWAV: ADD WAVE BONUS TO THE SCORE */
+void sw_scrwav(sw_machine *m)
+{
+    if (R8(SW_SC_FWV) != 0) return;         /* FIRST WAVE? YES, THEN GIVE THE PLAYER HIS/HER JUST DESSERTS */
+    uint8_t b = R8(SW_GM_WAV);
+    if (b == 0) return;
+    sw_aduscr(m, (uint16_t)(TSCSHL + (uint8_t)((uint8_t)(b << 1) + R8(SW_GM_WAV))));
+}
+
 /* SCRFRC: PLAYER USED THE FORCE IN THE TRENCH */
 void sw_scrfrc(sw_machine *m) { sw_aduscr(m, getfrp(m)); }
 
