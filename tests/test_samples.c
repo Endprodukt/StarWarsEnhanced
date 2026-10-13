@@ -51,6 +51,8 @@ int main(void)
     int found = sw_samples_load(&s, dir, 44100);
     for (int i = 0; i < 5; i++) remove(path[i]);
     if (found != 5) { printf("%d files found, 5 expected\n", found); fail = 1; }
+    if (strcmp(sw_sound_folder(0x24), "music") != 0 || strcmp(sw_sound_folder(0x10), "voice") != 0 ||
+        strcmp(sw_sound_folder(0x3a), "effects") != 0 || strcmp(sw_sound_folder(0x29), "test") != 0) { printf("folders\n"); fail = 1; }
     if (strcmp(sw_sound_name(0x3a), "AUDXL") != 0 || strcmp(sw_sound_name(0x10), "SPKRED") != 0) { printf("names\n"); fail = 1; }
 
     /* switched off, nothing is replaced */
