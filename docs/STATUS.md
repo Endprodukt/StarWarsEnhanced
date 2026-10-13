@@ -263,6 +263,17 @@ Oberfläche, Graben, Welle 5):
   beim Zurücksetzen; die Resets und der NOVRAM-Test bleiben auf den
   Operator-Seiten.
 
+## Marquee (2026-10-13)
+
+Der Marquee-Bildschirm des Automaten (HDMI, 1920x360, `advmame.rc`:
+`vector_aux_marquee_display_mode stretch`) zeigte nur den Cursor der
+Konsole: Das Programm fragt das SDK nach `marquee.png` neben der
+ausführbaren Datei, und das Paket hatte keines. Jetzt liegt
+`package/marquee.png` bei (1920x360, gelber Schriftzug über Sternen, mit
+Pillow aus `impact.ttf` gezeichnet; kein Atari-Artwork), `deploy.sh` kopiert
+es mit, der Build legt es neben das Programm. Ob es am Gerät erscheint, ist
+beim Schreiben noch nicht gesehen.
+
 ## Szenenwechsel (2026-10-13)
 
 Der Besitzer fand die Übergänge zwischen Szenen unsauber. Geprüft mit
