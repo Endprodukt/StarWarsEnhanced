@@ -251,6 +251,12 @@ static void surface(sw_enhance *e)
 
 /* --- towers and bunkers ---------------------------------------------------------------- */
 
+/* A point of a shape, turned about the upright axis as e->spin has it. */
+static vec spun(const sw_enhance *e, double x, double y, double z)
+{
+    return vec3(x * e->spin_c - y * e->spin_s, x * e->spin_s + y * e->spin_c, z);
+}
+
 /* A block of a building: square, a corner towards the player as the ROM's
  * tower has an edge there, its corners h0 from the middle at the height z0
  * and h1 at z1 (the shape's own units, as the points of the ROM's tower:
@@ -263,8 +269,8 @@ static void block(sw_enhance *e, vec c, double h0, double z0, double h1, double 
     static const int sx[4] = { -1, 0, 1, 0 }, sy[4] = { 0, -1, 0, 1 };
     vec lo[4], hi[4];
     for (int i = 0; i < 4; i++) {
-        lo[i] = add(c, turn(e, vec3(sx[i] * h0, sy[i] * h0, z0)));
-        hi[i] = add(c, turn(e, vec3(sx[i] * h1, sy[i] * h1, z1)));
+        lo[i] = add(c, turn(e, spun(e, sx[i] * h0, sy[i] * h0, z0)));
+        hi[i] = add(c, turn(e, spun(e, sx[i] * h1, sy[i] * h1, z1)));
     }
     for (int i = 0; i < 4; i++) {
         int j = (i + 1) & 3;
@@ -292,22 +298,30 @@ static void block(sw_enhance *e, vec c, double h0, double z0, double h1, double 
     face(e, top);
 }
 
-/* The turret on a tower or a bunker, its guns towards where the player
- * comes from: a box at the height z, two barrels. */
-static void turret(sw_enhance *e, vec c, double z, double h, unsigned color, float lum, int detail)
+/* The turret on a tower: a box at the height z with two barrels, turned
+ * by yaw about its upright axis (0: the guns towards where the player
+ * comes from). */
+static void turret(sw_enhance *e, vec c, double z, double h, unsigned color, float lum, int detail, double yaw)
 {
+    e->spin_c = cos(yaw);
+    e->spin_s = sin(yaw);
     block(e, c, h, z, h, z + 720.0, color, lum, B_FOOT | B_TOP);
-    if (!detail) return;
-    for (int s = -1; s <= 1; s += 2) {
-        vec a = add(c, turn(e, vec3(-h * 0.6, s * h * 0.4, z + 420.0)));
-        vec b = add(c, turn(e, vec3(-h * 0.6 - 420.0, s * h * 0.4, z + 480.0)));
-        line(e, a, b, color, lum, SW_TAG_OBJECT);
+    if (detail) {
+        for (int s = -1; s <= 1; s += 2) {
+            vec a = add(c, turn(e, spun(e, -h * 0.6, s * h * 0.4, z + 420.0)));
+            vec b = add(c, turn(e, spun(e, -h * 0.6 - 420.0, s * h * 0.4, z + 480.0)));
+            line(e, a, b, color, lum, SW_TAG_OBJECT);
+        }
     }
+    e->spin_c = 1.0;
+    e->spin_s = 0.0;
 }
 
-static void towers(sw_enhance *e, const sw_machine *m)
+static void towers(sw_enhance *e, const sw_machine *m, double now)
 {
-    const double FAR = 28000.0, FADE = 7000.0;  /* in V: the arcade machine shows them from 3C00h */
+    const double FAR = 28000.0;                 /* in V: the arcade machine shows them from 3C00h */
+    const double BRIGHT = 2500.0;               /* from here on a building is as bright as it gets */
+    const double LOCK = 9000.0;                 /* from here on a turret has found the player */
     unsigned mz = TGDPTR + (unsigned)((uint8_t)(ram8(m, SW_GD_WAV) << 2));
     if (mz >= ZGDPTR) mz = ZGDPTR - 4;
     unsigned x = sw_rom16(m, (uint16_t)mz), end = sw_rom16(m, (uint16_t)(mz + 2));
@@ -330,10 +344,11 @@ static void towers(sw_enhance *e, const sw_machine *m)
             if (pass < sq) continue;
             vec c = turn(e, vec3(ahead / 2.0, (double)(int16_t)(by - (int)e->t[1]) / 2.0, (GD_CENTER - e->t[2]) / 2.0));
             if (c.x < 40.0 || c.x > FAR || fabs(c.y) > c.x * 1.25 + 1500.0) continue;
-            float fade = (float)((FAR - c.x) / FADE);
-            if (fade > 1.0f) fade = 1.0f;
-            /* dimmer far away, as the game has it */
-            float lum = (90.0f + 150.0f * (float)(1.0 - c.x / FAR)) * fade;
+            /* The farthest are dark, and each gets brighter in a straight
+             * line as it comes nearer: what is behind does not crowd what
+             * is before it. */
+            float k = (float)((FAR - c.x) / (FAR - BRIGHT));
+            float lum = 10.0f + 235.0f * (k > 1.0f ? 1.0f : k);
             int close = c.x < 9000.0, mid = c.x < 17000.0;
             if (++e->inst == 0) e->inst = 0x8000;
             /* The sizes are the arcade machine's, to the unit (the player
@@ -355,7 +370,17 @@ static void towers(sw_enhance *e, const sw_machine *m)
                 block(e, c, 670.0, -3120.0, 600.0, -1440.0, YLW, lum, B_TOP | (close ? B_SEAMS | B_PLATES : 0));
                 block(e, c, 550.0, -1440.0, 480.0, 6000.0, YLW, lum, B_TOP | (close ? B_SEAMS | B_PLATES : 0));
             }
-            if (hat) turret(e, c, 6000.0, 480.0, WHT, lum + 40.0f, mid);
+            if (hat) {
+                /* The turret turns to and fro, looking for the player; as
+                 * he comes into its range it finds him and follows him. */
+                double side = (double)(int16_t)(by - (int)e->t[1]);
+                double seek = 1.1 * sin(now * 0.9 + (double)(x & 31));
+                double aim = atan2(side, ahead);
+                double found = (LOCK + 3000.0 - c.x) / 3000.0;
+                found = found < 0.0 ? 0.0 : found > 1.0 ? 1.0 : found;
+                float tl = lum * 1.15f;
+                turret(e, c, 6000.0, 480.0, WHT, tl > 255.0f ? 255.0f : tl, mid, seek + (aim - seek) * found);
+            }
         }
     }
 }
@@ -494,6 +519,8 @@ int sw_enhance_run(sw_enhance *e, const sw_machine *m, double now, const sw_line
     e->n = e->n_faces = 0;
     e->inst = 0x8000;
     e->line_id = 0;
+    e->spin_c = 1.0;
+    e->spin_s = 0.0;
     uint8_t phase = ram8(m, SW_PHASE);
     int ground = phase == SW_PHSGD + 1 || phase == SW_PHSG0D + 1;
     if (!ground || !(e->surface || e->stars || e->towers || e->dogfights)) {
@@ -516,7 +543,7 @@ int sw_enhance_run(sw_enhance *e, const sw_machine *m, double now, const sw_line
     }
     if (e->stars) stars(e);
     if (e->surface) surface(e);
-    if (e->towers) towers(e, m);
+    if (e->towers) towers(e, m, now);
     if (e->dogfights && e->tie_ready) dogfights(e, now);
     *out = e->out;
     return e->n;

@@ -119,8 +119,12 @@ Soundplatine, die Zeit des Vektorgenerators.
     Maße sind auf die Einheit die des Automaten (Vorgabe des Besitzers: man
     muss weiter zwischen ihnen durchpassen): Turm 960, 720, 600, 480 an den
     Höhen seiner ROM-Punkte, Hut 480 und 720 hoch, Bunker 960 auf 720 und
-    720 hoch; von vorn gesehen genau so breit. Die Türme des Spiels werden
-    dafür aus dem Bild genommen. Einzige Änderung am
+    720 hoch; von vorn gesehen genau so breit. Die fernsten sind dunkel und
+    werden linear mit der Nähe heller (Vorgabe des Besitzers, damit die
+    hinteren die vorderen nicht überdecken). Der Geschützturm dreht sich
+    suchend hin und her und richtet sich auf den Spieler, sobald der in
+    Reichweite kommt (nur Bild: geschossen wird nach der Regel des
+    Automaten). Die Türme des Spiels werden dafür aus dem Bild genommen. Einzige Änderung am
     Spiel: Mit `sw_machine.enh_towers` trifft der Laser die Türme so, wie
     sie gezeichnet sind (`grlzcl` ohne den Abzug für den linearen Maßstab).
   * `enh_dogfights`: klein in der Ferne jagen TIE Fighter einen X-Wing

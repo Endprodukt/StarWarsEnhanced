@@ -39,6 +39,7 @@ typedef struct sw_enhance {
 
     /* the view: where the player is, how he is turned */
     double   r[3][3], t[3];
+    double   spin_c, spin_s;                    /* a block being drawn is turned so about its upright axis (cos, sin) */
 
     float    star[96][3];                       /* directions */
     uint8_t  star_lum[96];
