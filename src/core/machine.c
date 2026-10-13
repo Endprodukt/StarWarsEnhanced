@@ -8,6 +8,7 @@ void sw_machine_init(sw_machine *m, const sw_romset *rom)
 {
     memset(m, 0, sizeof *m);
     m->rom = rom;
+    m->tower_adjust = 0x100;          /* the laser's hit test as the arcade machine has it */
     m->in.in0 = 0xff;                 /* nothing pressed (active low) */
     m->in.in1 = 0xff;
     m->in.opt0 = 0x98;                /* the option switches as MAME sets them: 6 shields, */
