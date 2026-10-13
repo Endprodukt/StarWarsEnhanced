@@ -76,6 +76,12 @@ void     sw_eeacct(sw_machine *m);
 void     sw_eeacc(sw_machine *m);    /* the statistics page */
 void     sw_eeopt(sw_machine *m);    /* the options page: all of it, */
 void     sw_eeopt1(sw_machine *m);   /* the yoke and trigger changing it, */
+/* The game's options (coins, shields, difficulty, music: the first eight
+ * of the option page) read and set from outside; a set is kept in the
+ * NOVRAM as the option page keeps it. value 0..max. */
+#define  SW_GAME_OPTIONS 8
+int      sw_option_get(const sw_machine *m, int i, int *max);
+void     sw_option_set(sw_machine *m, int i, int value);
 void     sw_eeopt3(sw_machine *m, uint8_t a);    /* and one option's value */
 void     sw_binbcd(sw_machine *m, uint16_t d, uint16_t x);     /* game/mainline.c */
 

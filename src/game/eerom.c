@@ -667,6 +667,36 @@ void sw_eeopt(sw_machine *m)
     W16(SW_RESETS, 0x0000);                 /* CLEAR RESET BYTE */
 }
 
+/* The options from outside the program (the port's test menu): the same
+ * fields of the NOVRAM the option page shows, by the descriptors in T.OPT
+ * (the first SW_GAME_OPTIONS of them are the options; the rest are the
+ * resets and the NOVRAM test, which stay on the arcade program's page). */
+int sw_option_get(const sw_machine *m, int i, int *max)
+{
+    uint8_t b = sw_rom16((sw_machine *)m, T_OPT + (uint16_t)i) >> 8;  /* OPTION DESCRIPTOR */
+    uint16_t x = (uint16_t)(SW_OPTS0 + ((b & 0x07) << 1));
+    uint8_t mask = sw_rom16((sw_machine *)m, EEMASK + ((b >> 3) & 0x03)) >> 8;
+    uint8_t v = (uint8_t)((m->nvram[x - 0x4500] << 4) | (m->nvram[x + 1 - 0x4500] & 0x0f));
+    if (max) *max = mask;
+    return (v >> (b >> 5)) & mask;
+}
+
+void sw_option_set(sw_machine *m, int i, int value)
+{
+    uint8_t b = R8(T_OPT + i);              /* OPTION DESCRIPTOR */
+    uint8_t mask = R8(EEMASK + ((b >> 3) & 0x03));
+    unsigned pos = b >> 5;
+    uint16_t x = (uint16_t)(SW_OPTS0 + ((b & 0x07) << 1));
+    uint8_t v = (uint8_t)((R8(x) << 4) | (R8(x + 1) & 0x0f));
+    v = (uint8_t)((v & ~(mask << pos)) | (((unsigned)value & mask) << pos));
+    W8(x + 1, v);                           /* PUT IT BACK INTO EEROM */
+    W8(x, v >> 4);
+    sw_eecksm(m, NAREA);                    /* SET CHECKSUM */
+    /* MOV EEROM TO EEBUF TO PREPARE FOR "EEINI1" (as EEOPT1 does) */
+    for (uint16_t e = SW_EEROM, u = SW_EEBUF; e < SW_EEROM + 0xff; e += 2, u += 2) W16(u, R16(e));
+    eeinit_from(m, EE_INI1, 0);             /* SETUP BACKUP AND CHECK OTHER AREAS */
+}
+
 /* EEOPT1: MAKE CHANGES TO OPTION SWITCH VALUES. The yoke up and down
  * chooses the option, the left trigger steps its value. */
 void sw_eeopt1(sw_machine *m)

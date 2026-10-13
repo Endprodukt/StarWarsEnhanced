@@ -431,6 +431,7 @@ static void gnahit(sw_machine *m, uint16_t x)
 static void glowvw(sw_machine *m, uint16_t x)
 {
     uint16_t u = R16(x + G_UVP);            /* GET VECTOR TO FACEPLATE POSITION */
+    m->note.w = 0xffff;                     /* (for the renderer: on our shields, before everything) */
     VG(R16(u + 0));
     VG(R16(u + 2));
 

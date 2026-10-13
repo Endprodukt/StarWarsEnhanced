@@ -5,6 +5,10 @@
  *
  * --sounds DIR: recordings in place of sounds (DIR/NAME.wav, docs/SOUNDS.md).
  * --immortal: the shields never run out.
+ * --check: no pictures; instead every picture's lines are looked at (a
+ * coordinate that is not a number or off the screen, a line of a thing
+ * whose distance is unknown) and the time the pictures took is told per
+ * phase of the game.
  * --wire: wire frames as the arcade machine drew them (no occlusion).
  * --plain: without what the port adds over the surface (render/enhance.h).
  * --aim 80,4c: the first game starts on the Death Star in the middle (wave
@@ -29,6 +33,7 @@
 
 #include <math.h>
 #include <stdio.h>
+#include <time.h>
 #include <stdlib.h>
 #include <string.h>
 #ifdef _WIN32
@@ -204,6 +209,10 @@ int main(int argc, char **argv)
     if (arg(argc, argv, "--aim")) sscanf(arg(argc, argv, "--aim"), "%x,%x", &aim_x, &aim_y);
     W &= ~3; H &= ~3;
     int immortal = arg_flag(argc, argv, "--immortal");
+    int check = arg_flag(argc, argv, "--check");
+    struct { double secs; long pictures, lines, bad_num, off_screen, no_depth, cut_tiny; } stat[64];
+    static long off_by[32], depth_by[32];       /* by the kind of line (core/tags.h) */
+    memset(stat, 0, sizeof stat);
     double from = arg(argc, argv, "--from") ? atof(arg(argc, argv, "--from")) : 0.0;   /* pictures from this second on */
     long every = arg(argc, argv, "--every") ? atol(arg(argc, argv, "--every")) : 1;
     if (every < 1) every = 1;
@@ -298,7 +307,37 @@ int main(int argc, char **argv)
             }
         }
         const sw_line *lines;
+        clock_t t0 = clock();
         int count = sw_picture_lines(&pic, now, 3, &lines);
+        if (check) {
+            unsigned ph = m.ram[SW_PHASE - 0x4800] >> 1;
+            if (ph > 63) ph = 63;
+            stat[ph].secs += (double)(clock() - t0) / CLOCKS_PER_SEC;
+            stat[ph].pictures++;
+            stat[ph].lines += count;
+            for (int i = 0; i < count; i++) {
+                const sw_line *l = &lines[i];
+                unsigned sec = (unsigned)(l->id >> 58);
+                if (!(l->x0 == l->x0) || !(l->y0 == l->y0) || !(l->x1 == l->x1) || !(l->y1 == l->y1) ||
+                    fabsf(l->x0) > 1e5f || fabsf(l->x1) > 1e5f || fabsf(l->y0) > 1e5f || fabsf(l->y1) > 1e5f) {
+                    stat[ph].bad_num++;
+                    continue;
+                }
+                if ((l->x0 < -129.0f && l->x1 < -129.0f) || (l->x0 > 129.0f && l->x1 > 129.0f) ||
+                    (l->y0 < -155.0f && l->y1 < -155.0f) || (l->y0 > 152.0f && l->y1 > 152.0f)) {
+                    stat[ph].off_screen++;
+                    off_by[sec & 31]++;
+                }
+                if ((sec == SW_TAG_OBJECT || sec == SW_TAG_PANEL || sec == SW_TAG_TRENCH || sec == SW_TAG_SHOT) &&
+                    (l->w0 == 0 || l->w1 == 0)) {
+                    stat[ph].no_depth++;
+                    depth_by[sec & 31]++;
+                }
+                if (fabsf(l->x1 - l->x0) + fabsf(l->y1 - l->y0) < 0.05f && l->zz == 7 && sec != SW_TAG_STAR && sec != SW_TAG_STARSEC)
+                    stat[ph].cut_tiny++;
+            }
+            continue;
+        }
         if (f % every != 0 || now < from) continue;
         if (every > 1) memset(after, 0, (size_t)W * H * 3 * sizeof *after);    /* (stills: no afterglow of the last one) */
         picture(lines, count);
@@ -308,6 +347,19 @@ int main(int argc, char **argv)
                     m.ram[SW_PHASE - 0x4800], m.ram[SW_GM_WAV - 0x4800] + 1, (int8_t)m.ram[SW_S_GAS - 0x4800], count);
     }
     fprintf(stderr, "swvideo: %u requests to the sound board, %u of them resets\n", (unsigned)m.snd_w, resets);
+    if (check) {
+        fprintf(stderr, "phase  pictures  ms/picture  lines  bad-number  off-screen  no-depth  tiny\n");
+        for (int i = 0; i < 64; i++)
+            if (stat[i].pictures)
+                fprintf(stderr, "  %02X  %8ld  %10.2f  %5ld  %10ld  %10ld  %8ld  %4ld\n", i << 1, stat[i].pictures,
+                        stat[i].secs * 1000.0 / stat[i].pictures, stat[i].lines / stat[i].pictures, stat[i].bad_num,
+                        stat[i].off_screen, stat[i].no_depth, stat[i].cut_tiny);
+        fprintf(stderr, "off the screen by kind:");
+        for (int i = 0; i < 32; i++) if (off_by[i]) fprintf(stderr, " %d:%ld", i, off_by[i]);
+        fprintf(stderr, "\nwithout depth by kind:");
+        for (int i = 0; i < 32; i++) if (depth_by[i]) fprintf(stderr, " %d:%ld", i, depth_by[i]);
+        fprintf(stderr, "\n");
+    }
     fseek(wav, 0, SEEK_SET);
     wav_header(wav, samples);
     fclose(wav);

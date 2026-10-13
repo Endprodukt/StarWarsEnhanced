@@ -44,11 +44,12 @@ typedef struct sw_display_cfg {
      * that the sight is right from the first frame after every start. */
     int   yoke_center_known;
     float yoke_center_x, yoke_center_y;
-    /* How the picture moves between the game's frames. 0: not at all, every
-     * game frame is shown as it is. 1, 2: its lines are moved
-     * (render/smooth.h). 3: it is computed from the state of the game
-     * (game/subframe.h), lines moved only where a phase has no view of its
-     * own. */
+    /* How the picture moves between the game's frames. 3 (on): it is
+     * computed from the state of the game (game/subframe.h), lines moved
+     * only where a phase has no view of its own. 0 (off): every game frame
+     * is shown as it is. (1 and 2, the lines moved between or ahead of the
+     * last frames (render/smooth.h), are still read but no longer offered:
+     * one shows the world a frame late, the other overshoots.) */
     int smooth;
     /* How the game's frames come. 1: at one fixed pace in each phase, the
      * average of the arcade machine there (13 a second in the trench, 20.5
@@ -57,12 +58,6 @@ typedef struct sw_display_cfg {
      * the program is written for, and faster than the machine ever was
      * in play. 0: a frame takes as long as the 6809 took over it. */
     int steady_frames;
-    /* 1: the strokes of a picture are drawn in an order that keeps the
-     * beam's dark travel short (the board then manages more pictures a
-     * second). 0 (the default): in the game's order. On the cabinet's tube
-     * the sorted picture wobbles: the order, and with it where the beam
-     * comes from, changes from picture to picture. */
-    int sort_strokes;
     /* 1: things are solid: what is behind a ship, a tower, the logo or the
      * X-wing's own guns is not drawn (render/solid.h). 0: wire frames you
      * see through, as the arcade machine drew them. */

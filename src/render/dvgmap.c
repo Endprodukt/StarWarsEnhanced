@@ -39,24 +39,24 @@ typedef struct bline {
 } bline;
 
 /* Lines that follow each other without a gap, in one color: drawn in one
- * go, from either end. */
+ * go. (They are drawn in the game's order. Sorting them to save the beam
+ * its dark travel was tried: the picture then wobbles on the tube, because
+ * the order, and with it where the beam comes from, changes from picture
+ * to picture.) */
 typedef struct stroke {
     int first, count;       /* lines */
-    int ax, ay, bx, by;     /* where it starts and ends */
-    int done;
 } stroke;
 
 static bline  *g_lines;
 static stroke *g_strokes;
 static int     g_lines_cap, g_strokes_cap;
 
-static void draw_stroke(vp_dvg *d, const sw_display_cfg *c, const stroke *s, int reversed,
+static void draw_stroke(vp_dvg *d, const sw_display_cfg *c, const stroke *s,
                         int *bx, int *by, int *have_pos, uint8_t col[3], int *have_col)
 {
     for (int k = 0; k < s->count; k++) {
-        const bline *l = &g_lines[reversed ? s->first + s->count - 1 - k : s->first + k];
-        int x0 = reversed ? l->x1 : l->x0, y0 = reversed ? l->y1 : l->y0;
-        int x1 = reversed ? l->x0 : l->x1, y1 = reversed ? l->y0 : l->y1;
+        const bline *l = &g_lines[s->first + k];
+        int x0 = l->x0, y0 = l->y0, x1 = l->x1, y1 = l->y1;
         if (!*have_col || l->r != col[0] || l->g != col[1] || l->b != col[2]) {
             vp_color(d, l->r, l->g, l->b);
             col[0] = l->r; col[1] = l->g; col[2] = l->b;
@@ -110,34 +110,13 @@ void sw_draw_lines(vp_dvg *d, const sw_display_cfg *c, const sw_line *lines, int
         if (s && p->x1 == l->x0 && p->y1 == l->y0 && p->r == l->r && p->g == l->g && p->b == l->b &&
             !p->defocus && !l->defocus) {
             s->count++;
-            s->bx = l->x1; s->by = l->y1;
         } else {
             s = &g_strokes[ns++];
-            s->first = i; s->count = 1; s->done = 0;
-            s->ax = l->x0; s->ay = l->y0; s->bx = l->x1; s->by = l->y1;
+            s->first = i; s->count = 1;
         }
     }
 
     int have_pos = 0, bx = 2048, by = 2048, have_col = 0;
     uint8_t col[3] = { 0, 0, 0 };
-    if (!c->sort_strokes) {
-        for (int i = 0; i < ns; i++) draw_stroke(d, c, &g_strokes[i], 0, &bx, &by, &have_pos, col, &have_col);
-        return;
-    }
-    /* Always the stroke next whose nearer end is closest to the beam: the
-     * dark way between strokes is what costs the board its time. */
-    for (int k = 0; k < ns; k++) {
-        int best = -1, best_rev = 0;
-        long best_d = 0;
-        for (int i = 0; i < ns; i++) {
-            const stroke *s = &g_strokes[i];
-            if (s->done) continue;
-            long dax = s->ax - bx, day = s->ay - by, dbx = s->bx - bx, dby = s->by - by;
-            long da = dax * dax + day * day, db = dbx * dbx + dby * dby;
-            long dd = da <= db ? da : db;
-            if (best < 0 || dd < best_d) { best = i; best_d = dd; best_rev = db < da; }
-        }
-        g_strokes[best].done = 1;
-        draw_stroke(d, c, &g_strokes[best], best_rev, &bx, &by, &have_pos, col, &have_col);
-    }
+    for (int i = 0; i < ns; i++) draw_stroke(d, c, &g_strokes[i], &bx, &by, &have_pos, col, &have_col);
 }

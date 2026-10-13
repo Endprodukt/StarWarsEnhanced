@@ -1,6 +1,7 @@
 /* menu.c - see menu.h. */
 #include "platform/menu.h"
 
+#include "game/game.h"
 #include "sound/samples.h"
 
 #include <math.h>
@@ -14,10 +15,29 @@ const char *sw_menu_sound_name(int n)
     return sw_sound_name(n);
 }
 
+/* The lines, in three parts. The game's options are those of the arcade
+ * program's option page (TCEROM.MAC, T.OPT), in its order; their values
+ * are named as its messages name them. */
 enum {
-    I_OCCLUSION, I_SURFACE, I_STARS, I_TOWERS, I_DOGFIGHTS, I_CLIP, I_LOGO, I_SAMPLES, I_YOKE, I_SMOOTH, I_STEADY, I_SORT,
-    I_SOUND, I_CALIBRATE, I_OPERATOR, I_EXIT,
+    I_OCCLUSION, I_SURFACE, I_STARS, I_TOWERS, I_DOGFIGHTS, I_CLIP, I_LOGO, I_SAMPLES, I_YOKE, I_SMOOTH, I_STEADY,
+    I_OPT0, I_OPT_END = I_OPT0 + SW_GAME_OPTIONS,
+    I_SOUND = I_OPT_END, I_CALIBRATE, I_OPERATOR, I_EXIT,
     N_ITEMS
+};
+
+static const char *const OPTION_NAME[SW_GAME_OPTIONS] = {
+    "COIN VALUE", "LEFT MECH", "RIGHT MECH", "BONUS ADDER",
+    "STARTING SHIELDS", "DIFFICULTY", "BONUS SHIELDS", "MUSIC IN ATTRACT",
+};
+static const char *const OPTION_VALUE[SW_GAME_OPTIONS][8] = {
+    { "FREE PLAY", "2 CREDITS", "1 CREDIT", "1/2 CREDIT" },
+    { "1 COIN", "2 COINS" },
+    { "1 COIN", "4 COINS", "5 COINS", "6 COINS" },
+    { "NONE", "2 GIVES 1", "4 GIVES 1", "4 GIVES 2", "5 GIVES 1", "3 GIVES 1", "NONE", "NONE" },
+    { "6", "7", "8", "9" },
+    { "EASY", "MODERATE", "HARD", "HARDEST" },
+    { "0", "1", "2", "3" },
+    { "YES", "NO" },
 };
 
 /* Where the yoke is held, as a direction: -1, 0, 1. The cabinet's yoke is
@@ -36,7 +56,7 @@ static int step(int v, int d, int lo, int hi)
     return v > hi ? lo : v < lo ? hi : v;
 }
 
-int sw_menu_update(sw_menu *u, sw_display_cfg *cfg, vp_input *in, double now)
+int sw_menu_update(sw_menu *u, sw_display_cfg *cfg, sw_machine *m, vp_input *in, double now)
 {
     if (u->sound < 1 || u->sound >= N_SOUNDS) u->sound = 3;
 
@@ -59,6 +79,13 @@ int sw_menu_update(sw_menu *u, sw_display_cfg *cfg, vp_input *in, double now)
 
     if (dy) u->item = step(u->item, dy, 0, N_ITEMS - 1);
     int d = dx ? dx : (fire ? 1 : 0);
+    if (u->item >= I_OPT0 && u->item < I_OPT_END) {
+        if (!d) return SW_MENU_NOTHING;
+        int i = u->item - I_OPT0, max;
+        int v = sw_option_get(m, i, &max);
+        sw_option_set(m, i, step(v, d, 0, max));
+        return SW_MENU_OPTION;
+    }
     switch (u->item) {
     case I_OCCLUSION:
         if (d) { cfg->occlusion = !cfg->occlusion; return SW_MENU_CHANGED; }
@@ -75,12 +102,6 @@ int sw_menu_update(sw_menu *u, sw_display_cfg *cfg, vp_input *in, double now)
     case I_DOGFIGHTS:
         if (d) { cfg->enh_dogfights = !cfg->enh_dogfights; return SW_MENU_CHANGED; }
         break;
-    case I_SMOOTH:
-        if (d) { cfg->smooth = step(cfg->smooth, d, 0, 3); return SW_MENU_CHANGED; }
-        break;
-    case I_STEADY:
-        if (d) { cfg->steady_frames = step(cfg->steady_frames, d, 0, 2); return SW_MENU_CHANGED; }
-        break;
     case I_CLIP:
         if (d) { cfg->enh_clip = !cfg->enh_clip; return SW_MENU_CHANGED; }
         break;
@@ -93,8 +114,11 @@ int sw_menu_update(sw_menu *u, sw_display_cfg *cfg, vp_input *in, double now)
     case I_YOKE:
         if (fire) { cfg->yoke_autocenter = !cfg->yoke_autocenter; return SW_MENU_CHANGED; }    /* (not by the yoke itself) */
         break;
-    case I_SORT:
-        if (d) { cfg->sort_strokes = !cfg->sort_strokes; return SW_MENU_CHANGED; }
+    case I_SMOOTH:      /* on: the pictures in between computed from the game (3); off: none (0) */
+        if (d) { cfg->smooth = cfg->smooth ? 0 : 3; return SW_MENU_CHANGED; }
+        break;
+    case I_STEADY:
+        if (d) { cfg->steady_frames = step(cfg->steady_frames, d, 0, 2); return SW_MENU_CHANGED; }
         break;
     case I_SOUND:
         if (dx) u->sound = step(u->sound, dx, 1, N_SOUNDS - 1);
@@ -115,9 +139,8 @@ int sw_menu_update(sw_menu *u, sw_display_cfg *cfg, vp_input *in, double now)
 
 static const char *on_off(int v) { return v ? "ON" : "OFF"; }
 
-void sw_menu_draw(const sw_menu *u, const sw_display_cfg *cfg, vp_dvg *d)
+void sw_menu_draw(const sw_menu *u, const sw_display_cfg *cfg, const sw_machine *m, vp_dvg *d)
 {
-    static const char *const SMOOTH[] = { "OFF", "LINES BETWEEN", "LINES AHEAD", "COMPUTED" };
     static const char *const STEADY[] = { "AS THE ARCADE", "FIXED PER PHASE", "ALWAYS 20" };
     char value[N_ITEMS][40];
     const char *label[N_ITEMS];
@@ -131,33 +154,41 @@ void sw_menu_draw(const sw_menu *u, const sw_display_cfg *cfg, vp_dvg *d)
     label[I_LOGO] = "YELLOW LOGO";          snprintf(value[I_LOGO], 40, "%s", on_off(cfg->logo_yellow));
     label[I_SAMPLES] = "REPLACED SOUNDS";   snprintf(value[I_SAMPLES], 40, "%s", on_off(cfg->sound_replace));
     label[I_YOKE] = "YOKE AUTO CENTER";     snprintf(value[I_YOKE], 40, "%s", on_off(cfg->yoke_autocenter));
-    label[I_SMOOTH] = "SMOOTH MOTION";      snprintf(value[I_SMOOTH], 40, "%s", SMOOTH[cfg->smooth & 3]);
+    label[I_SMOOTH] = "SMOOTH MOTION";      snprintf(value[I_SMOOTH], 40, "%s", on_off(cfg->smooth));
     label[I_STEADY] = "FRAME PACE";         snprintf(value[I_STEADY], 40, "%s", STEADY[cfg->steady_frames % 3]);
-    label[I_SORT] = "STROKE SORTING";       snprintf(value[I_SORT], 40, "%s", on_off(cfg->sort_strokes));
+    for (int i = 0; i < SW_GAME_OPTIONS; i++) {
+        int max;
+        int v = sw_option_get(m, i, &max);
+        label[I_OPT0 + i] = OPTION_NAME[i];
+        snprintf(value[I_OPT0 + i], 40, "%s", OPTION_VALUE[i][v & 7] ? OPTION_VALUE[i][v & 7] : "?");
+    }
     label[I_SOUND] = "SOUND TEST";          snprintf(value[I_SOUND], 40, "%02X %s", u->sound, sw_menu_sound_name(u->sound));
     label[I_CALIBRATE] = "SCREEN CALIBRATION";
     label[I_OPERATOR] = "ARCADE OPERATOR SCREENS";
     label[I_EXIT] = "SAVE AND EXIT";
 
+    /* the lines, 118 apart, a gap before each part's heading */
+    const float TOP = 3560.0f, STEP = 118.0f, GAP = 150.0f;
     vp_text_font(VP_FONT_ASTEROIDS);
     vp_color(d, 200, 200, 60);
-    vp_text(d, "STAR WARS VP  TEST MENU", 2048, 3750, 110, VP_TEXT_CENTER);
-    vp_color(d, 60, 160, 200);
-    vp_text(d, "ENHANCED SETTINGS", 600, 3450, 70, VP_TEXT_LEFT);
-    vp_text(d, "TESTS", 600, 3450 - (I_SOUND + 1) * 150 - 40, 70, VP_TEXT_LEFT);
-
+    vp_text(d, "STAR WARS VP  TEST MENU", 2048, 3800, 100, VP_TEXT_CENTER);
     for (int i = 0; i < N_ITEMS; i++) {
-        float y = 3450.0f - 150.0f * (float)(i + 1) - (i >= I_SOUND ? 200.0f : 0.0f);
+        float y = TOP - STEP * (float)(i + 1) - (i >= I_OPT0 ? GAP : 0.0f) - (i >= I_SOUND ? GAP : 0.0f);
+        const char *heading = i == 0 ? "ENHANCED SETTINGS" : i == I_OPT0 ? "GAME OPTIONS" : i == I_SOUND ? "TESTS" : NULL;
+        if (heading) {
+            vp_color(d, 60, 160, 200);
+            vp_text(d, heading, 600, y + STEP + 10.0f, 62, VP_TEXT_LEFT);
+        }
         if (i == u->item) vp_color(d, 255, 255, 255);
         else vp_color(d, 120, 120, 120);
         if (i == u->item) {             /* an arrow before the line chosen */
-            vp_moveto(d, 600, (int)y + 72);
-            vp_lineto(d, 690, (int)y + 40);
-            vp_lineto(d, 600, (int)y + 8);
+            vp_moveto(d, 600, (int)y + 60);
+            vp_lineto(d, 680, (int)y + 32);
+            vp_lineto(d, 600, (int)y + 4);
         }
-        vp_text(d, label[i], 760, y, 80, VP_TEXT_LEFT);
-        if (value[i][0]) vp_text(d, value[i], 3500, y, 80, VP_TEXT_RIGHT);
+        vp_text(d, label[i], 760, y, 66, VP_TEXT_LEFT);
+        if (value[i][0]) vp_text(d, value[i], 3500, y, 66, VP_TEXT_RIGHT);
     }
     vp_color(d, 110, 110, 110);
-    vp_text(d, "YOKE CHOOSE AND CHANGE   FIRE DO   TAB EXIT", 2048, 330, 60, VP_TEXT_CENTER);
+    vp_text(d, "YOKE CHOOSE AND CHANGE   FIRE DO   TAB EXIT", 2048, 240, 56, VP_TEXT_CENTER);
 }

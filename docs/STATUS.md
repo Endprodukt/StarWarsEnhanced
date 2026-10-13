@@ -149,7 +149,8 @@ Soundplatine, die Zeit des Vektorgenerators.
   Selbsttest-Knopf (`p1_button6`), am Gerät die Tab-Taste, öffnet es, das Spiel steht solange. Zeilen:
   Enhanced Settings (Occlusion, Surface Plating, Surface Stars, Detailed
   Towers, Distant Dogfights, Trench Clipping, Yellow Logo, Replaced Sounds,
-  Yoke Auto Center, Smooth Motion, Frame Pace, Stroke Sorting),
+  Yoke Auto Center, Smooth Motion, Frame Pace), Game Options (die acht
+  Optionen des Automaten),
   Sound Test (alle 59 Anforderungen aus `docs/SOUNDS.md` mit Nummer und
   Name), Screen Calibration, Arcade Operator Screens (die Statistik- und
   Optionsseiten des Automatenprogramms; der Knopf führt von dort zurück),
@@ -211,6 +212,50 @@ Attract-Modus davor. Ungeprüft am Gerät, also nur gerechnet und gemessen:
   hat ihn gehört. POKEY ohne Hochpassfilter, TMS5220 vereinfacht.
 * `--calibrate`, die Bildrate der Platine im Spiel.
 
+## Durchsicht der Darstellung (2026-10-13)
+
+Auf Wunsch des Besitzers die ganze Bildkette durchgesehen (Occlusion,
+Objekte, Erweiterungen, Zeichnen der Vektoren). Werkzeug: `swvideo --check`
+läuft ein Spiel durch und prüft jedes Bild (Zahlen, die keine sind;
+Linien ganz außerhalb des Schirms; Linien von Dingen ohne Entfernung;
+Rechenzeit pro Bild je Phase). Befund über 9000 Bilder (Attract, Weltraum,
+Oberfläche, Graben, Welle 5):
+
+* Keine ungültige Zahl. Rechenzeit am PC: Weltraum 0,27 ms, Oberfläche
+  0,55 ms, Graben 0,29 ms, Schriftzug-Seite 0,06 ms pro Bild (die ganze
+  Kette: Zwischenbild, Erweiterungen, Occlusion). Am Pi 5 ist das grob das
+  Dreifache; die Platine braucht je Bild deutlich länger (2 bis 3,5 ms laut
+  Log). Keine Optimierung nötig.
+* Linien ganz außerhalb des Schirms gibt es viele (Kanonen des X-Wing,
+  Feuerbälle, die zurückweichende Titelschrift): Das SDK schneidet sie weg,
+  bevor sie zur Platine gehen (`vp_dvg.cpp`, Cohen-Sutherland), sie kosten
+  dort nichts.
+* **Fehler gefunden und behoben**: Feuerbälle, die auf den Schilden glühen
+  (GLOWVW), hatten keine Entfernung (1/X = 0) und galten der Occlusion als
+  hinter allem; ein TIE oder Turm dahinter schnitt sie weg. Jetzt stehen
+  sie vor allem (Entfernung 65535, und die Occlusion lässt solche Linien
+  ganz). Alle anderen Dinge, die verdeckt werden können, haben ihre
+  Entfernung.
+* **Entfernt**: `sort_strokes` (Code und Einstellung), weil die Sortierung
+  das Bild auf der Röhre nachweislich wackeln lässt; `smooth` 1 und 2 aus
+  dem Menü (ein Frame zu spät bzw. Überschießen), die Datei nimmt die Werte
+  noch an.
+* Zeichnen der Vektoren: Striche werden in der Reihenfolge des Spiels
+  gezeichnet, zusammenhängende Linien gleicher Farbe als ein Zug. Eine
+  Sortierung, die von Bild zu Bild gleich bleibt, ist nicht gebaut: Jede
+  Umordnung ändert, woher der Strahl kommt.
+* Nicht gefunden, aber möglich: Die Flächen der Schiffe sind Ringe von
+  Linien, die bis 20 % aus der Ebene liegen dürfen; bei stark gekrümmten
+  Ringen (Rumpf des TIE) kann die angenäherte Ebene eigene Linien knapp
+  dahinter abschneiden. Auf Standbildern nicht aufgefallen.
+* **Neu im Testmenü**: die Optionen des Spiels (Münzwert, Münzmechaniken,
+  Bonus-Münzen, Start-Schilde, Schwierigkeit, Bonus-Schilde, Musik im
+  Attract) direkt aus dem NOVRAM, mit den Prüfsummen und dem Backup-Bereich
+  wie die Optionsseite des Automaten (`sw_option_get/set`,
+  `tests/test_options.c`). Die DIP-Schalter sind dem Programm nur Vorgabe
+  beim Zurücksetzen; die Resets und der NOVRAM-Test bleiben auf den
+  Operator-Seiten.
+
 ## Am Automaten gesehen (Besitzer, 2026-10-13)
 
 Erster Lauf des C-Spiels mit den Erweiterungen am Gerät. Befund und was
@@ -218,10 +263,9 @@ daraus wurde:
 
 * **Sortierte Striche wackeln** auf der Röhre (die Reihenfolge, und damit
   woher der Strahl kommt, wechselt von Bild zu Bild). `sort_strokes` ist
-  jetzt ab Werk 0. Preis, am Gerät gemessen: Die Highscore-Seite läuft
+  darauf entfernt. Preis, am Gerät gemessen: Die Highscore-Seite läuft
   unsortiert mit 37 statt 50 Bildern pro Sekunde (Leerweg 172000 statt
-  60000 Einheiten). Offen: eine Sortierung, die von Bild zu Bild gleich
-  bleibt.
+  60000 Einheiten).
 * **Oberfläche war zu voll**: Sterne dort entfernt, Türme nur noch so weit
   wie am Automaten (3C00h) und nur die, die das Spiel eingerichtet hat,
   Bunker ohne Nähte. Am Ende der Oberfläche fliegt man damit wieder ins

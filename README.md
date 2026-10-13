@@ -140,7 +140,8 @@ speichert und kehrt ins Spiel zurück.
 
 | Zeile | |
 |---|---|
-| Occlusion, Surface Plating, Stars, Detailed Towers, Distant Dogfights, Trench Clipping, Yellow Logo, Replaced Sounds, Yoke Auto Center, Smooth Motion, Frame Pace, Stroke Sorting | die Enhanced Settings, jede abschaltbar (wie `occlusion`, `enh_*`, `smooth`, `steady_frames`, `sort_strokes` unten) |
+| Occlusion, Surface Plating, Trench Stars, Detailed Towers, Distant Dogfights, Trench Clipping, Yellow Logo, Replaced Sounds, Yoke Auto Center, Smooth Motion, Frame Pace | die Enhanced Settings, jede abschaltbar (wie `occlusion`, `enh_*`, `smooth`, `steady_frames` unten) |
+| Coin Value, Left Mech, Right Mech, Bonus Adder, Starting Shields, Difficulty, Bonus Shields, Music in Attract | die Optionen des Spiels, dieselben wie auf der Optionsseite des Automaten; sie liegen in dessen NOVRAM (`save/nvram.bin`) und gelten sofort |
 | Sound Test | Joch links/rechts wählt eine der 59 Anforderungen ([docs/SOUNDS.md](docs/SOUNDS.md)), Feuer spielt sie |
 | Screen Calibration | das Testbild von `--calibrate`; Feuer wechselt Größe, Lage, Gamma, Helligkeit, das Joch stellt ein |
 | Arcade Operator Screens | Statistik und Optionen des Automatenprogramms (Aux-Münze blättert); der Selbsttest-Knopf führt zurück ins Spiel |
@@ -154,7 +155,7 @@ speichert und kehrt ins Spiel zurück.
 | Schlüssel | Bedeutung |
 |---|---|
 | `steady_frames` | `1` (Standard): die Frames einer Phase kommen in festem Abstand, dem Durchschnitt des Automaten in dieser Phase; gleiches Tempo wie das Original, ohne Schwanken. `2`: überall 20,5 pro Sekunde (im Spiel rund 50 % schneller als der Automat). `0`: jedes Frame so lang, wie der 6809 des Automaten daran rechnete |
-| `smooth` | Bewegung zwischen den Spielframes: `3` (Standard) aus dem Spielzustand neu gerechnet, ohne Verzögerung und mit richtiger Perspektive; `0` aus (jedes Spielbild wie im Original), `1` Linien zwischen den letzten beiden Frames verschoben (die Welt einen Spielframe später), `2` Linien dem letzten Frame voraus (ohne Verzögerung, schießen bei Richtungswechseln kurz über). Auf den Attract-Seiten wandern die Linien bei `3` zum voraus gerechneten Bild des nächsten Frames, ebenfalls ohne Verzögerung. |
+| `smooth` | Bewegung zwischen den Spielframes: `3` (Standard, im Menü ON) aus dem Spielzustand neu gerechnet, ohne Verzögerung und mit richtiger Perspektive; auf den Attract-Seiten wandern die Linien zum voraus gerechneten Bild des nächsten Frames. `0` (OFF): jedes Spielbild wie im Original. (`1` und `2`, Linien zwischen bzw. vor den letzten Frames verschoben, werden noch gelesen, aber nicht mehr angeboten: das eine zeigt die Welt einen Frame zu spät, das andere schießt über.) |
 | `yoke_autocenter` | `1` (Standard): Fadenkreuz ab dem ersten Bild zentriert. Das Joch geht exakt durch, und seine Ruhelage gilt als Mitte: Sie wird beim Start gelernt und nachgeführt, wenn das Joch im Attract-Modus still liegt. `0`: wie der Automat von 1983, der den Bereich des Jochs nach jedem Einschalten neu lernt |
 | `sound_replace` | Enhanced. `1` (Standard): Sounds, für die in `sounds/` eine WAV-Datei mit ihrem Namen liegt, kommen aus der Datei ([docs/SOUNDS.md](docs/SOUNDS.md)). `0`: alle Sounds aus den Chips wie am Automaten |
 | `yoke_center_x`, `yoke_center_y`, `yoke_center_known` | die gelernte Ruhelage des Jochs; schreibt das Programm selbst |
@@ -165,14 +166,16 @@ speichert und kehrt ins Spiel zurück.
 | `enh_towers` | Enhanced. `1` (Standard): Türme und Bunker in echter Perspektive und detaillierter, so weit sichtbar wie am Automaten, fern dunkel und zur Nähe hin heller; der Laser trifft sie so, wie sie gezeichnet sind. `0`: die Türme des Automaten, die beim Näherkommen aus dem Boden wachsen |
 | `enh_dogfights` | Enhanced. `1` (Standard): in der Ferne jagen TIE Fighter einen X-Wing über den Himmel |
 | `enh_clip` | Enhanced, im Graben. `1` (Standard): Nahe Hindernisse behalten ihre Form, ihre Linien werden am Bildrand abgeschnitten. `0`: wie am Automaten, der die Punkte naher Objekte an den Rand schiebt |
-| `sort_strokes` | `0` (Standard): Striche in der Reihenfolge des Spiels. `1`: in einer Reihenfolge, die dem Strahl Leerweg spart (mehr Bilder pro Sekunde auf der Platine, aber das Bild wackelt auf der Röhre) |
 | `avg_*`, `margin_*`, `flip_*` | Lage und Größe des Bildes, mit `--calibrate` einzustellen |
 | `gamma`, `floor`, `brightness`, `color_*`, `defocus_mode` | Helligkeit und Farben |
 
 Optionen des Spiels (Münzen, Schilde, Schwierigkeit, Musik im Attract-Modus)
-stellt man wie am Automaten auf dessen Optionsseite ein (Testmenü, Arcade
-Operator Screens, dann Aux-Münze). Sie liegen mit Buchhaltung und den besten drei Scores in
-`save/nvram.bin`.
+stellt man im Testmenü unter GAME OPTIONS ein, oder wie am Automaten auf
+dessen Optionsseite (Arcade Operator Screens, dann Aux-Münze), wo auch die
+Resets und der NOVRAM-Test sind. Sie liegen mit Buchhaltung und den besten
+drei Scores in `save/nvram.bin`. Die DIP-Schalter der Platine (`opt0`,
+`opt1`) dienen dem Automatenprogramm nur als Vorgabe, wenn die Optionen im
+NOVRAM zurückgesetzt werden.
 
 ## Aufnahmen aus MAME
 

@@ -164,6 +164,10 @@ if(BUILD_TESTING)
     target_link_libraries(test_solid PRIVATE swcore)
     add_test(NAME solid COMMAND test_solid)
 
+    add_executable(test_options tests/test_options.c)
+    target_link_libraries(test_options PRIVATE swcore)
+    add_test(NAME options COMMAND test_options)
+
     add_executable(test_samples tests/test_samples.c)
     target_link_libraries(test_samples PRIVATE swcore)
     add_test(NAME samples COMMAND test_samples)

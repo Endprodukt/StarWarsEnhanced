@@ -469,10 +469,14 @@ int main(int argc, char **argv)
             else menu.open = 1;
         }
         if (menu.open && !menu_calibrate && !menu_left) {
-            switch (sw_menu_update(&menu, &cfg, app.in, app.clock)) {
+            switch (sw_menu_update(&menu, &cfg, &brd.m, app.in, app.clock)) {
             case SW_MENU_CHANGED:
                 apply_enhanced(&brd, &cfg);
                 brd.m.steady = brd.original ? 0 : (uint8_t)cfg.steady_frames;
+                break;
+            case SW_MENU_OPTION:            /* into the NOVRAM's EEPROM at once */
+                memcpy(brd.m.nvstore, brd.m.nvram, sizeof brd.m.nvstore);
+                nvram_save(&brd.m);
                 break;
             case SW_MENU_SOUND:             /* as the main board asks for it */
                 brd.m.sound_out = (uint8_t)menu.sound;
@@ -540,7 +544,7 @@ int main(int argc, char **argv)
             const char *text[] = { line };
             draw_text_lines(app.dvg, text, 1, 700);
         } else if (menu.open) {
-            sw_menu_draw(&menu, &cfg, app.dvg);
+            sw_menu_draw(&menu, &cfg, &brd.m, app.dvg);
         } else if (brd.controls_test) {
             draw_controls_test(&app, &cfg, &brd, sw_sched_vg_alpha(&sched), mbox_ok);
         } else {

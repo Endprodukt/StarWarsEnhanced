@@ -477,6 +477,7 @@ static void cut(sw_solid *s, const sw_line *l)
     float wmin = w0 < w1 ? w0 : w1;
     float dx = l->x1 - l->x0, dy = l->y1 - l->y0;
     unsigned section = section_of(l);
+    if (wmin >= 65535.0f) { emit(s, l, 0.0f, 1.0f); return; }   /* as near as it gets: a shot on our shields */
 
     for (int q = 0; q < SW_SOLID_MASKS && n_hid < MAX_CUTS; q++) {
         const sw_solid_mask *k = &s->mask[q];

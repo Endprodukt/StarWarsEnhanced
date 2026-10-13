@@ -31,7 +31,6 @@ void sw_display_cfg_defaults(sw_display_cfg *c)
     c->yoke_autocenter = 1;
     c->smooth = 3;
     c->steady_frames = 1;
-    c->sort_strokes = 0;
     c->occlusion = 1;
     c->enh_surface = c->enh_stars = c->enh_towers = c->enh_dogfights = 1;
     c->logo_yellow = 1;
@@ -62,12 +61,12 @@ static int set(sw_display_cfg *c, const char *key, const char *val)
         { "defocus_mode", &c->defocus_mode },
         { "yoke_autocenter", &c->yoke_autocenter }, { "yoke_center_known", &c->yoke_center_known }, { "smooth", &c->smooth },
         { "steady_frames", &c->steady_frames },
-        { "sort_strokes", &c->sort_strokes },
         { "occlusion", &c->occlusion },
         { "enh_surface", &c->enh_surface }, { "enh_stars", &c->enh_stars },
         { "enh_towers", &c->enh_towers }, { "enh_dogfights", &c->enh_dogfights },
         { "enh_clip", &c->enh_clip }, { "logo_yellow", &c->logo_yellow }, { "sound_replace", &c->sound_replace },
     };
+    if (strcmp(key, "sort_strokes") == 0) return 0;     /* (gone: settings files from before may still have it) */
     for (size_t i = 0; i < sizeof floats / sizeof floats[0]; i++)
         if (strcmp(key, floats[i].k) == 0) { *floats[i].f = (float)atof(val); return 0; }
     for (size_t i = 0; i < sizeof ints / sizeof ints[0]; i++)
@@ -133,14 +132,12 @@ int sw_display_cfg_save(const sw_display_cfg *c, const char *path)
     fprintf(f, "; where the yoke rests, learned (-1..1; kept from start to start)\n"
                "yoke_center_known = %d\nyoke_center_x = %g\nyoke_center_y = %g\n",
             c->yoke_center_known, c->yoke_center_x, c->yoke_center_y);
-    fprintf(f, "\n; motion between the game's frames: 0 off, 1 lines between the last two frames,\n"
-               "; 2 lines ahead of the last, 3 computed from the state of the game\n"
+    fprintf(f, "\n; motion between the game's frames: 3 computed from the state of the game, 0 off\n"
                "smooth = %d\n", c->smooth);
     fprintf(f, "\n; the game's frames: 1 at one fixed pace in each phase, as fast as the arcade\n"
                "; machine was there on average; 2 always 20.5 a second (faster than the\n"
                "; machine in play); 0 as long as its 6809 took over each\n"
                "steady_frames = %d\n", c->steady_frames);
-    fprintf(f, "\n; draw strokes in an order that saves the beam dark travel\nsort_strokes = %d\n", c->sort_strokes);
     fprintf(f, "\n; enhanced: things are solid, what is behind them is not drawn (0: wire frames\n"
                "; you see through, as the arcade machine)\n"
                "occlusion = %d\n", c->occlusion);
