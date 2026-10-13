@@ -23,6 +23,8 @@
  *              the screen: it pushes the points of a near object to just
  *              beyond the edge, which bends the object. Here its lines are
  *              drawn anew from its points in space and cut.
+ *   falcon     shortly before the exhaust port the Millennium Falcon comes
+ *              over the player from behind and flies on down the trench
  * And in the attract mode:
  *   logo       the STAR WARS logo is yellow, as in the films (the arcade
  *              machine has it blue)
@@ -46,6 +48,7 @@ typedef struct sw_enhance {
     int surface, stars, towers, dogfights;      /* the settings */
     int logo;                                   /* 1: the STAR WARS logo yellow */
     int clip;                                   /* 1: what stands in the trench is cut at the edge of the screen */
+    int falcon;                                 /* 1: the Millennium Falcon flies over before the exhaust port */
 
     sw_line *out;
     int      n, cap;
@@ -61,7 +64,9 @@ typedef struct sw_enhance {
      * by `shrink` (1: not at all): the arcade machine's sizing of a building */
     float    shrink, foot_x, foot_y;
     float    plate;                             /* how bright the plating is (1; fading as the ground ends) */
-    double   plate_at;                    /* a block being drawn is turned so about its upright axis (cos, sin) */
+    double   plate_at;
+    double   falcon_at;                         /* when the Falcon's run began (0: not on its way) */
+    int      falcon_done;                       /* it has flown past this port */
 
     float    star[SW_ENHANCE_STARS][3];         /* directions */
     uint8_t  star_lum[SW_ENHANCE_STARS];

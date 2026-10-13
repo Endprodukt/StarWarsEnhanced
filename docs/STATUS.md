@@ -329,6 +329,54 @@ wiederholt sich alle 8000h, jedes Gebäude wird auf dieser und der nächsten
 Runde betrachtet. Standbilder: am Start der Oberfläche nichts neben dem
 Spieler, am Horizont die kleinen dunklen Türme.
 
+## Falcon, Kamera, Sterne, Gitter (2026-10-13)
+
+Vier Wünsche des Besitzers, alle umgesetzt (Commit nach a8f006e):
+
+* **Gitter weiter, mehr Sterne, Bunker detaillierter:** Plattenmuster voll
+  bis 6000, aus bei 11000 voraus (vorher 3500/7000); 64 statt 28 Sterne
+  über der Oberfläche; die roten Bunker wieder mit Nähten an den Seiten
+  und einer Luke auf dem Dach (nicht mehr die Plattenlinien von vorher).
+* **Millennium Falcon im Graben** (`enh_falcon`, Menü "Falcon Fly-Over"):
+  Eigenes Modell in `render/enhance.c` (`falcon_build`): flache Rumpfscheibe
+  mit Plateau oben und unten, zwei Mandibeln, sechseckige Cockpitröhre
+  rechts mit türkisem Fenster, Radarschüssel auf Stiel, blaues
+  Triebwerksband hinten, ~150 Linien, ~50 Flächen für die Occlusion. Jede
+  Linie trägt die Normalen ihrer Flächen und wird nur gezeichnet, wenn eine
+  davon zum Betrachter zeigt (die abgewandte Rumpfseite scheint nicht
+  durch). Er kommt von hinten oben, fliegt über den Spieler und voraus den
+  Graben entlang (3,2 s), leicht pendelnd und in die Kurve gelegt. Start:
+  wenn der Spieler bei seinem Tempo 3,4 s vor dem Schacht ist; der Schacht
+  wird dafür aus der Grabentabelle vorausberechnet (`port_ahead`: die
+  Keile ab dem nahen Keil, über die Pies hinweg), weil das Spiel selbst ihn
+  erst 7000h voraus kennt. Einmal je Anlauf; läuft bei verfehltem Schacht
+  wieder. Im Film: Überflug 133,0 bis 134,6 s im Bild (dann klein voraus
+  weg), "EXHAUST PORT AHEAD" ab 133,8 s, Schacht bei 135,8 s.
+* **Kamera-Schwenks** (`enh_camera`, Menü "Smooth Camera"): Das Spiel ist
+  ein Rail Shooter, im Weltraum dreht sich das Schiff von selbst zum
+  verfolgten Gegner (AIMA) oder zum Todesstern (AIMDTH): die Drehrate
+  RH.RAT wird jedes Bild neu aus der Lage des Ziels gesetzt, bei neuem
+  Ziel springt sie auf voll. Mit `camera_ease` (sw_machine, aus
+  `enh_camera`) ändert sich die Rate pro Bild um höchstens 12 von 127
+  (`set_rate` in `game/player.c`): Anfahren und Abbremsen. Das greift ins
+  Spiel ein (nicht nur ins Bild), damit Fadenkreuz, Treffer und Bild
+  zusammenbleiben; die Aufnahmen laufen ohne das Flag und stimmen weiter.
+  `tests/test_camera.c`: mit Flag nie ein Sprung über 12, ohne Flag gibt es
+  welche. Die Zwischenbilder bleiben dabei stetig: der Rest-Mechanismus des
+  Originals (ganze Schritte an S1, Rest nur im Bild) summiert sich linear.
+* **Sterne machten komische Bewegungen:** Ursache in den Zwischenbildern
+  (`game/subframe.c`): Ein Stern, der das Blickfeld verlässt, wird vom
+  Original an zufälliger Stelle voraus neu gesetzt. Lag der neue Ort
+  weniger als 1000h vom alten, lief die Interpolation ihn dorthin, ein
+  Strich quer über den Schirm. Jetzt wird ein im Bild ersetzter Stern
+  (`star_gen` unterschiedlich) nicht interpoliert. Das Original selbst
+  springt an dieser Stelle (ist dort nicht zu sehen, weil der alte Stern
+  außerhalb lag).
+
+Am Gerät nicht gesehen: Falcon-Größe und -Helligkeit, das Gefühl der
+Kamera (12 je Bild ist eine Setzung), Bildzeit mit 64 Sternen und mehr
+Gitter.
+
 ## Türme genau wie das Original, ohne "Gemüse" (2026-10-13)
 
 Der Besitzer will die Türme genau so groß und so weit auseinander wie im

@@ -119,6 +119,23 @@ static int shl16(uint16_t *v, int *carry)
     return overflow;
 }
 
+/* The rate of turn of a block set to `rate`: at once, as the original has
+ * it, or (camera_ease, not in the original) no more than EASE a frame
+ * nearer to it than the rate of the frame before, so that the camera's
+ * turns gather speed and slow down rather than start at full rate. (The
+ * rate is a signed byte; the yaw's is written inverted, ~x = -x - 1, which
+ * is as signed as any.) */
+#define EASE 12
+static void set_rate(sw_machine *m, uint16_t blk, uint8_t rate)
+{
+    if (m->camera_ease) {
+        int was = (int8_t)R8(blk + RH_RAT), to = (int8_t)rate;
+        if (to > was + EASE) rate = (uint8_t)(was + EASE);
+        else if (to < was - EASE) rate = (uint8_t)(was - EASE);
+    }
+    W8(blk + RH_RAT, rate);
+}
+
 /* AIMA: AIM AT ALIEN. Where the alien is, seen from the ship, scaled up as
  * far as it goes, becomes the rates of turn. */
 static void aima(sw_machine *m)
@@ -164,8 +181,8 @@ static void aima(sw_machine *m)
     }
     W16(SW_M_ZP, (uint16_t)((c << 15) | (R16(SW_M_ZP) >> 1)));  /* RESTORE CORRECT SIGN */
 done:
-    W8(SW_RHEOY + RH_RAT, (uint8_t)~(d >> 8));      /* LEFT/RIGHT YAW */
-    W8(SW_RHEOP + RH_RAT, R8(SW_M_ZP));             /* UP/DOWN PITCH */
+    set_rate(m, SW_RHEOY, (uint8_t)~(d >> 8));      /* LEFT/RIGHT YAW */
+    set_rate(m, SW_RHEOP, R8(SW_M_ZP));             /* UP/DOWN PITCH */
 }
 
 /* AIM: AIM AT ALIEN OR DEATH STAR */
@@ -193,11 +210,11 @@ static void aimdth(sw_machine *m)
     uint8_t b;
     if (!(R8(SW_M_S1 + M_AX) & 0x80)) b = R8(SW_M_S1 + M_AZ);      /* ?DETH STAR IN FRONT? THEN SLEW NORMALLY(USE HITE OF DETHSTAR) */
     else b = (uint8_t)(0x7f - R8(SW_M_S1 + M_AZ));  /* STRAIGHT IN BACK GIVES LARGE VALUE */
-    W8(SW_RHEOP + RH_RAT, b);
+    set_rate(m, SW_RHEOP, b);
 
     if (!(R8(SW_M_S1 + M_AX) & 0x80)) b = R8(SW_M_S1 + M_AY);      /* (USE WIDTH OF DETHSTAR) */
     else b = (uint8_t)(0x7f - R8(SW_M_S1 + M_AY));
-    W8(SW_RHEOY + RH_RAT, (uint8_t)~b);
+    set_rate(m, SW_RHEOY, (uint8_t)~b);
 }
 
 /* ROLL IF HIT */

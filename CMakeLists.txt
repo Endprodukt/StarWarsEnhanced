@@ -180,6 +180,10 @@ if(BUILD_TESTING)
     target_link_libraries(test_sound PRIVATE swcore)
     add_test(NAME sound COMMAND test_sound)
 
+    add_executable(test_camera tests/test_camera.c)
+    target_link_libraries(test_camera PRIVATE swcore)
+    add_test(NAME camera COMMAND test_camera)
+
     add_executable(test_capture tests/test_capture.c src/capture/capture.c)
     target_link_libraries(test_capture PRIVATE swcore)
     add_test(NAME capture COMMAND test_capture)

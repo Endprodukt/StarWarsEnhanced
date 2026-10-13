@@ -97,6 +97,8 @@ typedef struct sw_machine {
     uint32_t   steady_due;       /* when the next frame is due, in sixteenths of an interrupt */
     uint8_t    frame_irqs;       /* interrupts from the frame just run to the next one */
     uint8_t    yoke_exact;       /* option yoke_autocenter: the yoke passed through exactly */
+    uint8_t    camera_ease;      /* option enh_camera: the ship's turns towards what it aims at
+                                  * gather speed and slow down, instead of starting at full rate */
 
     /* The phases not ported yet: a way to run the original's code for one
      * frame (core/emu.h, sw_emu_attach). It returns the time the 6809 took,
