@@ -78,6 +78,12 @@ void sw_bjlnb(sw_machine *m);
 void sw_objbpnt(sw_machine *m, uint8_t b);
 void sw_objpnt(sw_machine *m);
 void sw_objdrw(sw_machine *m);
+void sw_bjgrot(sw_machine *m);
+void sw_bjfrot(sw_machine *m);
+void sw_bjgpnt(sw_machine *m);
+void sw_bjbclp(sw_machine *m);
+void sw_bjgclp(sw_machine *m);
+void sw_bjgdrw(sw_machine *m);
 
 /* WSCPU.MAC (game/alien.c): the enemy ships. X is an alien's record. */
 void sw_nwnshp(sw_machine *m);

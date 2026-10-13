@@ -7,9 +7,9 @@
  * player flies into costs a shield; the fields are coloured in turn so
  * that their distance can be told.
  *
- * The objects themselves go through the ground object routines (BJGxxx),
- * which still run from the original. Line by line after the 1983 source;
- * comments in capitals are the original's. */
+ * The objects themselves go through the ground object routines (BJGxxx,
+ * game/obj.c). Line by line after the 1983 source; comments in capitals
+ * are the original's. */
 #include "game/game.h"
 #include "game/m6809.h"
 
@@ -85,11 +85,11 @@ static void pnvw(sw_machine *m, int right)
                         if (R16(SW_M_XP) & 0x8000) visible = 0; /* ?FRONT PART VISIBLE? EXIT IF NOT */
                         else force_field(m, right);
                     }
-                    if (visible) ORIG(SW_BJBCLP);   /* ALL CLOSE PANELS GET POINTS CLIPPED */
+                    if (visible) sw_bjbclp(m);      /* ALL CLOSE PANELS GET POINTS CLIPPED */
                 } else {
-                    ORIG(SW_BJGPNT);        /* DO POINTS SPEEDILY */
+                    sw_bjgpnt(m);           /* DO POINTS SPEEDILY */
                 }
-                if (visible) ORIG(SW_BJGDRW);
+                if (visible) sw_bjgdrw(m);   
             }
             W16(SW_M_Z0, R16(SW_M_Z0) + 0x400); /* MOVE UP TO NEXT PANEL */
             a = R8(SW_PN_FLG) >> 2;
@@ -140,12 +140,12 @@ void sw_vwpanel(sw_machine *m)
         W8(SW_PN_DES, i + 1);               /* DESIRED TYPE OF PANEL TO SEE */
         W8(SW_BJ_ID, ids[i]);
         W8(SW_PN_ID, ids[i]);
-        ORIG(SW_BJGROT);                    /* PRE-ROTATE ITS POINTS */
+        sw_bjgrot(m);                       /* PRE-ROTATE ITS POINTS */
         TAG(SW_TAG_PANEL, i * 2);
         pnvw(m, 0);                         /* VIEW LEFT WALL PANELS */
 
         W8(SW_BJ_ID, R8(SW_PN_ID));
-        ORIG(SW_BJFROT);                    /* FLIPPED PRE-ROTATE */
+        sw_bjfrot(m);                       /* FLIPPED PRE-ROTATE */
         TAG(SW_TAG_PANEL, i * 2 + 1);
         pnvw(m, 1);                         /* VIEW RIGHT WALL PANELS */
     }

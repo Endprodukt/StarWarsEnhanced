@@ -9,9 +9,8 @@
  * comes into view; what lies between is kept in sixteen bytes a wall
  * (PNLW, PNRW), one for every 800 of the trench.
  *
- * Ported: all of WSBASE.MAC. What stands on the walls (VWPANEL) and the
- * exhaust port's object (BJGxxx) still run from the original. Line by line after the 1983 source;
- * comments in capitals are the original's. */
+ * What stands on the walls is in game/panel.c (VWPANEL). Line by line
+ * after the 1983 source; comments in capitals are the original's. */
 #include "game/game.h"
 #include "game/m6809.h"
 
@@ -384,7 +383,7 @@ static void bsvsid(sw_machine *m)
 static void bsvport(sw_machine *m)
 {
     W8(SW_BJ_ID, SW_TDSPOR);                /* GET A WALL PANEL FOR NOW */
-    ORIG(SW_BJGROT);                        /* ROTATE IT IN FRONT OF US */
+    sw_bjgrot(m);                           /* ROTATE IT IN FRONT OF US */
 
     W16(SW_M_GD + 4, (uint16_t)-0x1000);    /* Z HITE ON BOTTOM OF TRENCH */
     W16(SW_M_GD + 2, 0);                    /* Y WIDTH IN CENTER */
@@ -403,10 +402,10 @@ static void bsvport(sw_machine *m)
     W16(SW_M_GDSC, SW_VGSCAL);              /* SET UP BUNKERS SCALE */
 
     if ((int16_t)R16(SW_M_XP) - 0x1000 < 0) /* ?TOO CLOSE? */
-        ORIG(SW_BJBCLP);                    /* THEN PROCESS POINTS WITH CLIPPING */
+        sw_bjbclp(m);                       /* THEN PROCESS POINTS WITH CLIPPING */
     else
-        ORIG(SW_BJGPNT);                    /* ELSE USE REGULAR */
-    ORIG(SW_BJGDRW);                        /* DRAW THE LINES */
+        sw_bjgpnt(m);                       /* ELSE USE REGULAR */
+    sw_bjgdrw(m);                           /* DRAW THE LINES */
 }
 
 /* BSVEND: THE VERY END OF THE TRENCH */
