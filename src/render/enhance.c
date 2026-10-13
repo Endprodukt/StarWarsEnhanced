@@ -347,8 +347,10 @@ static float ramp(double v, double from, double to)
 
 static void towers(sw_enhance *e, const sw_machine *m, double now)
 {
-    const double FAR = 15360.0;                 /* in V, 3C00h: as far as the arcade machine shows them */
+    const double RANGE = 15360.0;               /* in V, 3C00h: as far as the arcade machine shows them */
+    const double FAR = 24576.0;                 /* 6000h: as far as they are drawn here, dark and small */
     const double BRIGHT = 2500.0;               /* from here on a building is as bright as it gets */
+    const double SMALLEST = 0.08;               /* the arcade machine's sizing goes to 0 at 4000h: not below this */
     const double LOCK = 9000.0;                 /* from here on a turret has found the player */
     unsigned mz = TGDPTR + (unsigned)((uint8_t)(ram8(m, SW_GD_WAV) << 2));
     if (mz >= ZGDPTR) mz = ZGDPTR - 4;
@@ -362,20 +364,29 @@ static void towers(sw_enhance *e, const sw_machine *m, double now)
         int sq = (int8_t)(sw_rom16(m, (uint16_t)(x + TGD_SQ)) >> 8);
         int rm = (int8_t)(sw_rom16(m, (uint16_t)(x + TGD_RM)) >> 8);
         uint8_t state = ram8(m, (unsigned)(SW_GDRAM + rm));
-        /* The buildings the game shows, where it shows them (VWGRND): those
-         * of the passes so far that it has set up (which it does while
-         * they are out of sight), a bunker shot away no more (the game
-         * draws it in the color "off"), and only within the game's range
-         * (100h to 3C00h ahead) and its 45 degrees to either side. When the
-         * surface ends the game takes them all away, and the player flies
-         * on into the dark. */
-        if (seq < sq || !(state & TYP_VW)) continue;
+        /* The buildings the game shows, where it shows them (VWGRND): within
+         * its range (100h to 3C00h ahead, 45 degrees to either side) those
+         * of the passes so far that it has set up, which it does while they
+         * are out of sight, so that within the range none comes up before
+         * the player's eyes; a bunker shot away no more (the game draws it
+         * in the color "off"). Beyond the range, from FAR on, the same
+         * buildings are drawn already, dark and small, and fade in as they
+         * come; a building the next pass brings (the pass begins when the
+         * player's place wraps) only if it will still be beyond the range
+         * then, for it would come up half way otherwise. The map comes
+         * round every 8000h: each building is looked at on this round and
+         * on the next. When the surface ends the game takes them all away,
+         * and the player flies on into the dark. */
         if (pc == PC_BNK && (state & TYP_DM)) continue;
-        /* (the map comes round every 8000h) */
         double ahead = (double)((bx - (unsigned)e->t[0]) & 0x7fff);
-        {
+        for (int lap = 0; lap < 2; lap++, ahead += 32768.0) {
+            double beyond = (double)(int16_t)(uint16_t)e->t[0] + ahead - 32768.0;  /* past where the next pass starts */
+            int pass = seq + (beyond >= 0.0 ? 1 : 0);
+            if (pass < sq) continue;
+            if (seq < sq && beyond / 2.0 < RANGE) continue;
             vec c = turn(e, vec3(ahead / 2.0, (double)(int16_t)(by - (int)e->t[1]) / 2.0, (GD_CENTER - e->t[2]) / 2.0));
             if (c.x < 256.0 || c.x >= FAR || fabs(c.y) >= c.x) continue;
+            if (c.x < RANGE && !(state & TYP_VW)) continue;
             /* The farthest are dark, and each gets brighter in a straight
              * line as it comes nearer: none comes up at once, and what is
              * behind does not crowd what is before it. */
@@ -394,6 +405,7 @@ static void towers(sw_enhance *e, const sw_machine *m, double now)
                 unsigned a = ((unsigned)c.x >> 8) << 2;
                 if (a > 255) a = 255;
                 e->shrink = (float)(255 - a) / 255.0f;
+                if (e->shrink < (float)SMALLEST) e->shrink = (float)SMALLEST;
                 vec foot = add(c, turn(e, vec3(0.0, 0.0, -3840.0)));
                 if (foot.x < 1.0) foot.x = 1.0;
                 e->foot_x = (float)(PERSPECTIVE * foot.y / foot.x) * VG_SCALE;
@@ -409,7 +421,7 @@ static void towers(sw_enhance *e, const sw_machine *m, double now)
                 e->shrink = 1.0f;
                 continue;
             }
-            int hat = !(state & TYP_DM) && (state & TYP_BK);
+            int hat = !(state & TYP_DM) && ((state & TYP_BK) || !(state & TYP_VW));   /* (one not set up yet will have its hat) */
             /* three steps, each set in a little from the one below */
             block(e, c, 960.0, -3840.0, 720.0, -3120.0, YLW, lum, B_FOOT | B_TOP | B_SEAMS, steps, seams);
             block(e, c, 670.0, -3120.0, 600.0, -1440.0, YLW, lum, B_TOP | B_SEAMS | B_PLATES, steps, seams);
