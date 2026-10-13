@@ -40,6 +40,7 @@ uint16_t sw_rom16(const sw_machine *m, uint16_t addr)
 
 uint8_t sw_rd8(sw_machine *m, uint16_t a)
 {
+    m->n_rd++;
     if (a < 0x3000) return m->vgram[a];
     if (a < 0x4000) return m->rom ? m->rom->vrom[a - 0x3000] : 0;
     if (a >= 0x4800 && a < 0x5000) {
@@ -75,6 +76,7 @@ uint8_t sw_rd8(sw_machine *m, uint16_t a)
 
 void sw_wr8(sw_machine *m, uint16_t a, uint8_t v)
 {
+    m->n_wr++;
     if (a < 0x3000) { m->vgram[a] = v; return; }
     if (a >= 0x4800 && a < 0x5000) { m->ram[a - 0x4800] = v; return; }
     if (a >= 0x5000 && a < 0x6000) { m->mbox.ram[a - 0x5000] = v; return; }
@@ -93,7 +95,7 @@ void sw_wr8(sw_machine *m, uint16_t a, uint8_t v)
         m->vg_left = sw_avg_cycles(m->vgram, m->rom ? m->rom->vrom : 0, 0);
         return;
     case 0x4620: m->vg_left = 0; return;            /* VGSTOP */
-    case 0x4700: sw_mbox_go(&m->mbox, v); return;    /* MW0: PC and go */
+    case 0x4700: m->n_mb[v]++; sw_mbox_go(&m->mbox, v); return;    /* MW0: PC and go */
     case 0x4701: m->mbox.bic = (uint16_t)((m->mbox.bic & 0x0ff) | ((v & 1) << 8)); return;
     case 0x4702: m->mbox.bic = (uint16_t)((m->mbox.bic & 0x100) | v); return;
     case 0x4704: case 0x4705: case 0x4706: case 0x4707:

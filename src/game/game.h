@@ -26,7 +26,7 @@ void sw_main_poll(sw_machine *m);
 void sw_main_frame(sw_machine *m);
 /* game/pace.c: the time the 6809 took over the frame just run, in master
  * clock cycles, from the work counted; clears the counts. */
-uint32_t sw_pace_frame_cycles(sw_machine *m);
+uint32_t sw_pace_frame_cycles(sw_machine *m, uint8_t phase);
 void sw_downvg(sw_machine *m);      /* DOWNVG: the VG pseudo-ROM from the program ROM into VG RAM */
 
 /* TCMES.MAC (game/mess.c): messages by number, into the display list at Y. */
@@ -63,6 +63,8 @@ uint16_t sw_eetemp(sw_machine *m, uint16_t x);
 uint16_t sw_eetmp3(sw_machine *m, uint16_t x, uint16_t u, uint8_t a);
 uint16_t sw_tmpee3(sw_machine *m, uint16_t x, uint16_t u, uint8_t a);
 void     sw_eeutim(sw_machine *m);
+void     sw_chkee(sw_machine *m, uint8_t a);
+void     sw_eeacct(sw_machine *m);
 
 /* WSSTAR.MAC (game/star.c): the stars in space and on the ground. */
 void sw_vwstar(sw_machine *m);

@@ -5,22 +5,21 @@ Star Wars (Atari, 1983) für
 USB-DVG, Vektormonitor (Wells-Gardner 6100). Das Spiel unverändert, die
 Darstellung flüssig.
 
-* **Das Spiel ist das Original, Stück für Stück nativ**: Die Routinen des
-  Programms von 1983 werden von Hand nach C portiert und Frame für Frame
-  gegen MAME-Aufnahmen geprüft. Was noch nicht portiert ist, führt ein
-  6809-Kern aus den eigenen ROMs aus, auf demselben Speicher; so ist das
-  Spiel jederzeit vollständig, und der Kern wird mit jeder Routine kleiner.
-  Math Box, Dividierer, NOVRAM und die Zeit des Vektorgenerators sind nativ.
+* **Das Spiel ist das Original, nativ**: Das Programm von 1983 ist von Hand
+  Zeile für Zeile nach C portiert und Frame für Frame gegen MAME-Aufnahmen
+  geprüft (21.609 Frames, alle gleich). Es wartet so lange, wie der 6809
+  gerechnet hätte, und läuft deshalb so schnell wie das Original. Math Box,
+  Dividierer, NOVRAM und die Zeit des Vektorgenerators sind ebenfalls
+  nativ. Ein 6809-Kern führt aus den eigenen ROMs nur noch Selbsttest und
+  Optionsseite aus, und das Programm der Soundplatine.
 * **Darstellung flüssig**: Zwischen zwei Spielframes (das Spiel rechnet 12
   bis 20 pro Sekunde) wird jede Linie bewegt, das Bild kommt mit der Rate
   der Platine. Das Fadenkreuz folgt dem Joch ohne Umweg und ist ab dem
   ersten Bild zentriert.
 * **Ton**: Die Soundplatine läuft mit (Sound-Programm aus den ROMs, vier
   POKEYs, TMS5220-Sprache).
-* **Weg zum Remaster**: Die Routinen des Spiels werden nach und nach von
-  Hand nach C portiert (`src/game`) und gegen das Original geprüft. Aus
-  ihrem Spielzustand lässt sich später das Bild neu zeichnen (verdeckte
-  Linien, neue Modelle).
+* **Weg zum Remaster**: Aus dem Spielzustand der C-Routinen (`src/game`)
+  lässt sich später das Bild neu zeichnen (verdeckte Linien, neue Modelle).
 
 Aktueller Stand, was am Automaten noch ungeprüft ist, und nächste Schritte:
 [docs/STATUS.md](docs/STATUS.md). Plan und Hintergründe:
@@ -91,9 +90,9 @@ Arbeitszähler pro Frame für das Tempomodell (docs/PLAN.md).
 
 | Programm | Zweck |
 |---|---|
-| `starwarsvp` | das Spiel: die nach C portierten Routinen; was noch nicht portiert ist, führt ein 6809-Kern aus dem Original-ROM aus |
+| `starwarsvp` | das Spiel: die nach C portierten Routinen; ein 6809-Kern führt aus dem Original-ROM nur Selbsttest, Optionsseite und das Sound-Programm aus |
 | `starwarsvp --original` | das ganze Originalprogramm auf dem 6809-Kern |
-| `starwarsvp --native` | nur die portierten Routinen, ohne Kern und ohne Ton: Attract-Modus und Spielstart bis zur Wahl des Todessterns |
+| `starwarsvp --native` | nur die portierten Routinen, ohne Kern und ohne Ton: das ganze Spiel außer Selbsttest und Optionsseite |
 | `starwarsvp --nosound` | ohne Soundplatine |
 | `starwarsvp --controls` | Testbild für die Steuerung: Fadenkreuz am Joch (mit dem originalen Nachziehen und der Joch-Kalibrierung), Feuer färbt es rot, Münzen zählen Credits |
 | `swcompare AUFNAHME.swcap` | prüft den nativen Kern Frame für Frame gegen eine MAME-Aufnahme |

@@ -16,6 +16,7 @@
 #include "game/m6809.h"
 
 #include <stdio.h>
+#include <string.h>
 
 /* --- parts of a frame --------------------------------------------------------- */
 
@@ -839,7 +840,7 @@ static void pheegm(sw_machine *m)
     istar(m);
     sw_unitv(m, SW_M_U1);
 
-    ORIG(SW_EEACCT);                        /* UPDATE GAME TIME, GAMES PLAYED AND HISTORY */
+    sw_eeacct(m);                           /* UPDATE GAME TIME, GAMES PLAYED AND HISTORY */
     sw_update(m);                           /* CHECK FOR NEW HI SCORE */
     if (!(R8(SW_UPDFLG) & 0x80)) {          /* ?NEW HI SCORE? */
         W8(SW_PHASE, SW_PHSENT);            /* THEN ENTER INITIALS */
@@ -1045,8 +1046,7 @@ static void phes1g(sw_machine *m)
 
 /* --- the trench ----------------------------------------------------------------------- */
 
-/* The trench itself (WSBASE.MAC), the proton torpedo and the laser's
- * collisions in the trench are not ported yet: ORIG. */
+/* The trench itself is game/base.c and game/panel.c. */
 
 /* DOUBLE SIZE, then a message (the SCALE is RESET AUTOMATICALLY) */
 static void big_message(sw_machine *m, uint8_t b)
@@ -1307,7 +1307,7 @@ static void phibs(sw_machine *m)
 
 /* --- the ground: towers and bunkers --------------------------------------------------- */
 
-/* The ground itself (WSGRND.MAC) is not ported yet: ORIG. */
+/* The ground itself is game/ground.c. */
 
 #define GD_MNT 0x0200       /* GD$MNT, GD$MXT: how low and how high the player flies */
 #define GD_MXT 0x1c00
@@ -1821,44 +1821,43 @@ static void run_phase(sw_machine *m)
     case SW_PHSSG2 + 1: phesg2(m); break;
     case SW_PHSBGN:     phibgn(m); break;
     case SW_PHSBGN + 1: phebgn(m); break;
-    case SW_PHSSP1:     if (!m->original_call) goto unported; phisp1(m); break;
-    case SW_PHSSP1 + 1: if (!m->original_call) goto unported; phesp1(m); break;
-    case SW_PHSSP2:     if (!m->original_call) goto unported; phisp2(m); break;
-    case SW_PHSSP2 + 1: if (!m->original_call) goto unported; phesp2(m); break;
+    case SW_PHSSP1:     phisp1(m); break;
+    case SW_PHSSP1 + 1: phesp1(m); break;
+    case SW_PHSSP2:     phisp2(m); break;
+    case SW_PHSSP2 + 1: phesp2(m); break;
     case SW_PHSS0G:     phis0g(m); break;
-    case SW_PHSS0G + 1: if (!m->original_call) goto unported; phes0g(m); break;
+    case SW_PHSS0G + 1: phes0g(m); break;
     case SW_PHSS1G:     phis1g(m); break;
-    case SW_PHSS1G + 1: if (!m->original_call) goto unported; phes1g(m); break;
+    case SW_PHSS1G + 1: phes1g(m); break;
     case SW_PHSS0B:
-    case SW_PHSG0B:     if (!m->original_call) goto unported; phis0b(m); break;
-    case SW_PHSS0B + 1: if (!m->original_call) goto unported; phes0b(m); break;
-    case SW_PHSBS:      if (!m->original_call) goto unported; phibs(m); break;
-    case SW_PHSBS + 1:  if (!m->original_call) goto unported; phebs(m); break;
-    case SW_PHSB0B:     if (!m->original_call) goto unported; phib0b(m); break;
+    case SW_PHSG0B:     phis0b(m); break;
+    case SW_PHSS0B + 1: phes0b(m); break;
+    case SW_PHSBS:      phibs(m); break;
+    case SW_PHSBS + 1:  phebs(m); break;
+    case SW_PHSB0B:     phib0b(m); break;
     case SW_PHSB0B + 1: W8(SW_PHASE, SW_PHSBS); break;  /* PHEB0B */
     case SW_PHSB0D:     phib0d(m); break;
-    case SW_PHSB0D + 1: if (!m->original_call) goto unported; pheb0d(m); break;
-    case SW_PHSGD:      if (!m->original_call) goto unported; phigd(m); break;
-    case SW_PHSGD + 1:  if (!m->original_call) goto unported; phegd(m); break;
+    case SW_PHSB0D + 1: pheb0d(m); break;
+    case SW_PHSGD:      phigd(m); break;
+    case SW_PHSGD + 1:  phegd(m); break;
     case SW_PHSG0B + 1: pheg0b(m); break;
     case SW_PHSG1B:     phig1b(m); break;
     case SW_PHSG1B + 1: pheg1b(m); break;
     case SW_PHSG0D:     phig0d(m); break;
-    case SW_PHSG0D + 1: if (!m->original_call) goto unported; pheg0d(m); break;
+    case SW_PHSG0D + 1: pheg0d(m); break;
     case SW_PHSDX1:     phidx1(m); break;
-    case SW_PHSDX1 + 1: if (!m->original_call) goto unported; phedx1(m); break;
+    case SW_PHSDX1 + 1: phedx1(m); break;
     case SW_PHSDX2:     phidx2(m); break;
     case SW_PHSDX2 + 1: phedx2(m); break;
     case SW_PHSDX3:     W8(SW_PHASE, R8(SW_PHASE) + 1); break;  /* PHIDX3 */
     case SW_PHSDX3 + 1: phedx3(m); break;
     case SW_PHSNXT:     phinxt(m); break;
-    case SW_PHSNXT + 1: if (!m->original_call) goto unported; phenxt(m); break;
+    case SW_PHSNXT + 1: phenxt(m); break;
     case SW_PHSS0D:     phis0d(m); break;
-    case SW_PHSS0D + 1: if (!m->original_call) goto unported; phes0d(m); break;
+    case SW_PHSS0D + 1: phes0d(m); break;
     case SW_PHSEGM:     phiegm(m); break;
-    case SW_PHSEGM + 1: if (!m->original_call) goto unported; pheegm(m); break;
+    case SW_PHSEGM + 1: pheegm(m); break;
     default:
-    unported:
         /* A phase that is not ported yet: the original's code for it, if
          * the machine has it at hand (core/emu.h), runs this one frame. */
         if (m->original_frame) {
@@ -1877,6 +1876,8 @@ static void run_phase(sw_machine *m)
 
 void sw_main_frame(sw_machine *m)
 {
+    m->n_rd = m->n_wr = 0;                  /* the work of this frame (game/pace.c) */
+    memset(m->n_mb, 0, sizeof m->n_mb);
     iframe(m);
     run_phase(m);
 }
@@ -1931,7 +1932,9 @@ void sw_main_poll(sw_machine *m)
                 if (!(a & SW_LFIRBT)) return;       /* NO LEFT EDGE, SO LOOP FOREVER (ALMOST) */
                 W8(SW_VG_LON, a & (uint8_t)~SW_LFIRBT);     /* ELSE SINGLE STEP JUST THIS TIME */
             }
+            m->n_rd = 0;
             iframe(m);
+            m->n_rd_iframe = m->n_rd;
             m->main_state = SW_MAIN_WAITVG;
         }
         if (m->main_state == SW_MAIN_WAITVG) {
@@ -1939,9 +1942,12 @@ void sw_main_poll(sw_machine *m)
         }
         m->main_state = SW_MAIN_WAITFRAME;
         m->held_buffer = R8(SW_VGSYNC);
+        uint8_t phase = m->ram[SW_PHASE - 0x4800];
+        m->n_rd = m->n_rd_iframe;           /* the work of this frame (game/pace.c) */
+        memset(m->n_mb, 0, sizeof m->n_mb);
         run_phase(m);
         m->frames++;
-        m->busy = sw_pace_frame_cycles(m);
+        m->busy = sw_pace_frame_cycles(m, phase);
         if (m->original_cycles) {           /* the 6809 ran the phase: its own time, counted */
             m->busy = m->original_cycles;
             m->original_cycles = 0;

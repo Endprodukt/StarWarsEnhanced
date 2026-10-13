@@ -224,3 +224,127 @@ void sw_eeutim(sw_machine *m)
     }
     sw_eecksm(m, 2);                        /* SET NEW CHECKSUM */
 }
+
+/* CHKEE: CHECK AND RESTORE IF NECESSARY THE VALIDITY OF AREA (A) */
+void sw_chkee(sw_machine *m, uint8_t a)
+{
+    uint16_t x, u;
+    if (sw_summit(m, a, 0, 0) == 0) return;
+    /* ERROR */
+    W8(SW_TEMP, a);                         /* SAVE AREA NUMBER */
+    /* COPY EEROM TO BUFFER */
+    for (x = SW_EEROM, u = SW_EEBUF; x < SW_EEROMZ; x += 2, u += 2) W16(u, R16(x));
+    W8(SW_NVRRCL, 0xff);                    /* PERFORM A RECALL OF THE NON-VOLATILE RAM */
+    W8(SW_NVRRCL, 0x00);                    /* (the waits for the cap: nothing to wait for) */
+    /* SWAP EEROM AND BUFFER: EEBUF HAS RECALEED DATA AND EEROM HAS ITS ORIGINAL */
+    for (x = SW_EEROM, u = SW_EEBUF; x < SW_EEROMZ; x += 2, u += 2) {
+        uint16_t ee = R16(x), buf = R16(u);
+        W16(u, ee);
+        W16(x, buf);
+    }
+    a = R8(SW_TEMP);                        /* RESTORE AREA NUMBER */
+    eeini2(m, a);
+    if (sw_summit(m, a, 0, 0) != 0) eecpy(m, a);
+}
+
+/* ADDA or ADCA, then DAA, as the processor does it (for what is not a
+ * decimal number too); *carry in and out. */
+static uint8_t add_daa(uint8_t a, uint8_t b, int *carry)
+{
+    unsigned sum = a + b + (unsigned)*carry;
+    int half = (a & 0x0f) + (b & 0x0f) + *carry > 0x0f;
+    int c = sum > 0xff;
+    uint8_t r = (uint8_t)sum, fix = 0;
+    if (half || (r & 0x0f) > 0x09) fix |= 0x06;
+    if (c || r > 0x99 || (r > 0x8f && (r & 0x0f) > 0x09)) fix |= 0x60;
+    sum = r + fix;
+    *carry = c || sum > 0xff;
+    return (uint8_t)sum;
+}
+
+#define T_HIST 0xC7A4       /* the width of a slot of the histogram of game times (local: EEACCT's SUBB) */
+
+/* EEACCT: at the end of a game UPDATE TOTAL GAME TIME, the NUMBER OF GAMES
+ * PLAYED, the HIGHEST LEVEL EVER ATTAINED and the histogram of game
+ * times; SAVE POT VALUES; and on into EEUTIM. */
+void sw_eeacct(sw_machine *m)
+{
+    int c;
+    uint8_t a;
+    uint16_t x, u;
+
+    sw_chkee(m, 2);                         /* MAKE SURE AREA 2 IS VALID */
+    sw_eetemp(m, SW_TTIME);                 /* TOTAL GAME TIMES: GET TOTALS INTO TEMPS */
+    c = 0;                                  /* ADD GAME TIME TO TOTAL */
+    W8(SW_TEMP + 3, add_daa(R8(SW_TEMP + 3), R8(SW_GTIME + 1), &c));
+    W8(SW_TEMP + 2, add_daa(R8(SW_TEMP + 2), R8(SW_GTIME + 0), &c));
+    W8(SW_TEMP + 1, add_daa(R8(SW_TEMP + 1), 0x00, &c));
+    a = add_daa(R8(SW_TEMP + 0), 0x00, &c);
+    if (!c) W8(SW_TEMP + 0, a);             /* DO NOT OVERFLOW THE MSB */
+    sw_tmpee3(m, SW_TTIME, SW_TEMP, 3);     /* DO FOUR BYTES: PUT DATA BACK TO EEROM */
+
+    /* UPDATE NUMBER OF GAMES PLAYED */
+    sw_eetemp(m, SW_GAMES);                 /* PUT IT IN TEMPS */
+    c = 0;
+    W8(SW_TEMP + 2, add_daa(R8(SW_TEMP + 2), 0x01, &c));
+    W8(SW_TEMP + 1, add_daa(R8(SW_TEMP + 1), 0x00, &c));
+    W8(SW_TEMP + 0, add_daa(R8(SW_TEMP + 0), 0x00, &c));
+    tempee(m, SW_GAMES);                    /* PUT IT BACK IN EEROM */
+
+    /* RECORD HIGHEST LEVEL EVER ATTAINED */
+    sw_eetemp(m, SW_ENDGAM);                /* GET CURRENT HIGHEST TO TEMP */
+    u = SW_TEMP + 4;                        /* (where EETEMP leaves U) */
+    a = R8(SW_GM_DWA);                      /* END OF GAME LEVEL ( IN BCD OR DECIMAL ) */
+    if (a > R8(SW_TEMP)) {                  /* THIS ONE IS HIGHER, USE IT INSTEAD */
+        W8(SW_TEMP, a);
+        (void)R8(SW_TEMP + 1);
+        W8(SW_TEMP + 1, 0);                 /* CLEAR UNUSED NIBBLES */
+        (void)R8(SW_TEMP + 2);
+        W8(SW_TEMP + 2, 0);
+        tempee(m, SW_ENDGAM);               /* PUT IT BACK INTO EEROM */
+        u = SW_TEMP + 3;                    /* (and TEMPEE) */
+    }
+
+    /* UPDATE HISTOGRAM INFO */
+    x = SW_ZHISTO - 2;                      /* LAST ENTRY POINTER */
+    if (R8(SW_GTIME) == 0) {                /* MSB-IF NOT 0 THEN OVER 6:00, SO PUT IN LAST ENTRY */
+        a = R8(SW_GTIME + 1);               /* FIND OUT WHERE TO PUT DATA */
+        x = SW_HISTOG;                      /* BEGINNING OF HISTOGRAM DATA */
+        W8(SW_TEMP, 0x9a - R8(T_HIST));     /* GET NEGATIVE OF T.HIST ( THIS WON'T WORK FOR ALL) */
+        do {
+            c = 0;
+            a = add_daa(a, R8(SW_TEMP), &c);
+            if (!c) break;                  /* FOUND ITS NICHE */
+            x += 2;
+        } while (x < SW_ZHISTO - 2);        /* IF NOT FOUND, PUT IN LAST ONE ANYWAY */
+    }
+    c = 0;
+    a = add_daa(R8(x + 1) & 0x0f, 0x01, &c);    /* ADD 1 */
+    W8(x + 1, a);
+    if (a & 0xf0) {                         /* UPDATE HI NIBBLE */
+        c = 0;
+        a = add_daa(R8(x) & 0x0f, 0x01, &c);
+        W8(x, a);
+        if (a & 0xf0) {                     /* OVERFLOW-BAD NEWS DIVIDE ALL HISTOGRAM VALUES BY 2 */
+            for (x = SW_HISTOG; x < SW_ZHISTO; x += 2) {
+                W8(SW_TEMP, R8(x) << 4);
+                a = (uint8_t)((R8(x + 1) & 0x0f) + R8(SW_TEMP));
+                if (a & 0x10) a -= 0x06;    /* WILL DIVIDE BY 2 WORK? NO: THIS CORRECTS IT */
+                a >>= 1;
+                W8(x + 1, a);
+                W8(x, a >> 4);
+            }
+            W8(u, 5);                       /* 1/2 OF 100 IS 50 (U is not the entry here: the original's slip) */
+            W8(u + 1, 0);
+        }
+    }
+
+    /* SAVE POT VALUES */
+    W8(SW_TEMP + 0, R8(SW_RHEOP + RH_LO));
+    W8(SW_TEMP + 1, R8(SW_RHEOP + RH_SP));
+    W8(SW_TEMP + 2, R8(SW_RHEOY + RH_LO));
+    W8(SW_TEMP + 3, R8(SW_RHEOY + RH_SP));
+    sw_tmpee3(m, SW_POTSAV, SW_TEMP, 3);    /* MOVE THEM FROM TEMP TO POTSAV IN EEROM: 4 BYTES WORTH */
+
+    sw_eeutim(m);
+}

@@ -115,6 +115,11 @@ typedef struct sw_machine {
     /* Work done, counted for the pace of the game (game/pace.c): characters,
      * numerals and messages put out, math box runs, stars shown. */
     uint32_t   n_chars, n_digits, n_mess, n_mbox, n_shown, n_renew;
+    /* The same for all of the game: memory read and written, and the math
+     * box programs run, by their PC. */
+    uint32_t   n_rd, n_wr;
+    uint32_t   n_rd_iframe;      /* n_rd when IFRAME was through (interrupts read too, until the phase runs) */
+    uint16_t   n_mb[256];
     uint32_t   busy;             /* master clock cycles the 6809 still works on the frame */
     uint8_t    held_buffer;      /* VGSYNC while it does: the buffer it writes */
     uint8_t    snd_q[64];        /* requests sent to the sound board, a ring */

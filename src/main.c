@@ -362,8 +362,8 @@ int main(int argc, char **argv)
     brd.m.yoke_exact = cfg.yoke_autocenter != 0;
     if (roms_ok) {
         /* Three ways to run the game:
-         *   default     the C routines; the 6809 stands in for the phases
-         *               that are not ported yet
+         *   default     the C routines; the 6809 stands in for the two phases
+         *               that are not ported (self test, options)
          *   --native    the C routines only (a phase not ported: back to
          *               the banner)
          *   --original  the whole original program on the 6809 */

@@ -249,7 +249,11 @@ int main(int argc, char **argv)
     long bad_by_phase[256] = { 0 }, n_by_phase[256] = { 0 }, replay_off = 0;
     double times[3] = { 0, 0, 0 };
     FILE *csv = arg(argc, argv, "--csv") ? fopen(arg(argc, argv, "--csv"), "w") : NULL;
-    if (csv) fprintf(csv, "frame,phase,cpu_us,wait_us,words,chars,digits,mess,mbox,shown,rnd\n");
+    if (csv) {
+        fprintf(csv, "frame,phase,cpu_us,wait_us,words,chars,digits,mess,mbox,shown,rnd,rd,wr");
+        for (const sw_mbox_entry *e = sw_mbox_entries; e->name; e++) fprintf(csv, ",mb%02X", e->pc);
+        fprintf(csv, "\n");
+    }
     static long ref_irqs[256], ref_frames[256], nat_irqs[256], nat_frames[256];
 
     int got;
@@ -375,9 +379,12 @@ int main(int argc, char **argv)
                     }
                     if (csv && tick_buffer >= 0) {
                         double start = times[0] > times[1] ? times[0] : times[1];
-                        fprintf(csv, "%ld,%u,%.1f,%.1f,%d,%u,%u,%u,%u,%u,%u\n", frames - 1, phase,
+                        fprintf(csv, "%ld,%u,%.1f,%.1f,%d,%u,%u,%u,%u,%u,%u,%u,%u", frames - 1, phase,
                                 (times[2] - start) * 1e6, (start - times[0]) * 1e6, (m.y - buf) / 2,
-                                m.n_chars, m.n_digits, m.n_mess, m.n_mbox, m.n_shown, fd.used);
+                                m.n_chars, m.n_digits, m.n_mess, m.n_mbox, m.n_shown, fd.used, m.n_rd, m.n_wr);
+                        for (const sw_mbox_entry *e = sw_mbox_entries; e->name; e++)
+                            fprintf(csv, ",%u", m.n_mb[e->pc]);
+                        fprintf(csv, "\n");
                     }
                     if (stuck) DIFF("the frame does not end (%s)", "600000 cycles");
                     if (fd.used != fd.n || fd.over)

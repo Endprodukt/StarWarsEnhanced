@@ -112,6 +112,11 @@ static int run_game(int irqs, int stand_in)
     uint32_t starts_at = 0;
     long keyed = 0, lines = 0, matched = 0, bad_lists = 0;
     int last_start = 0, longest_start = 0, sight_ok = 0;
+    /* the pace: interrupts and game frames by the phase */
+    static long irqs_in[256], frames_in[256];
+    uint8_t last_frame = 0;
+    memset(irqs_in, 0, sizeof irqs_in);
+    memset(frames_in, 0, sizeof frames_in);
     for (int i = 0; i < irqs; i++) {
         uint8_t in0 = 0xff;
         if ((i >= 3000 && i < 3025) || (i >= 4000 && i < 4025)) in0 &= (uint8_t)~SW_IN0_COINL;
@@ -132,6 +137,11 @@ static int run_game(int irqs, int stand_in)
         requests += m.snd_w - snd_seen;
         snd_seen = m.snd_w;
         seen[m.ram[SW_PHASE - 0x4800]] = 1;
+        irqs_in[m.ram[SW_PHASE - 0x4800]]++;
+        if (m.ram[SW_FRAME + 1 - 0x4800] != last_frame) {
+            last_frame = m.ram[SW_FRAME + 1 - 0x4800];
+            frames_in[m.ram[SW_PHASE - 0x4800]]++;
+        }
         if (i == 2000) sight_ok = m.ram[SW_VG_CX - 0x4800] == 0 && m.ram[SW_VG_CY - 0x4800] == 0;
         if (m.vg_starts != starts_at) {
             /* (the program's reset waits a second for the NOVRAM before anything is drawn) */
@@ -155,6 +165,10 @@ static int run_game(int irqs, int stand_in)
     for (int p = 0; p < 256; p++) if (seen[p]) printf(" %02X", p);
     printf("\n  %u VG starts in %d interrupts, longest wait %d; %ld lists not halting\n", m.vg_starts, irqs,
            longest_start, bad_lists);
+    printf("  interrupts per frame:");
+    for (int p = 0; p < 256; p++)
+        if (frames_in[p] >= 30) printf(" %02X: %.1f", p, (double)irqs_in[p] / frames_in[p]);
+    printf("\n");
     printf("  lines found again in the next frame: %.1f %% of %ld in %ld frames\n",
            lines ? 100.0 * matched / lines : 0.0, lines, keyed);
     printf("  sound: %ld requests to the sound board, %ld samples, %.1f %% of them loud\n", requests, samples,
