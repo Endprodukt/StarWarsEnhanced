@@ -80,6 +80,10 @@ end
 --   stick X Y                             the yoke, 00..FF each, 80 the middle
 --   weave N                               from here on: the yoke circles and
 --                                         the trigger is pulled every N frames
+--   aim N                                 from here on: the sight follows the
+--                                         last object the game drew (a ship, if
+--                                         one is in view) and the trigger is
+--                                         pulled every N frames
 local play = {}
 for entry in (os.getenv("SWCAP_PLAY") or ""):gmatch("[^;]+") do
     local w = {}
@@ -95,6 +99,11 @@ local stick_x, stick_y = ports[":STICKX"].fields["AD Stick X"], ports[":STICKY"]
 local held = {}             -- switch name -> frames left
 local frames_seen = 0
 local weave = 0
+local aim = 0
+local target = nil           -- screen x, y of the last object drawn this frame
+local sx, sy = 128, 128      -- the yoke as the script holds it
+
+local function s16(v) if v >= 0x8000 then return v - 0x10000 end return v end
 
 function play_frame()
     frames_seen = frames_seen + 1
@@ -116,7 +125,27 @@ function play_frame()
                 stick_y:set_value(tonumber(e.b, 16))
             elseif e.what == "weave" then
                 weave = tonumber(e.a or "8")
+                aim = 0
+            elseif e.what == "aim" then
+                aim = tonumber(e.a or "6")
+                weave = 0
             end
+        end
+    end
+    if aim > 0 then
+        -- Steer the yoke until the sight (VG.CX, VG.CY) is on the target.
+        if target then
+            local cx = s16((peek(0x482D) << 8) | peek(0x482E))
+            local cy = s16((peek(0x482F) << 8) | peek(0x4830))
+            sx = math.max(1, math.min(255, sx + (target[1] - cx) / 6))
+            sy = math.max(1, math.min(255, sy + (target[2] - cy) / 6))
+        end
+        target = nil
+        stick_x:set_value(math.floor(sx))
+        stick_y:set_value(math.floor(sy))
+        if frames_seen % aim == 0 and not held.fire then
+            switches.fire:set_value(1)
+            held.fire = 2
         end
     end
     if weave > 0 then
@@ -129,6 +158,19 @@ function play_frame()
         end
     end
 end
+
+-- For `aim`: where the game puts the center of each object it draws
+-- (OBJCEN stores BJ.CY, then BJ.CX).
+taps.bjcx = space:install_write_tap(0x48D7, 0x48D7, "swcap_bjcx",
+    function(offset, data, mask)
+        if aim > 0 then
+            quiet = true
+            local x = s16((space:read_u8(0x48D6) << 8) | (data & 0xFF))
+            local y = s16((space:read_u8(0x48D8) << 8) | space:read_u8(0x48D9))
+            quiet = false
+            target = { x, y }
+        end
+    end)
 
 -- Random numbers read by the main line (the interrupt reads them too, for
 -- the laser splash: it runs with the I flag set).

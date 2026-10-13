@@ -141,3 +141,39 @@ void sw_vwgas(sw_machine *m)
     sw_vwnibl(m, a);                        /* JUST VIEW ONE NUMERAL OF BYTE */
     VG(SW_VGCNTR);
 }
+
+/* --- the score --------------------------------------------------------------------- */
+
+/* Six BCD digits each, local tables of the source (read off the LDUs of the
+ * SCRxxx entries). */
+#define TSCA1D 0x984A       /* TIE FIGHTER SHOT */
+#define TSCA2D 0x984D       /* CHASED DARTH OFF */
+#define TSCPNL 0x9850       /* DECORATIVE PANEL HIT */
+#define TSCTRT 0x9853       /* TRENCH TURRET */
+#define TSCBNK 0x9859       /* LASER BUNKER */
+#define TSCSHT 0x985C       /* HIT FIREBALL */
+#define TSCPRT 0x985F       /* HIT EXHAUST PORT */
+#define TSCATP 0x9862       /* GOT ALL TOWER TOPS OR BUNKERS IN A WAVE */
+
+/* ADUSCR: ADD FROM U PTR TO SCORE */
+void sw_aduscr(sw_machine *m, uint16_t u)
+{
+    int c = 0;
+    W8(SW_SC_ADD + 2, R8(u + 2));           /* DISPLAY OUR NEW ADDITION */
+    W8(SW_S_SC21, sw_bcd_adc(R8(u + 2), R8(SW_S_SC21), &c));
+    W8(SW_SC_ADD + 1, R8(u + 1));
+    W8(SW_S_SC43, sw_bcd_adc(R8(u + 1), R8(SW_S_SC43), &c));
+    W8(SW_SC_ADD + 0, R8(u + 0));
+    W8(SW_S_SC65, sw_bcd_adc(R8(u + 0), R8(SW_S_SC65), &c));
+    W8(SW_S_SC87, sw_bcd_adc(R8(SW_S_SC87), 0, &c));
+    W8(SW_SC_ADT, 0xff);                    /* NEW TIMER FOR NEW ADDITION */
+}
+
+void sw_scrtie(sw_machine *m)   { sw_aduscr(m, TSCA1D); }   /* KILL A REGULAR TIE FIGHTER */
+void sw_scrdarth(sw_machine *m) { sw_aduscr(m, TSCA2D); }   /* GOT DARTH */
+void sw_scrpnl(sw_machine *m)   { sw_aduscr(m, TSCPNL); }   /* DECORATIVE PANEL */
+void sw_scrbnk(sw_machine *m)   { sw_aduscr(m, TSCBNK); }   /* LASER BUNKERS */
+void sw_scrtrt(sw_machine *m)   { sw_aduscr(m, TSCTRT); }   /* TRENCH GUN TURRET */
+void sw_scrsht(sw_machine *m)   { sw_aduscr(m, TSCSHT); }   /* HIT FIREBALL */
+void sw_scrport(sw_machine *m)  { sw_aduscr(m, TSCPRT); }   /* HIT EXHAUST PORT ( KILLED DEATH STAR ) */
+void sw_scrall(sw_machine *m)   { sw_aduscr(m, TSCATP); }   /* GOT ALL TOWER TOPS OR BUNKERS IN A WAVE */

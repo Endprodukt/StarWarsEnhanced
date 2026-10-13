@@ -88,6 +88,24 @@ void sw_nwchor(sw_machine *m, uint16_t x);
 void sw_chopdo(sw_machine *m, uint16_t x);
 void sw_cpugon(sw_machine *m);
 
+/* WSLAZR.MAC (game/laser.c) */
+void sw_tstlaz(sw_machine *m);
+void sw_vwlaz(sw_machine *m);
+void sw_clslz(sw_machine *m);
+void sw_clglz(sw_machine *m);
+void sw_cphtsa(sw_machine *m);      /* game/aliencpu.c */
+
+/* the score (game/gas.c) */
+void sw_aduscr(sw_machine *m, uint16_t u);
+void sw_scrtie(sw_machine *m);
+void sw_scrdarth(sw_machine *m);
+void sw_scrpnl(sw_machine *m);
+void sw_scrbnk(sw_machine *m);
+void sw_scrtrt(sw_machine *m);
+void sw_scrsht(sw_machine *m);
+void sw_scrport(sw_machine *m);
+void sw_scrall(sw_machine *m);
+
 /* WSGLOW.MAC (game/glow.c), WSGAS.MAC (game/gas.c) */
 void sw_bg1glw(sw_machine *m);
 void sw_kpglow(sw_machine *m);

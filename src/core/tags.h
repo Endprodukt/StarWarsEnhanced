@@ -27,6 +27,7 @@ enum {
     SW_TAG_DSTAR,       /* a Death Star to choose; key: which */
     SW_TAG_COUNT,       /* a countdown */
     SW_TAG_OBJECT,      /* a 3-D object; key: the slot of the thing drawn */
+    SW_TAG_LASER,       /* a laser beam; key: which gun */
     SW_TAG_CODE,        /* written by the original program (core/emu.h); key: from where */
     SW_TAG_SECTIONS
 };

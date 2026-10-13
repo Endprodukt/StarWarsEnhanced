@@ -275,3 +275,72 @@ void sw_cpuret(sw_machine *m)
         x = (uint16_t)(R16(SW_S1_PRM) + A_IZE);     /* LOOP WITH NEXT ALIEN */
     } while (x < SW_ALIENZ);
 }
+
+/* --- a laser hits a ship ------------------------------------------------------------ */
+
+#define C_AH 0x0001         /* NEARBY ALIEN HAS BEEN HIT */
+#define TMPLP 0x4801        /* TEMP LP,1 */
+
+/* A random part of the hit along one of the player's axes: the size from
+ * the axis, the direction from a random bit. */
+static uint16_t random_kick(sw_machine *m, uint16_t rnd, uint16_t axis)
+{
+    uint16_t d = (uint16_t)((R8(rnd) | 0x80) * R8(axis));   /* AT LEAST SOME ANGLE */
+    uint8_t a = (uint8_t)(d >> 8);
+    if (!(d & 0x80)) a = (uint8_t)-a;       /* RANDOM BIT */
+    return (uint16_t)(int16_t)(int8_t)a;
+}
+
+/* XPSA: EXPLODE SPACE ALIEN */
+static void xpsa(sw_machine *m)
+{
+    uint16_t x = R16(SW_CL_AP);             /* X-->HIT ALIEN */
+    sw_doxmt(m, SW_IDASX);                  /* SMALL EXPLOSION */
+    if (R8(x + A_BIC) == R8(SW_Q_PBB))      /* ?SAME GUY DOING CURRENT PASSBY? */
+        sw_doxmt(m, SW_IDAPBZ);             /* THEN KILL ANY PASSBY SOUND */
+    m->rx = x;
+    ORIG(SW_BGAXPL);
+    sw_scrtie(m);                           /* ADD SCORE FOR KILLING TIE FIGHTER */
+}
+
+/* CPHTSA: SPACE LAZAR HIT ALIEN SHIP (the one in CL.AP) */
+void sw_cphtsa(sw_machine *m)
+{
+    uint16_t x = R16(SW_CL_AP);             /* X-->ALIEN PARMS */
+    if (R8(x + A_TYP) != 1) return;         /* NO DOUBLE JEOPARDY IF NOT ALIVE */
+    if (R8(x + A_GLW) != 0) return;         /* ?OR IS IT GLOWING FROM A HIT? LEAVE ALONE FOR A WHILE */
+    sw_rnd8(m);
+
+    if (R8(x + A_TYP) == 1) W16(x + A_CHST, R16(x + A_CHST) | C_AH);   /* STATUS: THIS ALIEN DAMAGED */
+    x = R16(SW_CL_AP);
+    W8(x + A_DMC, R8(x + A_DMC) + 1);       /* RECORD SOME MORE DAMAGE */
+    uint8_t before = R8(x + A_HTA);
+    W8(x + A_HTA, before - 1);              /* DECREASE HITS LEFT */
+    if ((int8_t)before <= 1) {              /* NO HITS LEFT - EXPLODE SPACE ALIEN (DEC, then LE) */
+        xpsa(m);
+        return;
+    }
+
+    W8(x + A_HTA, 0x05);                    /* KEEP DARTH ALIVE */
+    sw_scrdarth(m);                         /* ADD SCORE FOR HITTING DARTH */
+    W8(x + A_ROL, 0x1f);                    /* FORCE GLOW: TWO OR SO SECONDS */
+    W8(x + A_GLW, 0x1f);
+
+    /* THROW SHIP FOR A LOOP, INDEPENDENT OF PREVIOUS MOTION */
+    x = SW_M_S1;
+    uint16_t u = R16(R16(SW_CL_AP) + A_UVP);        /* ALIEN UVP */
+    W16(u + M_VX, 0);
+    W16(u + M_VY, 0);
+    W16(u + M_VZ, 0);
+    W8(TMPLP, 2);
+    do {
+        /* PORTION OF FORWARD VELOCITY: the nearer, the more */
+        uint16_t d = (uint16_t)(((uint16_t)(0x4000 - R16(SW_CL_ADS)) >> 8) * R8(x + M_AX));
+        W16(u + M_VX, (uint16_t)(int16_t)(int8_t)(uint8_t)((d >> 8) << 1) + R16(u + M_VX));
+        W16(u + M_VY, random_kick(m, SW_RND_S1, x + M_BX) + R16(u + M_VY));
+        W16(u + M_VZ, random_kick(m, SW_RND_S2, x + M_CX) + R16(u + M_VZ));
+        x += 2;
+        W8(TMPLP, R8(TMPLP) - 1);
+    } while (!(R8(TMPLP) & 0x80));
+    sw_doxmt(m, SW_IDASX);
+}

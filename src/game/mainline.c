@@ -51,7 +51,8 @@ static void iframe(sw_machine *m)
 
     /* GET EDGE OF SWITCHES-- LFIRE,RFIRE,AUX,TEST,COINS */
     W8(SW_GN_SWO, R8(SW_GN_SWN));           /* PREVIOUS NEW VALUE IS CURRENT OLD VALUE */
-    uint8_t a = (uint8_t)((R8(SW_R_FIRE) & (uint8_t)~SW_THMBT) | (R8(SW_R_THMB) & SW_THMBT));
+    uint8_t thumbs = R8(SW_R_THMB) & SW_THMBT;      /* ISOLATE THUMB BITS */
+    uint8_t a = (uint8_t)((R8(SW_R_FIRE) & (uint8_t)~SW_THMBT) | thumbs);   /* GET THIS NEWEST VALUE */
     a &= SW_FIREBT | SW_THMBT | SW_AUXBIT;  /* ONLY CONCERNED WITH GUN CONTROLS */
     W8(SW_GN_SWN, a);
     W8(SW_GN_SWE, (a ^ R8(SW_GN_SWO)) & R8(SW_GN_SWO));     /* 1==>FALLING EDGE (WENT ON) */
@@ -757,11 +758,11 @@ static void view(sw_machine *m)
     sw_vwstar(m);
     ORIG(SW_VWXPLD);                        /* CAN SEE PARTS ONCE ORIGINAL IS GONE FROM VIEW */
 
-    ORIG(SW_L_TSTLAZ);                      /* PREPARE FOR LAZAR HITS */
+    sw_tstlaz(m);                           /* PREPARE FOR LAZAR HITS */
     sw_snvw(m);
     ORIG(SW_L_VWGUN);
-    ORIG(SW_L_CLSLZ);                       /* PROCESS COLLISIONS */
-    ORIG(SW_L_VWLAZ);                       /* AND SEE RESULT */
+    sw_clslz(m);                            /* PROCESS COLLISIONS */
+    sw_vwlaz(m);                            /* AND SEE RESULT */
 
     sw_vwglw(m);
     vgdone(m);
