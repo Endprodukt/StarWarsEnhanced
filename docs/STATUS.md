@@ -263,6 +263,35 @@ Oberfläche, Graben, Welle 5):
   beim Zurücksetzen; die Resets und der NOVRAM-Test bleiben auf den
   Operator-Seiten.
 
+## Szenenwechsel (2026-10-13)
+
+Der Besitzer fand die Übergänge zwischen Szenen unsauber. Geprüft mit
+`swvideo --check` (Linienzahl jedes Bildes, `SWDBG=1` schreibt sie) und
+Bildfolgen um jeden Phasenwechsel (Attract-Seiten, Weltraum, Anflug,
+Oberfläche, Graben):
+
+* Kein Bild fällt aus (keine Einbrüche der Linienzahl, keine schwarzen
+  Bilder).
+* **Fehler gefunden und behoben**: Zwischen dem Einrichten einer Phase und
+  ihrer ersten Ansicht steht die Phasennummer schon auf der neuen Phase,
+  aber die Displayliste und die Blickvektoren des Betrachters sind noch die
+  der alten. Die Erweiterungen zeichneten für dieses eine Bild die
+  Oberfläche mit dem Blick des Anflugs (riesige Platten quer über den
+  Schirm). Jetzt merkt sich die Maschine, welche Phase die Liste gezeichnet
+  hat (`sw_machine.view_phase`, gesetzt in IVGEN1), die Erweiterungen
+  richten sich danach und nehmen den Standort des Betrachters aus U1 (so wie
+  die Ansicht ihn benutzt hat); im Rückfallpfad (Linien zum nächsten Bild
+  bewegt) bekommen sie den Zustand des voraus gerechneten nächsten Frames.
+* Ein Frame, in dem der Spieler springt (Lage oder Ort um mehr als 2000h),
+  gilt dem Zwischenbild als Schnitt: Es wird nicht aus dem Zustand davor
+  gerechnet.
+* Am Ende der Oberfläche (das Spiel räumt die Gebäude weg, der Spieler
+  taucht zum Graben) blendet das Plattenmuster in 0,8 s aus, statt beim
+  Abtauchen über den Schirm zu fegen.
+* Was bleibt und vom Original kommt: Beim Wechsel einer Phase zeigt das
+  Spiel die neue Szene von einem Frame auf den anderen (kein Überblenden);
+  im Attract-Modus wechseln die Seiten hart. Das ist so gebaut.
+
 ## Am Automaten gesehen (Besitzer, 2026-10-13)
 
 Erster Lauf des C-Spiels mit den Erweiterungen am Gerät. Befund und was

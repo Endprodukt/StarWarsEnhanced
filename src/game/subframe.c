@@ -37,12 +37,13 @@ static uint8_t rd8(const sw_machine *m, uint16_t a)
 /* Words [addr, addr + 2 * n) of the scratch machine: on their way from a
  * to b. Things wrap around (the trench, the map of the ground), so it is
  * the signed step that is taken. A step larger than `most` is not a move
- * but a new thing in the old one's place: the words are left as in a. */
-static void lerp(sw_machine *s, const sw_subframe *f, uint16_t addr, int n, float t, int most)
+ * but a new thing in the old one's place: the words are left as in a, and
+ * 0 is returned. */
+static int lerp(sw_machine *s, const sw_subframe *f, uint16_t addr, int n, float t, int most)
 {
     for (int i = 0; i < n; i++) {
         int d = (int16_t)(uint16_t)(rd(&f->b, (uint16_t)(addr + 2 * i)) - rd(&f->a, (uint16_t)(addr + 2 * i)));
-        if (d > most || d < -most) return;
+        if (d > most || d < -most) return 0;
     }
     for (int i = 0; i < n; i++) {
         uint16_t a = rd(&f->a, (uint16_t)(addr + 2 * i));
@@ -52,6 +53,7 @@ static void lerp(sw_machine *s, const sw_subframe *f, uint16_t addr, int n, floa
         p[0] = (uint8_t)(v >> 8);
         p[1] = (uint8_t)v;
     }
+    return 1;
 }
 
 /* A signed byte likewise. */
@@ -63,9 +65,9 @@ static void lerp8(sw_machine *s, const sw_subframe *f, uint16_t addr, float t)
 }
 
 /* A set of unit vectors with its place (M$AX to M$TZ around the pointer). */
-static void lerp_vectors(sw_machine *s, const sw_subframe *f, uint16_t uvp, float t)
+static int lerp_vectors(sw_machine *s, const sw_subframe *f, uint16_t uvp, float t)
 {
-    lerp(s, f, (uint16_t)(uvp + M_AX), 16, t, 0x2000);
+    return lerp(s, f, (uint16_t)(uvp + M_AX), 16, t, 0x2000);
 }
 
 void sw_subframe_before(sw_subframe *s, const sw_machine *m)
@@ -121,9 +123,14 @@ int sw_subframe_render(const sw_subframe *f, const sw_machine *live, float t, sw
     if (t > 0) {
         const sw_machine *a = &f->a, *b = &f->b;
         /* the player: his ship, the view's own place, and what the yoke
-         * has turned him by since the last whole step */
-        lerp_vectors(s, f, SW_M_S1, t);
-        lerp(s, f, SW_M_U1 + M_TX, 3, t, 0x2000);
+         * has turned him by since the last whole step. A frame in which
+         * they jump (a phase has begun and put him somewhere else: on the
+         * surface, into the trench) is a cut, not a move: no picture is
+         * computed from the state before it, which would show the new
+         * scene from the old place (render/picture.h shows the frames
+         * themselves then). */
+        if (!lerp_vectors(s, f, SW_M_S1, t)) return 0;
+        if (!lerp(s, f, SW_M_U1 + M_TX, 3, t, 0x2000)) return 0;
         lerp8(s, f, SW_RHEOP + RH_RSD, t);
         lerp8(s, f, SW_RHEOY + RH_RSD, t);
         lerp8(s, f, SW_RHEOR + RH_RSD, t);

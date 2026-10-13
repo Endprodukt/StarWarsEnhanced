@@ -62,6 +62,7 @@ static void iframe(sw_machine *m)
 /* IVGEN1: Y --> the VG buffer the main line holds; INIT VECTOR GENERATOR */
 static void ivgen1(sw_machine *m)
 {
+    m->view_phase = m->ram[SW_PHASE - 0x4800];
     m->y = (uint16_t)((R8(SW_VGSYNC) << 8) | ((SW_VGRAM & 0xff) + SW_VGVARB));
     TAG(SW_TAG_INIT, 0);
     VG(SW_VJINIT);

@@ -34,6 +34,7 @@ static void on_frame(void *u, int after)
     /* The picture the game draws next, now already: lines move towards it
      * where a phase has no view to compute the pictures between. */
     sw_subframe_next(&p->pair[1], &p->scratch);
+    p->next = p->scratch;
     run_list(p, &p->scratch, p->subspace, &p->nextlist);
     sw_smooth_key(&p->ahead, &p->nextlist, p->t, 1,
                   vg13(ram16(p->m, SW_VG_CX)) * 0.25f, vg13(ram16(p->m, SW_VG_CY)) * 0.25f);
@@ -115,6 +116,9 @@ static int picture_lines(sw_picture *p, double now, int smooth, const sw_line **
     }
     /* else lines moved (render/smooth.h): from this frame's picture to the
      * next one's, or (smooth 1, 2) those of the last frames shown */
-    if (smooth >= 3 && p->ahead.frames >= 2) return sw_smooth_frame(&p->ahead, now, 1, lines);
+    if (smooth >= 3 && p->ahead.frames >= 2) {
+        *state = &p->next;                  /* (the lines are on their way to that frame's picture) */
+        return sw_smooth_frame(&p->ahead, now, 1, lines);
+    }
     return sw_smooth_frame(&p->smooth, now, smooth >= 3 ? 1 : smooth, lines);
 }

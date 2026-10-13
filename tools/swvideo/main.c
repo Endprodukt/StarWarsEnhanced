@@ -315,6 +315,7 @@ int main(int argc, char **argv)
             stat[ph].secs += (double)(clock() - t0) / CLOCKS_PER_SEC;
             stat[ph].pictures++;
             stat[ph].lines += count;
+            if (getenv("SWDBG")) fprintf(stderr, "PIC %.4f %02X %d\n", now, m.ram[SW_PHASE - 0x4800], count);
             for (int i = 0; i < count; i++) {
                 const sw_line *l = &lines[i];
                 unsigned sec = (unsigned)(l->id >> 58);
