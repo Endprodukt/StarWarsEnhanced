@@ -126,6 +126,93 @@ static void panel_gun(sw_machine *m, uint8_t mov)
 void sw_frplgn(sw_machine *m) { panel_gun(m, MOV_PL); }
 void sw_frprgn(sw_machine *m) { panel_gun(m, MOV_PR); }
 
+#define GD_MNT 0x0200       /* GD$MNT: the least height of the player over the ground */
+#define TMPGRM 0x4801       /* TEMP GRM,2 */
+
+/* A shot of a building on the ground starts at its place on the map
+ * (S2.PRM), FORCED ALWAYS TO THE FRONT of the player: SHOT-ME, IF MINUS
+ * THEN FLIP ACTUAL LOC (JUST PLAY WITH SIGN BIT TO FLIP). */
+static void ground_start(sw_machine *m, uint16_t p)
+{
+    uint16_t u = R16(SW_S2_PRM);
+    uint8_t a = (uint8_t)(R8(u) - R8(SW_M_S1 + M_TX)) & 0x80;
+    W16(p + 0, (uint16_t)(((a ^ R8(u)) << 8) | R8(u + 1)));
+    W16(p + 2, R16(u + 2));
+}
+
+/* GNGDAVAIL: a free one of the # OF GROUND GUNS allowed (TGNGD) */
+static uint16_t gngdavail(sw_machine *m)
+{
+    static const uint8_t tgngd[12] = { 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6 };
+    uint8_t b = R8(SW_WV_HRD);
+    if (b >= 12) b = 11;                    /* LIMIT TO TABLE SIZE */
+    return tstavail(m, (uint16_t)(SW_GUNZ - tgngd[b] * G_IZE));
+}
+
+/* FRBFGN, FRBLGN, FRBRGN: BUNKER FIRES A GUN (the three are one routine):
+ * from the side it lies on across the way of the player */
+void sw_frbgn(sw_machine *m)
+{
+    uint16_t x = gngdavail(m);
+    if (x == 0) return;
+    W8(x + G_TMR, 0x70);
+    W8(x + G_TYP, TYP_LV | TYP_UN);
+
+    uint16_t u = R16(SW_S2_PRM);
+    W16(TMPGRM, x);
+    /* ?BUNKER TO RIGHT OF PLAYER? THIS IS A RIGHT HAND BUNKER, ELSE LEFT GUN */
+    W8(x + G_MOV, ((uint16_t)(R16(u + 2) - R16(SW_M_S1 + M_TY)) & 0x8000) ? MOV_BL : MOV_BR);
+    uint16_t p = R16(x + G_UVP);
+    ground_start(m, p);
+    W16(p + 4, GD_MNT);                     /* START AT MINIMUM PLAYER HITE */
+    uint16_t d = (uint16_t)(R16(p + 2) - R16(SW_M_S1 + M_TY));  /* Y RELATIVE POSITION OF SHOT */
+    W8(p + 6, (uint8_t)(d >> 8));           /* TEMP, +==>BUNKER TO RIGHT OF PLAYER */
+    W16(SW_M_DVN, sw_absd(d));              /* ***NUMERATOR */
+    W16(SW_M_DVD, R16(p + 0) - R16(SW_M_S1 + M_TX));    /* X RELATIVE DISTANCE TO TRAVEL: START DIVIDER */
+    W16(SW_M_DVN, 0x200);                   /* RESTORE DIVIDER */
+    uint8_t a = R8(SW_M_QUO);
+    /* MOVE 4000(3FFF) AS ONE TO FFFF AS ONE; NO ANGLE IF BAD DATA */
+    a = (a & 0x40) ? 0 : (uint8_t)(a << 2);
+    W8(p + 7, a);                           /* ANGLE TO PLAYER */
+
+    /* DETERMINE DIRECTION BASED ON PLAYERS MOTION */
+    if ((R8(SW_SI_RSX) ^ R8(p + 6)) & 0x80) {   /* DIRECTION BUNKER LIES, + TO RIGHT: ?MOVING OPPOSITE OF BUNKER? */
+        W8(p + 6, 0);                       /* THEN NORMAL ATTACK */
+    } else {                                /* ELSE CHECK SOME MORE */
+        a = R8(SW_SI_RSX);
+        if (a & 0x80) a = (uint8_t)-a;
+        a = (uint8_t)(a << 1);              /* CONVERT TO ANGLE */
+        if (a <= R8(p + 7)) {               /* ?SITE IS ON NEGATIVE SIDE OF BUNKER? */
+            W8(p + 6, 0);                   /* THEN NORMAL ALSO */
+        } else {
+            W8(p + 6, 0xff);                /* ELSE REVERSE ATTACK PREFERENCE */
+            x = R16(TMPGRM);
+            /* REVERSE MOVEMENT ALSO: BUNKER ON RIGHT, REPLACE WITH LEFT, VICE-VERSA */
+            W8(x + G_MOV, R8(x + G_MOV) == MOV_BR ? MOV_BL : MOV_BR);
+        }
+    }
+
+    sw_doxmt(m, SW_IDATL);                  /* TOWER LAZARS */
+}
+
+/* FRWFGN, FRWLGN, FRWRGN: TOWER FIRES A FORWARD GUN (0), A LEFT GUN (-1)
+ * or A RIGHT GUN (1) */
+void sw_frwgn(sw_machine *m, int side)
+{
+    uint16_t x = tstavail(m, SW_GUN);
+    if (x == 0) return;
+    W8(x + G_MOV, side == 0 ? MOV_WF : side < 0 ? MOV_WL : MOV_WR);
+
+    /* TOWRIN: INIT REST OF TOWER GUN */
+    W8(x + G_TMR, 0x70);
+    W8(x + G_TYP, TYP_LV | TYP_UN);
+    uint16_t p = R16(x + G_UVP);
+    ground_start(m, p);
+    W16(p + 4, R16(SW_M_U1 + M_TZ));        /* SHOOT IT ON LEVEL WITH PLAYER */
+
+    sw_doxmt(m, SW_IDATL);                  /* TOWER LAZARS */
+}
+
 /* The timer of a shot; nonzero when it has run out and the shot is gone. */
 static int timed_out(sw_machine *m, uint16_t x)
 {

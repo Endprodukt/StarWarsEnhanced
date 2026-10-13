@@ -131,6 +131,54 @@ void sw_bgaxpld(sw_machine *m, uint16_t x)
     bgaxp(m, x);
 }
 
+#define TMPTP1 0x4801       /* TEMP TP1,1,TP2,1,TP3,1,VZ,1 */
+#define TMPTP2 0x4802
+#define TMPTP3 0x4803
+#define TMPVZ  0x4804
+
+/* A piece of a building: from the CENTER OF EXPLOSION (M.XT, YT, ZT; off
+ * by DX, DY in the high bytes) forward past the player and to a side. */
+static void building_piece(sw_machine *m, uint16_t typ, uint8_t dx, uint8_t dy, uint8_t side)
+{
+    uint16_t x = nxtfre(m);                 /* X-->EXPLOSION QUEUE ENTRY */
+    W8(x + XP_TYP, R8(typ));
+    W8(x + XP_TMR, 0x20);                   /* LIFE TIMER */
+    W16(x + XP_CX, R16(SW_M_XT) + (uint16_t)(dx << 8));
+    W16(x + XP_CY, R16(SW_M_YT) + (uint16_t)(dy << 8));
+    W16(x + XP_CZ, R16(SW_M_ZT));
+    uint16_t d = asrd((uint16_t)(R16(SW_M_S1 + M_TX) + 0x7f00 - R16(SW_M_XT)), 5);
+    W16(x + XP_MX, (d & 0xff00) | R8(SW_P_RND1));       /* SPEED TO DESTINATION */
+    d = asrd((uint16_t)(R16(SW_M_S1 + M_TY) + (uint16_t)(side << 8) - R16(SW_M_YT)), 5);
+    W16(x + XP_MY, (d & 0xff00) | R8(SW_P_RND1));       /* LEFT/RIGHT SPEED TO DESTINATION */
+    /* 728. TO 1024., VARY AROUND 54.*120.*2/16=810.: *4 */
+    d = (uint16_t)((R8(TMPVZ) << 8) | R8(SW_P_RND1));
+    W16(x + XP_MZ, d << 2);                 /* VERTICAL VELOCITY */
+}
+
+/* BGBKN: three pieces; M.XT,YT,ZT HAVE CENTER */
+static void bgbkn(sw_machine *m)
+{
+    building_piece(m, TMPTP1, 0, (uint8_t)-2, (uint8_t)-0x3f);  /* PIECE 1: GO LEFT */
+    building_piece(m, TMPTP2, 2, 0, 0);                         /* CENTER PIECE */
+    building_piece(m, TMPTP3, 0, 2, 0x3f);                      /* RIGHT PIECE: GO RIGHT */
+}
+
+/* BGBKXP, BGWGXP: BEGIN BUNKER EXPLOSION */
+void sw_bgbkxp(sw_machine *m)
+{
+    W16(TMPTP1, (TP_BK1 << 8) + TP_BK2);    /* TYPE 1 BUNKER, TYPE 2 BUNKER */
+    W16(TMPTP3, (TP_BK3 << 8) + 0x03);      /* TYPE 3 BUNKER, Z VELOCITY OF 0C00(4*300) */
+    bgbkn(m);
+}
+
+/* BGTWXP: a tower's top blows up */
+void sw_bgtwxp(sw_machine *m)
+{
+    W16(TMPTP1, (TP_TW1 << 8) + TP_TW2);    /* TYPE 1 TOWER,TYPE 2 TOWER */
+    W16(TMPTP3, (TP_TW3 << 8) + 2);         /* TYPE 3 TOWER, Z VELOCITY OF 800(4*200) */
+    bgbkn(m);
+}
+
 /* IXPLD: ONCE PER PHASE TO CLEAR THINGS UP */
 void sw_ixpld(sw_machine *m)
 {

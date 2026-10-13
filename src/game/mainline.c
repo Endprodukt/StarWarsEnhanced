@@ -1364,7 +1364,7 @@ static void vewgd(sw_machine *m)
 
     sw_tstlaz(m);                           /* PREPARE FOR LAZAR HITS */
     sw_vwgun(m);
-    ORIG(SW_VWGRND);
+    sw_vwgrnd(m);   
     sw_clglz(m);                            /* PROCESS COLLISIONS */
     sw_vwlaz(m);                            /* AND SEE RESULT */
 
@@ -1386,7 +1386,7 @@ static void vewg0d(sw_machine *m)
     sw_vwstrg(m);                           /* VIEW GROUND STARS */
 
     sw_vwgun(m);
-    ORIG(SW_VWGRND);
+    sw_vwgrnd(m);   
     vwmovr(m);                              /* VIEW EXPANDING GAME OVER MESSAGE */
 
     sw_vwglw(m);
@@ -1503,7 +1503,7 @@ static void phigd(sw_machine *m)
     W8(SW_WV_HRD, a);
     iparm(m);                               /* INIT SHIP AND ALIEN PARMS */
     istarg(m);
-    ORIG(SW_IGRND);
+    sw_igrnd(m);   
     sw_ixpld(m);
     W16(SW_M_S1 + M_VX, 0x100);             /* INITIAL PLAYER SPEED */
     W16(SW_M_S1 + M_TX, 0x100 >> 1);        /* OFFSET POSITION INTO MIDDLE FOR COLLISION DETECT */

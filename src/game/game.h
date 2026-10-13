@@ -108,6 +108,8 @@ void sw_vwgun(sw_machine *m);
 void sw_gnhtsg(sw_machine *m);
 void sw_frplgn(sw_machine *m);
 void sw_frprgn(sw_machine *m);
+void sw_frbgn(sw_machine *m);
+void sw_frwgn(sw_machine *m, int side);
 void sw_frptgn(sw_machine *m);
 void sw_mvptgn(sw_machine *m);
 void sw_vwptgn(sw_machine *m);
@@ -118,12 +120,18 @@ void sw_dofar(sw_machine *m);
 void sw_dobase(sw_machine *m);
 void sw_vwbase(sw_machine *m);
 void sw_vwpanel(sw_machine *m);     /* WSPANL.MAC (game/panel.c) */
+/* WSGRND.MAC (game/ground.c): towers and bunkers. */
+void sw_igrnd(sw_machine *m);
+void sw_vwgrnd(sw_machine *m);
+void sw_gdhtgb(sw_machine *m);
 /* WSXPLD.MAC (game/xpld.c): the explosions of the others. */
 void sw_bgaxpld(sw_machine *m, uint16_t x);
 void sw_ixpld(sw_machine *m);
 void sw_doxpld(sw_machine *m);
 void sw_vwxpld(sw_machine *m);
 void sw_bgxpln(sw_machine *m);
+void sw_bgbkxp(sw_machine *m);
+void sw_bgtwxp(sw_machine *m);
 void sw_vwxpln(sw_machine *m);
 
 /* the score (game/gas.c) */
@@ -139,6 +147,7 @@ void sw_scrall(sw_machine *m);
 void sw_scrfrc(sw_machine *m);
 void sw_scrshld(sw_machine *m);
 void sw_scrwav(sw_machine *m);
+void sw_scrtwr(sw_machine *m);
 void sw_vwfrc(sw_machine *m);
 
 /* WSGLOW.MAC (game/glow.c), WSGAS.MAC (game/gas.c) */

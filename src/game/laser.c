@@ -357,7 +357,7 @@ void sw_clglz(sw_machine *m)
         d = R16(SW_CL_BDS);
         if (!(d & 0x8000) && d <= R16(SW_CL_TDS)) {
             W8(SW_LZ_HIT, 4);
-            ORIG(SW_GDHTGB);
+            sw_gdhtgb(m);   
             return;
         }
     }

@@ -73,6 +73,7 @@ add_library(swcore STATIC
     src/game/xpld.c
     src/game/base.c
     src/game/panel.c
+    src/game/ground.c
     src/game/gas.c
     src/render/smooth.c
     src/cpu/m6809.c

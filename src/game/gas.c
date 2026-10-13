@@ -191,6 +191,27 @@ static uint16_t getfrp(sw_machine *m)
 
 #define TSCSHL 0x9865       /* SHIELD SCORE FOR REMAINING ENERGY UNITS; the wave bonuses follow */
 
+/* SCRTWR: a tower's top is hit: the INCREMENTAL SCORE FOR TOWERS */
+void sw_scrtwr(sw_machine *m)
+{
+    sw_aduscr(m, SW_TWRMUL);                /* ADD IT IN */
+    /* ADD TO MULTIPLE SCORE: LSD FIRST */
+    int c = 0;
+    W8(SW_TWRMUL + 2, sw_bcd_adc(R8(SW_TWRMUL + 2), R8(SW_TSCTWR + 2), &c));
+    W8(SW_TWRMUL + 1, sw_bcd_adc(R8(SW_TWRMUL + 1), R8(SW_TSCTWR + 1), &c));
+    W8(SW_TWRMUL + 0, sw_bcd_adc(R8(SW_TWRMUL + 0), R8(SW_TSCTWR + 0), &c));   /* MSD */
+
+    uint8_t a = R8(SW_GD_TWL);              /* HANDLE NUMBER OF TOWERS LEFT */
+    if (a == 0) return;                     /* ?ANY LEFT? */
+    c = 0;
+    a = sw_bcd_adc(a, 0x99, &c);            /* DECIMAL DEC */
+    W8(SW_GD_TWL, a);
+    if (a == 0) {                           /* ?DONE ALL TOWERS? */
+        sw_aduscr(m, TSCATP);               /* THEN GIVE BIG BONUS */
+        W8(SW_Q_ATP, R8(SW_Q_ATP) + 1);     /* YEP, ALL TOPS GOT HIT */
+    }
+}
+
 /* SCRSHLD: GIVE POINTS FOR SHIELD ENERGY REMAINING */
 void sw_scrshld(sw_machine *m)
 {
