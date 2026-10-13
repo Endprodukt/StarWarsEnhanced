@@ -1,6 +1,6 @@
 /* menu.h - Star Wars VP's own test menu.
  *
- * The cabinet's self-test button (p1_button6) opens it; the game stands
+ * The Tab key or the cabinet's self-test button (p1_button6) opens it; the game stands
  * still meanwhile. It holds what the port adds to the arcade machine: the
  * enhanced settings (each can be switched off), a sound test, the screen
  * calibration, and the way on to the arcade program's own operator
@@ -11,10 +11,8 @@
  *   fire                change it, or do what the line says
  *   self-test button    save the settings and go back to the game
  *
- * For cabinets without a self-test button: the start button held for two
- * seconds does the same, and so does the trigger held for three seconds
- * in the attract mode (to open the menu), on the calibration screen and
- * on the operator screens (to go back).
+ * The Tab key of the keyboard does what the self-test button does, as it
+ * opens the menu in MAME.
  */
 #ifndef SWVP_MENU_H
 #define SWVP_MENU_H

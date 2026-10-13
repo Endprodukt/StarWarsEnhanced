@@ -132,11 +132,9 @@ Belegung über die `advmame.rc` des Automaten, wie bei MAMEs Star Wars:
 
 ### Testmenü
 
-Der Selbsttest-Knopf hält das Spiel an und öffnet das Menü. Hat der Automat
-keinen (am VectorPie-Joch sind alle Tasten Feuer): im Attract-Modus Feuer
-drei Sekunden halten, oder Start zwei Sekunden. Verlassen über die letzte
-Zeile (SAVE AND EXIT); aus der Kalibrierung und den Operator-Seiten zurück
-wieder mit drei Sekunden Feuer. Joch auf/ab
+Die Tab-Taste (wie in MAME) oder der Selbsttest-Knopf hält das Spiel an
+und öffnet das Menü; dieselbe Taste führt auch wieder hinaus und aus der
+Kalibrierung und den Operator-Seiten zurück. Joch auf/ab
 wählt eine Zeile, links/rechts oder Feuer ändert sie; der Selbsttest-Knopf
 speichert und kehrt ins Spiel zurück.
 
