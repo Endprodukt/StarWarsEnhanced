@@ -1997,7 +1997,18 @@ void sw_main_poll(sw_machine *m)
             /* PROCESS GAME FRAMES IN TIMELY FASHION: LSR GMSYNC, BCC WAITFRAME */
             uint8_t g = R8(SW_GMSYNC);
             W8(SW_GMSYNC, g >> 1);
-            if (!(g & 1)) return;
+            if (m->steady) {
+                /* Not when the 6809 would have been ready, but at the phase's
+                 * own fixed pace (game/pace.c). */
+                uint32_t now = m->irqs << 4;
+                W8(SW_GMSYNC, 0);
+                if ((int32_t)(now - m->steady_due) < 0) return;
+                if (now - m->steady_due > 64 * 16) m->steady_due = now;     /* (after a pause) */
+                m->steady_due += m->steady == 2 ? 12 * 16 : sw_pace_steady_interval(m->ram[SW_PHASE - 0x4800]);
+                m->frame_irqs = (uint8_t)(((m->steady_due + 15) >> 4) - m->irqs);
+            } else if (!(g & 1)) {
+                return;
+            }
             if (m->hold_frames) {           /* inside a routine that waits for frames (the NOVRAM test) */
                 m->hold_frames--;
                 continue;

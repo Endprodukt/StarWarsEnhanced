@@ -44,10 +44,12 @@ typedef struct sw_display_cfg {
      * (game/subframe.h), lines moved only where a phase has no view of its
      * own. */
     int smooth;
-    /* 1: the game runs a frame every 12th interrupt, 20.5 a second, always:
-     * the rate its program is written for ("20 PER SECOND"). 0: it waits as
-     * long as the 6809 took, and slows down where the arcade machine did
-     * (to 13 a second in the trench). */
+    /* How the game's frames come. 1: at one fixed pace in each phase, the
+     * average of the arcade machine there (13 a second in the trench, 20.5
+     * on the banner): as fast as the machine, without its ups and downs.
+     * 2: a frame every 12th interrupt, 20.5 a second, everywhere: the rate
+     * the program is written for, and faster than the machine ever was
+     * in play. 0: a frame takes as long as the 6809 took over it. */
     int steady_frames;
     /* 1: the strokes of a picture are drawn in an order that keeps the
      * beam's dark travel short (the board then manages more pictures a

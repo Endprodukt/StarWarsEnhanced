@@ -36,13 +36,20 @@ Als Bausteine nachgebildet (keine Programme, sondern Hardware): Math Box,
 Dividierer, NOVRAM, die vier POKEYs, der Sprachchip TMS5220, der RIOT der
 Soundplatine, die Zeit des Vektorgenerators.
 
-* **Feste Bildrate** (`steady_frames = 1`, Standard, Wunsch des Besitzers):
-  ein Spielframe jeden 12. Interrupt, 20,5 pro Sekunde, in jeder Phase
-  (gemessen: 12,0 Interrupts je Frame überall). So ist das Programm
-  geschrieben ("20 PER SECOND", alle Zeiten rechnen mit 20 Frames je
-  Sekunde); der Automat schaffte das in Graben und Boden nicht (13 bis 15).
-  Folge: Graben und Boden laufen schneller als am Automaten. Mit
-  `steady_frames = 0` wartet das Spiel wie der 6809 (siehe Tempo).
+* **Fester Takt im Tempo des Automaten** (`steady_frames = 1`, Standard,
+  Entscheidung des Besitzers vom 2026-10-13): Die Frames einer Phase kommen
+  in festem Abstand, und zwar dem, den der Automat dort im Schnitt brauchte
+  (`sw_pace_steady_interval` in `src/game/pace.c`, aus acht MAME-Aufnahmen):
+  Banner, Punkteseite, Auswahl, Anflug 12 Interrupts (20,5 Frames je
+  Sekunde), Anleitung 18,4, Highscores 17,7, Weltraum 16,7, Boden 15,1,
+  Graben 18,7 (13,2 je Sekunde), Tod im Weltraum 24. Das Spiel ist damit so
+  schnell wie am Automaten, aber ohne dass sein Tempo mit dem Bildinhalt
+  schwankt. Gemessen im freien Lauf: genau diese Werte in jeder Phase.
+  `steady_frames = 2`: 12 Interrupts überall (so ist das Programm
+  geschrieben, "20 PER SECOND"; im Spiel rund 45 bis 55 % schneller als der
+  Automat). `steady_frames = 0`: jedes Frame so lang, wie der 6809 daran
+  rechnete (siehe Tempo). Der Tod über dem Boden steht in keiner Aufnahme;
+  sein Takt ist der des Todes im Graben.
 * **Ton in C, geprüft gegen das Original** (`tests/test_sound.c`): Zwei
   Soundplatinen bekommen dieselben 59 Anforderungen (alle, die es gibt);
   die eine führt das Original-Programm auf dem 6809-Kern aus, die andere
@@ -101,8 +108,8 @@ Soundplatine, die Zeit des Vektorgenerators.
 Der Automat war bei dieser Arbeit aus. Aufgespielt ist der Stand vom
 Attract-Modus davor. Ungeprüft am Gerät, also nur gerechnet und gemessen:
 
-* das ganze Spiel in C am Gerät (Münzen, Start, Joch, Feuer), die feste
-  Bildrate (ob das Tempo in Graben und Boden so gewollt ist),
+* das ganze Spiel in C am Gerät (Münzen, Start, Joch, Feuer), der feste
+  Takt (ob sich das Tempo wie am Automaten anfühlt),
 * die neu gerechneten Zwischenbilder (`smooth = 3`): Aussehen, Rechenzeit
   auf dem Pi, Fadenkreuz. Steht in der Einstellungsdatei am Automaten noch
   `smooth = 1`, bleibt es dabei, bis man es dort ändert.

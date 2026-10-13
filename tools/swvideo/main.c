@@ -232,6 +232,12 @@ int main(int argc, char **argv)
             } else {
                 m.in.adc[0] = m.in.adc[1] = 0x80;
             }
+            if (i > 3000 && m.ram[SW_PHASE - 0x4800] == SW_PHSSDS + 1) {
+                /* a second game: the Death Star in the middle (wave 3, with towers) */
+                m.in.adc[1] = 0x80;
+                m.in.adc[0] = 0x4c;
+                in0 = (i % 60 < 20) ? (uint8_t)~SW_IN0_LFIRE : 0xff;
+            }
             m.in.in0 = in0;
             irqs++;
             sw_picture_irq_begin(&pic, (double)irqs / SW_IRQ_HZ);

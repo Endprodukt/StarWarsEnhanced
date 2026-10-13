@@ -79,7 +79,14 @@ typedef struct sw_machine {
     uint8_t    main_state;       /* SW_MAIN_xxx */
     uint8_t    in_irq;           /* inside sw_irq (who is reading the PRNG) */
     uint8_t    hold_frames;      /* game frames the main line still waits inside a routine (the NOVRAM test) */
-    uint8_t    steady;           /* option steady_frames: a game frame every 12th interrupt, always (game/pace.c) */
+    /* Option steady_frames (game/pace.c). 0: a frame takes as long as the
+     * 6809 took over it. 1: the frames of a phase come at one fixed pace,
+     * the average of the arcade machine in that phase. 2: a frame every
+     * 12th interrupt in every phase. */
+    uint8_t    steady;
+    uint32_t   irqs;             /* interrupts run */
+    uint32_t   steady_due;       /* when the next frame is due, in sixteenths of an interrupt */
+    uint8_t    frame_irqs;       /* interrupts from the frame just run to the next one */
     uint8_t    yoke_exact;       /* option yoke_autocenter: the yoke passed through exactly */
 
     /* The phases not ported yet: a way to run the original's code for one

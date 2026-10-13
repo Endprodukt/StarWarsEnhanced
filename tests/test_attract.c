@@ -91,12 +91,12 @@ static int run_game(int irqs, int stand_in)
     /* The sound board with it; $SWVP_WAV names a file for what it plays. */
     static sw_sndboard snd;
     sw_sndboard_init(&snd, &m);
-    snd.native = stand_in == 2;     /* the sound board's program in C with the steady frames */
+    snd.native = stand_in >= 2;     /* the sound board's program in C with the steady frames */
     sw_sndboard_reset(&snd);
     emu.snd = &snd;
     emu.yoke_exact = 1;
     m.yoke_exact = 1;
-    m.steady = stand_in == 2;
+    m.steady = stand_in >= 2 ? (uint8_t)(stand_in - 1) : 0;
     if (stand_in) {
         /* the C routines, the 6809 only for the phases not ported */
         sw_reset(&m);
@@ -220,6 +220,7 @@ int main(void)
     fails += run(0xff, 0x00, 12000);
     fails += run_game(60000, 0);
     fails += run_game(60000, 1);
-    fails += run_game(60000, 2);     /* the same with steady frames */
+    fails += run_game(60000, 2);     /* the same with steady frames at the machine's pace */
+    fails += run_game(60000, 3);     /* and with a frame every 12th interrupt */
     return fails ? 1 : 0;
 }

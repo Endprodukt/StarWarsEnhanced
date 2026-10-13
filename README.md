@@ -11,9 +11,10 @@ Darstellung flüssig.
   Soundplatine (Effekte, Musik, Sprache). Im normalen Betrieb läuft kein
   6809 mehr mit. Math Box, Dividierer, NOVRAM, POKEYs und Sprachchip sind
   als Bausteine nachgebildet.
-* **Feste Bildrate**: Das Spiel rechnet immer 20,5 Frames pro Sekunde, wie
-  sein Programm es vorsieht, ohne die Einbrüche des Automaten (dort im
-  Graben etwa 13). Abschaltbar (`steady_frames = 0`).
+* **Fester Takt**: Das Spiel rechnet in jeder Phase mit einer festen Rate,
+  der des Automaten im Schnitt (Graben 13, Banner 20,5 Frames pro Sekunde):
+  so schnell wie das Original, ohne dessen Schwanken. Einstellbar
+  (`steady_frames`).
 * **Darstellung flüssig**: Zwischen zwei Spielframes (das Spiel rechnet 12
   bis 20 pro Sekunde) wird jede Linie bewegt, das Bild kommt mit der Rate
   der Platine. Das Fadenkreuz folgt dem Joch ohne Umweg und ist ab dem
@@ -125,7 +126,7 @@ Belegung über die `advmame.rc` des Automaten, wie bei MAMEs Star Wars:
 
 | Schlüssel | Bedeutung |
 |---|---|
-| `steady_frames` | `1` (Standard): ein Spielframe jeden 12. Interrupt, 20,5 pro Sekunde, immer. `0`: das Spiel wartet wie der 6809 des Automaten und bricht ein, wo er einbrach (Graben und Boden laufen dann langsamer) |
+| `steady_frames` | `1` (Standard): die Frames einer Phase kommen in festem Abstand, dem Durchschnitt des Automaten in dieser Phase; gleiches Tempo wie das Original, ohne Schwanken. `2`: überall 20,5 pro Sekunde (im Spiel rund 50 % schneller als der Automat). `0`: jedes Frame so lang, wie der 6809 des Automaten daran rechnete |
 | `smooth` | Bewegung zwischen den Spielframes: `3` (Standard) aus dem Spielzustand neu gerechnet, ohne Verzögerung und mit richtiger Perspektive; `0` aus (jedes Spielbild wie im Original), `1` Linien zwischen den letzten beiden Frames verschoben (die Welt einen Spielframe später), `2` Linien dem letzten Frame voraus (ohne Verzögerung, schießen bei Richtungswechseln kurz über). Auf den Attract-Seiten wandern die Linien bei `3` zum voraus gerechneten Bild des nächsten Frames, ebenfalls ohne Verzögerung. |
 | `yoke_autocenter` | `1`: Fadenkreuz ab dem ersten Bild zentriert, das Joch geht exakt durch (Ruhelage aus der Joystick-Kalibrierung des Automaten). `0`: wie der Automat von 1983, der den Bereich des Jochs nach jedem Einschalten neu lernt |
 | `sort_strokes` | `1`: Striche in einer Reihenfolge zeichnen, die dem Strahl Leerweg spart (mehr Bilder pro Sekunde auf der Platine) |

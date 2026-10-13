@@ -75,6 +75,33 @@ static uint32_t phase_base(uint8_t phase)
     }
 }
 
+/* Steady frames: how long the arcade machine took over a frame of each
+ * phase on average, in interrupts (246 a second): MAME, eight recordings,
+ * 27,000 frames. A frame of a phase then always comes after that long: the
+ * game is as fast as on the machine, without its pace going up and down
+ * with what is on the screen. Where nothing is given the machine kept its
+ * 12 interrupts (20.5 frames a second). The death over the ground (G0D)
+ * is in no recording: taken like the one in the trench. */
+uint32_t sw_pace_steady_interval(uint8_t phase)
+{
+    double irqs;
+    switch (phase) {
+    case SW_PHSINS:     case SW_PHSINS + 1: irqs = 18.40; break;   /* the instructions */
+    case SW_PHSHIS:     case SW_PHSHIS + 1: irqs = 17.69; break;   /* the high scores */
+    case SW_PHSSP1:     case SW_PHSSP1 + 1: irqs = 16.66; break;   /* space */
+    case SW_PHSSP2:     case SW_PHSSP2 + 1: irqs = 16.38; break;
+    case SW_PHSGD:      case SW_PHSGD + 1:  irqs = 15.14; break;   /* the ground */
+    case SW_PHSG1B:     case SW_PHSG1B + 1: irqs = 19.41; break;   /* down into the trench */
+    case SW_PHSBS:      case SW_PHSBS + 1:
+    case SW_PHSB0B:     case SW_PHSB0B + 1: irqs = 18.70; break;   /* the trench */
+    case SW_PHSS0D:     case SW_PHSS0D + 1: irqs = 24.00; break;   /* the deaths */
+    case SW_PHSG0D:     case SW_PHSG0D + 1:
+    case SW_PHSB0D:     case SW_PHSB0D + 1: irqs = 19.30; break;
+    default:                                irqs = 12.00; break;
+    }
+    return (uint32_t)(irqs * 16.0 + 0.5);
+}
+
 /* PHASE is the phase the frame began in. */
 uint32_t sw_pace_frame_cycles(sw_machine *m, uint8_t phase)
 {

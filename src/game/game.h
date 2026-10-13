@@ -28,6 +28,9 @@ int  sw_main_view(sw_machine *m);    /* the phase's picture only (game/subframe.
 /* game/pace.c: the time the 6809 took over the frame just run, in master
  * clock cycles, from the work counted; clears the counts. */
 uint32_t sw_pace_frame_cycles(sw_machine *m, uint8_t phase);
+/* With steady frames: from one frame of the phase to the next, in
+ * sixteenths of an interrupt. */
+uint32_t sw_pace_steady_interval(uint8_t phase);
 void sw_downvg(sw_machine *m);      /* DOWNVG: the VG pseudo-ROM from the program ROM into VG RAM */
 
 /* TCMES.MAC (game/mess.c): messages by number, into the display list at Y. */

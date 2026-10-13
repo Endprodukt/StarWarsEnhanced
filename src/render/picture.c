@@ -42,7 +42,7 @@ static void on_frame(void *u, int after)
          * next one runs, on its way to what that one will draw. */
         p->shown = p->pair[1];
         p->shown_at = p->t;
-        p->frame_time = 12.0 / SW_IRQ_HZ;
+        p->frame_time = (p->m->frame_irqs ? p->m->frame_irqs : 12) / SW_IRQ_HZ;
     }
 }
 

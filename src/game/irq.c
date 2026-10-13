@@ -38,6 +38,7 @@ static void irq(sw_machine *m);
 void sw_irq(sw_machine *m)
 {
     m->in_irq = 1;
+    m->irqs++;
     m->vg_left = m->vg_left > SW_IRQ_CYCLES ? m->vg_left - SW_IRQ_CYCLES : 0;   /* the VG drew meanwhile */
     irq(m);
     m->in_irq = 0;

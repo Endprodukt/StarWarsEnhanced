@@ -122,8 +122,10 @@ int sw_display_cfg_save(const sw_display_cfg *c, const char *path)
     fprintf(f, "\n; motion between the game's frames: 0 off, 1 lines between the last two frames,\n"
                "; 2 lines ahead of the last, 3 computed from the state of the game\n"
                "smooth = %d\n", c->smooth);
-    fprintf(f, "\n; 1: a game frame every 12th interrupt, always (20.5 a second); 0: with the\n"
-               "; slowdowns of the arcade machine\nsteady_frames = %d\n", c->steady_frames);
+    fprintf(f, "\n; the game's frames: 1 at one fixed pace in each phase, as fast as the arcade\n"
+               "; machine was there on average; 2 always 20.5 a second (faster than the\n"
+               "; machine in play); 0 as long as its 6809 took over each\n"
+               "steady_frames = %d\n", c->steady_frames);
     fprintf(f, "\n; draw strokes in an order that saves the beam dark travel\nsort_strokes = %d\n", c->sort_strokes);
     fclose(f);
     return 0;

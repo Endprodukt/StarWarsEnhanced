@@ -351,7 +351,7 @@ int main(int argc, char **argv)
     nvram_load(&brd.m);
     uint32_t nv_saved = brd.m.nv_stores;
     brd.m.yoke_exact = cfg.yoke_autocenter != 0;
-    brd.m.steady = cfg.steady_frames != 0 && !sw_flag(argc, argv, "--original");
+    brd.m.steady = sw_flag(argc, argv, "--original") ? 0 : (uint8_t)cfg.steady_frames;
     if (roms_ok) {
         /* Two ways to run the game:
          *   default     the game's and the sound board's programs in C:
