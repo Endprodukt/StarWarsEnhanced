@@ -17,12 +17,11 @@
 #include "core/sched.h"
 #include "game/game.h"
 #include "platform/controls.h"
-#include "game/subframe.h"
 #include "platform/app.h"
 #include "platform/audio.h"
 #include "render/config.h"
 #include "render/dvgmap.h"
-#include "render/smooth.h"
+#include "render/picture.h"
 #include "rom/romset.h"
 
 #include <math.h>
@@ -176,21 +175,8 @@ typedef struct board {
     float       sight_prev[2], sight_cur[2];   /* at the last two VG restarts */
     int         fire_frames;                   /* show FIRE for a moment */
     int         controls_test;                 /* no main line: the test consumes the lasers */
-    uint8_t     space[SW_AVG_SPACE_SIZE];      /* what the vector generator reads */
-    sw_avg_list list;                          /* the picture of the last VG restart */
-    uint32_t    vg_seen;
-    uint8_t     vg_buffer;                     /* which buffer that picture was in */
     uint64_t    irqs;                          /* interrupts run: the game's clock */
-    sw_smooth   smooth;
-    /* The pictures in between, computed (game/subframe.h): the last two
-     * frames the C routines ran, the one on display, when it came up and
-     * how long a frame lasts. */
-    sw_subframe pair[2];
-    sw_subframe shown;
-    double      shown_at, frame_time;
-    sw_machine  scratch;
-    sw_avg_list sublist;
-    uint8_t     subspace[SW_AVG_SPACE_SIZE];
+    sw_picture  pic;                           /* the game's picture at any time (render/picture.h) */
     sw_emu      emu;                           /* the original program on the machine */
     int         native;                        /* the C routines only: no 6809 at all */
     sw_sndboard *snd;                          /* the sound board (its chips; its program in C too), NULL: none */
@@ -206,31 +192,12 @@ static void on_sound_wait(void *u, int cycles)
     if (b->snd) sw_sndboard_run(b->snd, cycles);
 }
 
-/* sw_machine.frame_hook: keep the machine before and after each frame. */
-static void on_frame(void *u, int after)
-{
-    board *b = (board *)u;
-    if (after) {
-        sw_subframe_after(&b->pair[1], &b->m);
-        if (b->m.steady) {
-            /* Frames come like clockwork: this one is shown from now until
-             * the next one runs, on its way to what that one will draw. */
-            b->shown = b->pair[1];
-            b->shown_at = (double)b->irqs / SW_IRQ_HZ;
-            b->frame_time = 12.0 / SW_IRQ_HZ;
-        }
-    } else {
-        b->pair[0] = b->pair[1];
-        sw_subframe_before(&b->pair[1], &b->m);
-    }
-}
-
 static void on_irq(void *u)
 {
     board *b = (board *)u;
-    uint32_t frames_before = b->m.frames;
     sw_controls_tick(&b->ctl, &b->m);
     b->irqs++;
+    sw_picture_irq_begin(&b->pic, (double)b->irqs / SW_IRQ_HZ);
     if (b->controls_test) {
         sw_irq(&b->m);
         return;
@@ -242,29 +209,7 @@ static void on_irq(void *u)
     } else {
         sw_emu_irq(&b->emu);
     }
-    if (b->m.vg_starts != b->vg_seen) {
-        /* The vector generator was started on a picture: the game's new
-         * frame if the interrupt switched buffers, else the same one with
-         * the sight and the animations moved on. */
-        b->vg_seen = b->m.vg_starts;
-        memcpy(b->space, b->m.vgram, sizeof b->m.vgram);
-        memcpy(b->space + 0x3000, b->m.rom->vrom, sizeof b->m.rom->vrom);
-        sw_avg_run_tagged(b->space, 0, b->m.vgtag, b->m.vgstart, &b->list, 0);
-        int new_frame = b->m.vgram[0] != b->vg_buffer;
-        b->vg_buffer = b->m.vgram[0];
-        if (new_frame && !b->m.steady) {
-            /* The frame now on display: the last one run, unless the next
-             * one has run already in this same interrupt. */
-            double t = (double)b->irqs / SW_IRQ_HZ;
-            b->shown = b->pair[b->m.frames != frames_before ? 0 : 1];
-            b->frame_time = t - b->shown_at;
-            if (b->frame_time < 0.03) b->frame_time = 0.03;
-            if (b->frame_time > 0.15) b->frame_time = 0.15;
-            b->shown_at = t;
-        }
-        sw_smooth_key(&b->smooth, &b->list, (double)b->irqs / SW_IRQ_HZ, new_frame,
-                      vg13(RAM16(&b->m, SW_VG_CX)) * 0.25f, vg13(RAM16(&b->m, SW_VG_CY)) * 0.25f);
-    }
+    sw_picture_irq_end(&b->pic);
 }
 
 static void on_vg(void *u)
@@ -320,17 +265,7 @@ static void draw_controls_test(sw_app *app, const sw_display_cfg *cfg, board *b,
 static void draw_game(sw_app *app, const sw_display_cfg *cfg, board *b, double now)
 {
     const sw_line *lines;
-    if (cfg->smooth >= 3 &&
-        sw_subframe_render(&b->shown, &b->m, (float)((now - b->shown_at) / b->frame_time), &b->scratch)) {
-        /* computed from the state of the game (game/subframe.h) */
-        memcpy(b->subspace, b->scratch.vgram, sizeof b->scratch.vgram);
-        memcpy(b->subspace + 0x3000, b->m.rom->vrom, sizeof b->m.rom->vrom);
-        sw_avg_run_tagged(b->subspace, 0, b->scratch.vgtag, b->scratch.vgstart, &b->sublist, 0);
-        sw_draw_lines(app->dvg, cfg, b->sublist.lines, b->sublist.count);
-        return;
-    }
-    /* else the lines of the last frames, moved (render/smooth.h) */
-    int n = sw_smooth_frame(&b->smooth, now, cfg->smooth >= 3 ? 1 : cfg->smooth, &lines);
+    int n = sw_picture_lines(&b->pic, now, cfg->smooth, &lines);
     sw_draw_lines(app->dvg, cfg, lines, n);
 }
 
@@ -444,11 +379,7 @@ int main(int argc, char **argv)
             brd.emu.snd = brd.snd;
             brd.emu.yoke_exact = cfg.yoke_autocenter != 0;
         }
-        /* The sight is drawn by the routine the word at VGSITE calls. */
-        brd.m.frame_hook = on_frame;
-        brd.m.frame_user = &brd;
-        brd.frame_time = 0.05;
-        brd.smooth.sight_routine = (unsigned)(((roms.vrom[SW_VGSITE - 0x3000] << 8) | roms.vrom[SW_VGSITE - 0x2fff]) & 0x1fff);
+        sw_picture_init(&brd.pic, &brd.m);
     }
     sw_controls_init(&brd.ctl, app.in);
     if (roms_ok && sw_splash_verify(&brd.m) != 0)

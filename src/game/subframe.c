@@ -80,15 +80,10 @@ void sw_subframe_after(sw_subframe *s, const sw_machine *m)
     s->valid = 1;
 }
 
-int sw_subframe_render(const sw_subframe *f, const sw_machine *live, float t, sw_machine *s)
+/* The copy is on its own: no 6809, no recording, no sound board, and its
+ * own random numbers. */
+static void detach(sw_machine *s)
 {
-    if (!f->valid) return 0;
-    if (t < 0) t = 0;
-    if (t > 1) t = 1;
-
-    *s = f->a;
-    /* The copy is on its own: no 6809, no recording, no sound board, and
-     * its own random numbers (the same ones the frame drew). */
     s->original_frame = NULL;
     s->original_call = NULL;
     s->ram_read_hook = NULL;
@@ -96,6 +91,29 @@ int sw_subframe_render(const sw_subframe *f, const sw_machine *live, float t, sw
     s->sound_board = 0;
     s->frame_hook = NULL;
     s->prng = NULL;
+}
+
+void sw_subframe_next(const sw_subframe *f, sw_machine *s)
+{
+    *s = f->b;
+    detach(s);
+    /* The frame has given its buffer up: the next one writes into the
+     * other, as the interrupt would hand it over. */
+    uint8_t other = f->a.ram[SW_VGSYNC - 0x4800] ? 0x00 : (uint8_t)(SW_VGBFSZ >> 8);
+    s->ram[SW_VGSYNC - 0x4800] = other;
+    uint16_t start = (uint16_t)((other << 8) | ((SW_VGRAM & 0xff) + SW_VGVARB));
+    sw_main_frame(s);
+    sw_vg_wr16(s, 0x0000, (uint16_t)(0xe000 | ((start >> 1) & 0x1fff)));
+}
+
+int sw_subframe_render(const sw_subframe *f, const sw_machine *live, float t, sw_machine *s)
+{
+    if (!f->valid) return 0;
+    if (t < 0) t = 0;
+    if (t > 1) t = 1;
+
+    *s = f->a;
+    detach(s);                              /* (its random numbers: the same ones the frame drew) */
     /* What the interrupt keeps in VG RAM (the sight, the laser bolts) as it
      * is now. */
     memcpy(s->vgram, live->vgram, sizeof s->vgram);

@@ -34,4 +34,12 @@ void sw_subframe_after(sw_subframe *s, const sw_machine *m);
  * with (nothing is done then). */
 int sw_subframe_render(const sw_subframe *s, const sw_machine *live, float t, sw_machine *scratch);
 
+/* The picture the game will draw next, a frame ahead of it: its next frame
+ * is run on `scratch` from where this one left the machine. For the
+ * phases without a view of their own (the pages of the attract mode count
+ * and draw in one): their lines are then moved from this frame's picture
+ * to the next one's (render/smooth.h), which the game has not shown yet.
+ * The display list is in scratch's VG RAM as above. */
+void sw_subframe_next(const sw_subframe *s, sw_machine *scratch);
+
 #endif

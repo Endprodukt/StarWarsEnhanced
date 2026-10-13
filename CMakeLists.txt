@@ -77,6 +77,7 @@ add_library(swcore STATIC
     src/game/subframe.c
     src/game/gas.c
     src/render/smooth.c
+    src/render/picture.c
     src/cpu/m6809.c
     src/core/emu.c
     src/sound/pokey.c
@@ -115,6 +116,10 @@ vp_program(starwarsvp)
 add_executable(avgreplay tools/avgreplay/main.c src/capture/capture.c)
 target_link_libraries(avgreplay PRIVATE swout)
 vp_program(avgreplay)
+
+# A film of the port: pictures to stdout, the sound to a WAV file (tools/swvideo/mux.py).
+add_executable(swvideo tools/swvideo/main.c)
+target_link_libraries(swvideo PRIVATE swcore m)
 
 # Checks the native game frame by frame against a MAME recording.
 add_executable(swcompare tools/swcompare/main.c src/capture/capture.c)

@@ -29,6 +29,11 @@ static sw_subframe sub;
 static uint8_t space[SW_AVG_SPACE_SIZE];
 
 static long frames_seen, frames_viewed, exact, inexact, bad_lists, shown;
+/* the picture computed a frame ahead, to be compared with the one the game then draws */
+static uint8_t ahead[0x1400];
+static uint16_t ahead_start, ahead_len;
+static uint32_t ahead_frame;
+static long ahead_n, ahead_same, ahead_words, ahead_words_same;
 static long by_phase[256], bad_by_phase[256];
 static double moved_sum, step_sum, seam_sum;
 static long moved_n, seam_n;
@@ -64,6 +69,27 @@ static void hook(void *user, int after)
     }
     sw_subframe_after(&sub, &m);
     frames_seen++;
+    {
+        /* the frame just drawn against what was computed for it a frame ago */
+        uint16_t st = (uint16_t)((sub.a.ram[SW_VGSYNC - 0x4800] << 8) | SW_VGVARB);
+        uint16_t len = (uint16_t)(m.y - st);
+        if (ahead_frame + 1 == m.frames && ahead_start == st && len < sizeof ahead) {
+            ahead_n++;
+            if (len == ahead_len && memcmp(&m.vgram[st], ahead, len) == 0) ahead_same++;
+            uint16_t common = len < ahead_len ? len : ahead_len;
+            for (uint16_t i = 0; i + 1 < common; i += 2) {
+                ahead_words++;
+                ahead_words_same += m.vgram[st + i] == ahead[i] && m.vgram[st + i + 1] == ahead[i + 1];
+            }
+        }
+        /* and the next one, ahead */
+        sw_subframe_next(&sub, &scratch);
+        ahead_start = (uint16_t)((scratch.vgram[0] & 0x1f) << 9 | scratch.vgram[1] << 1);
+        ahead_len = (uint16_t)(scratch.y - ahead_start);
+        if (ahead_len < sizeof ahead) memcpy(ahead, &scratch.vgram[ahead_start], ahead_len);
+        ahead_frame = m.frames;
+        if (run_list(&scratch, &l0) != SW_AVG_OK) bad_lists++;
+    }
     uint8_t phase = sub.a.ram[SW_PHASE - 0x4800];
 
     /* t = 0: the frame's own list */
@@ -159,6 +185,13 @@ int main(void)
                seam_sum / seam_n, seam_n);
     if (seam_n && seam_sum / seam_n > 0.5 * step_sum / moved_n) {
         printf("FAIL: the picture jumps where one frame ends and the next begins\n");
+        fails++;
+    }
+    if (ahead_n)
+        printf("  the picture computed a frame ahead is the one then drawn: %ld of %ld frames, %.1f %% of the words\n",
+               ahead_same, ahead_n, 100.0 * ahead_words_same / (ahead_words + 1e-9));
+    if (ahead_n && ahead_words_same < 0.9 * ahead_words) {
+        printf("FAIL: the picture computed ahead is not what the game draws\n");
         fails++;
     }
     if (frames_viewed < 500) { printf("FAIL: the game did not get far\n"); fails++; }

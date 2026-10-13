@@ -78,10 +78,20 @@ Soundplatine, die Zeit des Vektorgenerators.
   Zeitpunkt des Frames ist das berechnete Bild Wort für Wort dessen
   Displayliste, dazwischen liegt es dazwischen (31 % des Wegs nach einem
   Drittel der Zeit), und am Übergang zum nächsten Frame bleibt kein Sprung.
-  Gilt für Weltraum, Anflug, Boden, Graben und die Tode; die Attract-Seiten
-  und einzelne Übergangsframes nutzen weiter das Verschieben der Linien
-  (`src/render/smooth.c`, `smooth = 1` oder `2`), bei dem 92 % der Linien im
-  nächsten Frame wiedergefunden werden (Attract: 99 %).
+  Gilt für Weltraum, Anflug, Boden, Graben und die Tode.
+* **Attract-Seiten, Explosion, Wellenwechsel**: Dort zählen und zeichnen die
+  Routinen in einem Zug (Banner-Zoom und Laufschrift hängen an ganzzahligen
+  Zählern), ein Zwischenzustand lässt sich nicht einsetzen. Stattdessen
+  wird das Bild des nächsten Frames einen Frame im Voraus gerechnet (das
+  Spiel auf einer Kopie einen Frame weiter laufen lassen), und die Linien
+  wandern vom Bild dieses Frames zu jenem (`src/render/picture.c`,
+  `sw_subframe_next`). Auch das ohne Verzögerung. Geprüft: 96 % der Wörter
+  der voraus gerechneten Displayliste sind die, die das Spiel dann zeichnet;
+  der Rest sind Joch und Feuer, die erst im nächsten Frame gelesen werden.
+* **Film vom Port** (`tools/swvideo`): lässt das Spiel ohne Automat laufen
+  (Attract, zwei Münzen, Start, Joch pendelt und feuert), zeichnet jedes
+  Bild wie ein Vektormonitor und schreibt den Ton mit; `mux.py` macht daraus
+  ein MP4 (braucht PyAV). Ergebnis: `video/starwarsvp.mp4` (nicht im Repo).
 * **Strich-Sortierung**: 3-mal weniger Leerweg auf der Highscore-Seite.
 * **Fadenkreuz zentriert** ab dem ersten Bild (`yoke_autocenter`).
 * **NOVRAM** (Optionen, Buchhaltung, beste drei Scores) in `save/nvram.bin`.
@@ -130,9 +140,8 @@ Attract-Modus davor. Ungeprüft am Gerät, also nur gerechnet und gemessen:
 
 1. Am Automaten: `sh tools/deploy.sh`, dann Bild, Ton und Steuerung prüfen;
    `smooth` 1 gegen 2 vergleichen.
-2. Die Zwischenbilder aus dem Spielzustand auch für die Attract-Seiten
-   (Banner, Anleitung, Highscores), die Explosion des Todessterns (DX2, DX3)
-   und den Wellenwechsel (NXT); das Fadenkreuz mit jedem Bild nachführen.
+2. Das Fadenkreuz mit jedem Bild nachführen (jetzt: im Takt der Neustarts
+   des Vektorgenerators).
 3. Den Ton nach Gehör prüfen: POKEY-Hochpass, TMS5220 genauer (Vergleich
    mit einer MAME-Aufnahme, `-wavwrite`). Das Programm ist portiert; was
    noch von MAME abweichen kann, sind die Bausteine.

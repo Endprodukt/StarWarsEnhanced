@@ -97,6 +97,7 @@ Arbeitszähler pro Frame für das Tempomodell (docs/PLAN.md).
 | `starwarsvp --controls` | Testbild für die Steuerung: Fadenkreuz am Joch (mit dem originalen Nachziehen und der Joch-Kalibrierung), Feuer färbt es rot, Münzen zählen Credits |
 | `swcompare AUFNAHME.swcap` | prüft den nativen Kern Frame für Frame gegen eine MAME-Aufnahme |
 | `starwarsvp --calibrate` | Kalibrierbild: Bildschirmrand, Clip-Grenzen, Kreis, alle Farben in 7 Helligkeiten. Joystick ändert, Knopf 1 wechselt den Modus (Größe, Lage, Gamma/Floor, Helligkeit), Knopf 2 speichert nach `save/starwarsvp.ini` |
+| `swvideo --wav TON.wav > BILDER.rgb` | Film vom Port ohne Automat: Attract, dann ein gespieltes Spiel; Bilder als rohes RGB24 auf die Standardausgabe, Ton als WAV. `python tools/swvideo/mux.py FILM.mp4 TON.wav 960 720 60 < BILDER.rgb` macht daraus ein MP4 (braucht PyAV) |
 | `avgreplay AUFNAHME.swcap` | spielt in MAME aufgenommene Displaylisten im Originaltakt auf dem Monitor ab; `--lerp` zeigt die Interpolation, `--loop` wiederholt |
 
 Allgemeine Optionen: `--dvg [PORT]`, `--window`, `--windowed`, `--vertical`,
@@ -125,7 +126,7 @@ Belegung über die `advmame.rc` des Automaten, wie bei MAMEs Star Wars:
 | Schlüssel | Bedeutung |
 |---|---|
 | `steady_frames` | `1` (Standard): ein Spielframe jeden 12. Interrupt, 20,5 pro Sekunde, immer. `0`: das Spiel wartet wie der 6809 des Automaten und bricht ein, wo er einbrach (Graben und Boden laufen dann langsamer) |
-| `smooth` | Bewegung zwischen den Spielframes: `3` (Standard) aus dem Spielzustand neu gerechnet, ohne Verzögerung und mit richtiger Perspektive; `0` aus (jedes Spielbild wie im Original), `1` Linien zwischen den letzten beiden Frames verschoben (die Welt einen Spielframe später), `2` Linien dem letzten Frame voraus (ohne Verzögerung, schießen bei Richtungswechseln kurz über). Attract-Seiten nutzen auch bei `3` die verschobenen Linien. |
+| `smooth` | Bewegung zwischen den Spielframes: `3` (Standard) aus dem Spielzustand neu gerechnet, ohne Verzögerung und mit richtiger Perspektive; `0` aus (jedes Spielbild wie im Original), `1` Linien zwischen den letzten beiden Frames verschoben (die Welt einen Spielframe später), `2` Linien dem letzten Frame voraus (ohne Verzögerung, schießen bei Richtungswechseln kurz über). Auf den Attract-Seiten wandern die Linien bei `3` zum voraus gerechneten Bild des nächsten Frames, ebenfalls ohne Verzögerung. |
 | `yoke_autocenter` | `1`: Fadenkreuz ab dem ersten Bild zentriert, das Joch geht exakt durch (Ruhelage aus der Joystick-Kalibrierung des Automaten). `0`: wie der Automat von 1983, der den Bereich des Jochs nach jedem Einschalten neu lernt |
 | `sort_strokes` | `1`: Striche in einer Reihenfolge zeichnen, die dem Strahl Leerweg spart (mehr Bilder pro Sekunde auf der Platine) |
 | `avg_*`, `margin_*`, `flip_*` | Lage und Größe des Bildes, mit `--calibrate` einzustellen |
