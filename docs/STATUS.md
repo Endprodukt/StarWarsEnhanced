@@ -341,6 +341,16 @@ sobald das Menü neu startet (nach dem Verlassen des Spiels). Nicht geprüft
 am Gerät. Im Programm selbst heißt es noch "STAR WARS VP" (Testmenü,
 Controls Test, ROM-Fehlermeldung).
 
+Paketdatei: `sh tools/pack.sh` (in WSL, nach dem Pi-Build) schreibt
+`dist/starwarsvp-<version>.vpk` mit dem `vp-pack` des SDK (dessen Skript und
+das Manifest werden dabei von CR LF befreit, die ein Windows-Checkout
+mitbringt). `starwarsvp-0.2.0.vpk` liegt auf dem Automaten in
+`/persistent/games/packages/`; dorthin sind auch `bzoneii-1.0.0.vpk`,
+`gltron-0.1.1.vpk` und `neverball-0.1.0.vpk` verschoben, die eine Ebene zu
+hoch lagen. Installiert wird über das Menü (INSTALL GAMES), nicht von
+selbst; das Installieren aus der `.vpk` ist am Gerät nicht ausprobiert.
+Offen: Version in `package/game.ini` vor jedem neuen Paket hochzählen.
+
 ## Falcon, Kamera, Sterne, Gitter (2026-10-13)
 
 Vier Wünsche des Besitzers, alle umgesetzt (Commit nach a8f006e):

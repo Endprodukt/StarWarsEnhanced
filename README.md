@@ -89,6 +89,22 @@ Bild zeigt `vp_run` während des Spiels auf dem Marquee-Bildschirm). Das Menü
 liest die Manifeste beim Start: nach einem Deploy sieht man den neuen Titel,
 sobald das Spiel verlassen wird und das Menü zurückkommt.
 
+Als Paketdatei für einen anderen Automaten oder einen USB-Stick (in WSL,
+nach dem Pi-Build):
+
+```sh
+sh tools/pack.sh          # -> dist/starwarsvp-<version>.vpk
+```
+
+Eine `.vpk` gehört auf dem Automaten nach `/persistent/games/packages/` (per
+scp oder Netzwerkfreigabe) oder auf einen USB-Stick in dessen Ordner
+`games/`. Installiert wird sie nicht von selbst, sondern im Menü: Settings ->
+GAMES -> INSTALL GAMES; dort steht sie mit NEW, UPDATE, SAME oder OLDER
+gegenüber dem, was installiert ist. Die Version steht in `package/game.ini`:
+vor einem neuen Paket hochzählen, sonst gilt es als SAME. Das Paket enthält
+Programm, `game.ini`, `starwarsvp.ini` und `marquee.png`, nicht die ROMs (die
+sucht das Spiel in `/home/pi/.advance/rom`) und nicht `save/`.
+
 ## Prüfen gegen MAME
 
 ```sh
