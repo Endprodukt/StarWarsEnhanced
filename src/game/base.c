@@ -456,7 +456,7 @@ void sw_vwbase(sw_machine *m)
         W8(SW_PNRW + b, 0);
     }
 
-    ORIG(SW_VWPANE);
+    sw_vwpanel(m);
     bsvbot(m);                              /* VIEW BOTTOM LINES */
     bsvsid(m);                              /* VIEW SIDES */
     bsvfar(m);

@@ -31,6 +31,7 @@ enum {
     SW_TAG_SHOT,        /* an enemy's shot; key: its gun record */
     SW_TAG_XPLD,        /* a piece of an explosion; key: its place in the queue */
     SW_TAG_TRENCH,      /* a line of the trench; key: which */
+    SW_TAG_PANEL,       /* what stands on the walls of the trench; key: kind and wall */
     SW_TAG_CODE,      /* written by the original program (core/emu.h); key: from where */
     SW_TAG_SECTIONS
 };

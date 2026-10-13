@@ -111,6 +111,7 @@ void sw_gnbase(sw_machine *m);
 void sw_dofar(sw_machine *m);
 void sw_dobase(sw_machine *m);
 void sw_vwbase(sw_machine *m);
+void sw_vwpanel(sw_machine *m);     /* WSPANL.MAC (game/panel.c) */
 /* WSXPLD.MAC (game/xpld.c): the explosions of the others. */
 void sw_bgaxpld(sw_machine *m, uint16_t x);
 void sw_ixpld(sw_machine *m);
