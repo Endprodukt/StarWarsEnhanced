@@ -329,6 +329,18 @@ wiederholt sich alle 8000h, jedes Gebäude wird auf dieser und der nächsten
 Runde betrachtet. Standbilder: am Start der Oberfläche nichts neben dem
 Spieler, am Horizont die kleinen dunklen Türme.
 
+## Menüeintrag und Marquee (2026-10-13)
+
+Das Menü des Automaten zeigte "Star Wars VP" und kein Marquee. Beides
+kommt aus `package/game.ini`, das `deploy.sh` nach
+`/persistent/games/starwarsvp/` legt (die Paketdateien liegen dort richtig,
+wie bei Tempest 2000 daneben): `name = Star Wars Enhanced`, `marquee =
+marquee.png` (der Schlüssel fehlte; Tempest 2000 hat ihn), Version 0.2.0,
+Marquee das Artwork des Besitzers ("STAR WARS ENHANCED"). Im Menü zu sehen,
+sobald das Menü neu startet (nach dem Verlassen des Spiels). Nicht geprüft
+am Gerät. Im Programm selbst heißt es noch "STAR WARS VP" (Testmenü,
+Controls Test, ROM-Fehlermeldung).
+
 ## Falcon, Kamera, Sterne, Gitter (2026-10-13)
 
 Vier Wünsche des Besitzers, alle umgesetzt (Commit nach a8f006e):
