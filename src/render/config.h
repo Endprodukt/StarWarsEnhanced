@@ -33,10 +33,11 @@ typedef struct sw_display_cfg {
      * vector twice, slightly apart. */
     int defocus_mode;
 
-    /* 1: the sight is centered from the first frame (the yoke is passed
-     * through exactly; the cabinet's joystick calibration sets its rest
-     * position). 0: as the arcade machine, which learns the yoke's range
-     * anew after every power-on. */
+    /* 1: the sight is centered from the first frame: the yoke is passed
+     * through exactly, and where it rests is taken as its middle (learned
+     * at the start and whenever it lies still while nobody plays). 0: as
+     * the arcade machine, which learns the yoke's range anew after every
+     * power-on. */
     int yoke_autocenter;
     /* How the picture moves between the game's frames. 0: not at all, every
      * game frame is shown as it is. 1, 2: its lines are moved
@@ -64,6 +65,9 @@ typedef struct sw_display_cfg {
      * in true perspective, with more to them, seen from farther and fading
      * in; far off, TIE fighters chasing an X-wing. */
     int enh_surface, enh_stars, enh_towers, enh_dogfights;
+    /* Enhanced: 1: the STAR WARS logo of the attract mode is yellow, as in
+     * the films. 0: blue, as the arcade machine has it. */
+    int logo_yellow;
 } sw_display_cfg;
 
 void sw_display_cfg_defaults(sw_display_cfg *c);

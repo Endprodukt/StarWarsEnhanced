@@ -23,6 +23,19 @@ static uint8_t axis_to_adc(float v, int invert)
     return (uint8_t)lroundf(128.0f + v * 127.0f);
 }
 
+/* The yoke's own middle (yoke_autocenter): a yoke at rest further out than
+ * REST_MAX is being held, not resting; it lies still if it moves less than
+ * STILL_MAX over STILL_FRAMES readings (about two seconds). */
+#define REST_MAX     0.35f
+#define STILL_MAX    0.015f
+#define STILL_FRAMES 100
+
+/* A reading with the middle at `center` instead of 0, both ends where they were. */
+static float recenter(float v, float center)
+{
+    return v >= center ? (v - center) / (1.0f - center) : (v - center) / (1.0f + center);
+}
+
 void sw_controls_read(sw_controls *c, vp_input *in)
 {
     uint8_t in0 = 0xff, in1 = 0xff;
@@ -38,8 +51,32 @@ void sw_controls_read(sw_controls *c, vp_input *in)
     if (vp_input_pressed(in, "coin1") && c->coin_pulse[0] == 0) c->coin_pulse[0] = COIN_PULSE_IRQS;
     if (vp_input_pressed(in, "coin2") && c->coin_pulse[1] == 0) c->coin_pulse[1] = COIN_PULSE_IRQS;
 
-    c->adc_x = axis_to_adc(vp_input_axis(in, "p1_stickx"), c->invert_x);
-    c->adc_y = axis_to_adc(vp_input_axis(in, "p1_sticky"), c->invert_y);
+    float x = vp_input_axis(in, "p1_stickx"), y = vp_input_axis(in, "p1_sticky");
+    if (c->autocenter) {
+        int near_middle = fabsf(x) < REST_MAX && fabsf(y) < REST_MAX;
+        if (!c->centered && near_middle) {
+            c->center_x = x;
+            c->center_y = y;
+            c->centered = 1;
+        }
+        if (fabsf(x - c->still_x) < STILL_MAX && fabsf(y - c->still_y) < STILL_MAX) {
+            if (c->still_frames < STILL_FRAMES) c->still_frames++;
+        } else {
+            c->still_x = x;
+            c->still_y = y;
+            c->still_frames = 0;
+        }
+        if (c->learn && near_middle && c->still_frames >= STILL_FRAMES) {
+            c->center_x += (c->still_x - c->center_x) * 0.1f;
+            c->center_y += (c->still_y - c->center_y) * 0.1f;
+        }
+        if (c->centered) {
+            x = recenter(x, c->center_x);
+            y = recenter(y, c->center_y);
+        }
+    }
+    c->adc_x = axis_to_adc(x, c->invert_x);
+    c->adc_y = axis_to_adc(y, c->invert_y);
 }
 
 void sw_controls_tick(sw_controls *c, sw_machine *m)

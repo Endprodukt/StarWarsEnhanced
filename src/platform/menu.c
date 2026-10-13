@@ -23,7 +23,7 @@ const char *sw_menu_sound_name(int n)
 }
 
 enum {
-    I_OCCLUSION, I_SURFACE, I_STARS, I_TOWERS, I_DOGFIGHTS, I_SMOOTH, I_STEADY, I_SORT,
+    I_OCCLUSION, I_SURFACE, I_STARS, I_TOWERS, I_DOGFIGHTS, I_LOGO, I_YOKE, I_SMOOTH, I_STEADY, I_SORT,
     I_SOUND, I_CALIBRATE, I_OPERATOR, I_EXIT,
     N_ITEMS
 };
@@ -89,6 +89,12 @@ int sw_menu_update(sw_menu *u, sw_display_cfg *cfg, vp_input *in, double now)
     case I_STEADY:
         if (d) { cfg->steady_frames = step(cfg->steady_frames, d, 0, 2); return SW_MENU_CHANGED; }
         break;
+    case I_LOGO:
+        if (d) { cfg->logo_yellow = !cfg->logo_yellow; return SW_MENU_CHANGED; }
+        break;
+    case I_YOKE:
+        if (fire) { cfg->yoke_autocenter = !cfg->yoke_autocenter; return SW_MENU_CHANGED; }    /* (not by the yoke itself) */
+        break;
     case I_SORT:
         if (d) { cfg->sort_strokes = !cfg->sort_strokes; return SW_MENU_CHANGED; }
         break;
@@ -123,6 +129,8 @@ void sw_menu_draw(const sw_menu *u, const sw_display_cfg *cfg, vp_dvg *d)
     label[I_STARS] = "SURFACE STARS";       snprintf(value[I_STARS], 40, "%s", on_off(cfg->enh_stars));
     label[I_TOWERS] = "DETAILED TOWERS";    snprintf(value[I_TOWERS], 40, "%s", on_off(cfg->enh_towers));
     label[I_DOGFIGHTS] = "DISTANT DOGFIGHTS"; snprintf(value[I_DOGFIGHTS], 40, "%s", on_off(cfg->enh_dogfights));
+    label[I_LOGO] = "YELLOW LOGO";          snprintf(value[I_LOGO], 40, "%s", on_off(cfg->logo_yellow));
+    label[I_YOKE] = "YOKE AUTO CENTER";     snprintf(value[I_YOKE], 40, "%s", on_off(cfg->yoke_autocenter));
     label[I_SMOOTH] = "SMOOTH MOTION";      snprintf(value[I_SMOOTH], 40, "%s", SMOOTH[cfg->smooth & 3]);
     label[I_STEADY] = "FRAME PACE";         snprintf(value[I_STEADY], 40, "%s", STEADY[cfg->steady_frames % 3]);
     label[I_SORT] = "STROKE SORTING";       snprintf(value[I_SORT], 40, "%s", on_off(cfg->sort_strokes));

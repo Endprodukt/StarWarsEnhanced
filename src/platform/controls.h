@@ -27,6 +27,12 @@ typedef struct sw_controls {
     uint8_t in0, in1;          /* levels from the last read, active low */
     uint8_t adc_x, adc_y;
     int     coin_pulse[2];     /* IRQs left with the coin switch closed */
+    /* The option yoke_autocenter: where the yoke rests is taken as its
+     * middle. Learned from the first reading, and again whenever it lies
+     * still for a while and the program says nobody is playing (learn). */
+    int     autocenter, learn;
+    int     centered, still_frames;
+    float   center_x, center_y, still_x, still_y;
     int     self_test;         /* the self-test switch is on (set by the program, from its menu) */
 } sw_controls;
 

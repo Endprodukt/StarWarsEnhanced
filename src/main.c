@@ -290,6 +290,11 @@ static void apply_enhanced(board *b, const sw_display_cfg *cfg)
     b->pic.enhance.towers = on && cfg->enh_towers;
     b->pic.enhance.dogfights = on && cfg->enh_dogfights;
     b->m.enh_towers = (uint8_t)(on && cfg->enh_towers);
+    b->pic.enhance.logo = on && cfg->logo_yellow;
+    /* the yoke: its rest as its middle, and passed through exactly (the
+     * arcade machine's own learning comes back with the next start) */
+    b->ctl.autocenter = cfg->yoke_autocenter != 0;
+    if (cfg->yoke_autocenter && on && !b->m.yoke_exact) sw_yoke_exact(&b->m);
 }
 
 /* --- the NOVRAM's file --------------------------------------------------------- */
@@ -408,6 +413,7 @@ int main(int argc, char **argv)
         apply_enhanced(&brd, &cfg);
     }
     sw_controls_init(&brd.ctl, app.in);
+    brd.ctl.autocenter = cfg.yoke_autocenter != 0;
     if (roms_ok && sw_splash_verify(&brd.m) != 0)
         fprintf(stderr, "starwarsvp: the splash table differs from the ROM\n");
     sw_sched_hooks hooks = { on_irq, on_vg, on_game, &brd };
@@ -415,6 +421,8 @@ int main(int argc, char **argv)
     int status = 0;
     double dt;
     while (sw_app_poll(&app, &dt)) {
+        /* (the yoke's rest is learned while nobody plays: in the attract mode) */
+        brd.ctl.learn = RAM8(&brd.m, SW_PHASE) >= SW_PHSBNR && RAM8(&brd.m, SW_PHASE) <= SW_PHSHIS + 1;
         sw_controls_read(&brd.ctl, app.in);
         /* The self-test button: out of where it led (the arcade program's
          * operator screens, the calibration), else the menu open or shut. */

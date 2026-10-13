@@ -14,6 +14,9 @@
  *              the laser hits them as they are drawn here.
  *   dogfights  far off, TIE fighters chase an X-wing across the sky, two
  *              ships or three
+ * And in the attract mode:
+ *   logo       the STAR WARS logo is yellow, as in the films (the arcade
+ *              machine has it blue)
  *
  * Nothing here is part of the game: it is drawn from the game's state
  * (where the player is and how he is turned, the map of the buildings and
@@ -29,6 +32,7 @@
 
 typedef struct sw_enhance {
     int surface, stars, towers, dogfights;      /* the settings */
+    int logo;                                   /* 1: the STAR WARS logo yellow */
 
     sw_line *out;
     int      n, cap;

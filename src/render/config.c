@@ -34,6 +34,7 @@ void sw_display_cfg_defaults(sw_display_cfg *c)
     c->sort_strokes = 1;
     c->occlusion = 1;
     c->enh_surface = c->enh_stars = c->enh_towers = c->enh_dogfights = 1;
+    c->logo_yellow = 1;
 }
 
 static char *trim(char *s)
@@ -62,6 +63,7 @@ static int set(sw_display_cfg *c, const char *key, const char *val)
         { "occlusion", &c->occlusion },
         { "enh_surface", &c->enh_surface }, { "enh_stars", &c->enh_stars },
         { "enh_towers", &c->enh_towers }, { "enh_dogfights", &c->enh_dogfights },
+        { "logo_yellow", &c->logo_yellow },
     };
     for (size_t i = 0; i < sizeof floats / sizeof floats[0]; i++)
         if (strcmp(key, floats[i].k) == 0) { *floats[i].f = (float)atof(val); return 0; }
@@ -122,7 +124,8 @@ int sw_display_cfg_save(const sw_display_cfg *c, const char *path)
         fprintf(f, "color_%s = %d %d %d\n", COLOR_NAMES[i],
                 c->palette[i][0], c->palette[i][1], c->palette[i][2]);
     fprintf(f, "\n; FUZZ glow: 0 ignore, 1 double-draw\ndefocus_mode = %d\n", c->defocus_mode);
-    fprintf(f, "\n; sight centered from the first frame (0: learns the yoke anew, as the arcade machine)\n"
+    fprintf(f, "\n; sight centered from the first frame, the yoke's rest taken as its middle\n"
+               "; (0: learns the yoke anew, as the arcade machine)\n"
                "yoke_autocenter = %d\n", c->yoke_autocenter);
     fprintf(f, "\n; motion between the game's frames: 0 off, 1 lines between the last two frames,\n"
                "; 2 lines ahead of the last, 3 computed from the state of the game\n"
@@ -139,6 +142,8 @@ int sw_display_cfg_save(const sw_display_cfg *c, const char *path)
                "; towers in true perspective with more detail and from farther, chases far off\n"
                "enh_surface = %d\nenh_stars = %d\nenh_towers = %d\nenh_dogfights = %d\n",
             c->enh_surface, c->enh_stars, c->enh_towers, c->enh_dogfights);
+    fprintf(f, "\n; enhanced: the STAR WARS logo yellow (0: blue, as the arcade machine)\n"
+               "logo_yellow = %d\n", c->logo_yellow);
     fclose(f);
     return 0;
 }

@@ -11,6 +11,10 @@ void sw_irq(sw_machine *m);
 /* WSINT.MAC RESET: the state the main line starts from (RAM cleared, VG RAM
  * filled with HALTs and the double buffer set up, pot filter delay). */
 void sw_reset(sw_machine *m);
+/* The option yoke_autocenter switched on while the game runs: the yoke is
+ * passed through exactly from now on (as the reset does it with
+ * sw_machine.yoke_exact set). */
+void sw_yoke_exact(sw_machine *m);
 
 /* WSCOIN.MAC COINS + COIN69.MAC MOOLAH, called from the IRQ. */
 void sw_coins(sw_machine *m);

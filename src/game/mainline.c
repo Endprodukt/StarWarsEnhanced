@@ -373,6 +373,13 @@ static uint8_t pot_adjust(sw_machine *m, uint16_t x)
     return a;
 }
 
+void sw_yoke_exact(sw_machine *m)
+{
+    m->yoke_exact = 1;
+    static const uint16_t limits[4] = { SW_RHEOP + RH_LO, SW_RHEOP + RH_SP, SW_RHEOY + RH_LO, SW_RHEOY + RH_SP };
+    for (int i = 0; i < 4; i++) m->ram[limits[i] - 0x4800] = 0;
+}
+
 static void pheres(sw_machine *m)           /* RESET */
 {
     sw_eetemp(m, SW_POTSAV);                /* GET POT VALUES FROM EEROM */

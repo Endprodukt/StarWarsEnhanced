@@ -522,12 +522,14 @@ int sw_enhance_run(sw_enhance *e, const sw_machine *m, double now, const sw_line
     e->spin_c = 1.0;
     e->spin_s = 0.0;
     uint8_t phase = ram8(m, SW_PHASE);
-    int ground = phase == SW_PHSGD + 1 || phase == SW_PHSG0D + 1;
-    if (!ground || !(e->surface || e->stars || e->towers || e->dogfights)) {
+    int ground = (phase == SW_PHSGD + 1 || phase == SW_PHSG0D + 1) &&
+                 (e->surface || e->stars || e->towers || e->dogfights);
+    int logo = e->logo && phase >= SW_PHSBNR && phase <= SW_PHSHIS + 1;     /* (the attract mode) */
+    if (!ground && !logo) {
         *out = in;
         return n;
     }
-    view_of(e, m);
+    if (ground) view_of(e, m);
 
     /* the game's picture, without its buildings if they are drawn here */
     if (e->cap < n + 64) {
@@ -538,13 +540,15 @@ int sw_enhance_run(sw_enhance *e, const sw_machine *m, double now, const sw_line
     }
     for (int i = 0; i < n; i++) {
         unsigned tag = (unsigned)(in[i].id >> 48);
-        if (e->towers && SW_TAG_SECTION(tag) == SW_TAG_OBJECT && (tag & 0x3ff) >= 16) continue;
-        e->out[e->n++] = in[i];
+        if (ground && e->towers && SW_TAG_SECTION(tag) == SW_TAG_OBJECT && (tag & 0x3ff) >= 16) continue;
+        e->out[e->n] = in[i];
+        if (logo && SW_TAG_SECTION(tag) == SW_TAG_BANNER) e->out[e->n].color = YLW;
+        e->n++;
     }
-    if (e->stars) stars(e);
-    if (e->surface) surface(e);
-    if (e->towers) towers(e, m, now);
-    if (e->dogfights && e->tie_ready) dogfights(e, now);
+    if (ground && e->stars) stars(e);
+    if (ground && e->surface) surface(e);
+    if (ground && e->towers) towers(e, m, now);
+    if (ground && e->dogfights && e->tie_ready) dogfights(e, now);
     *out = e->out;
     return e->n;
 }

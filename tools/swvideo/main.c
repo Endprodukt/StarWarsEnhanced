@@ -231,6 +231,7 @@ int main(int argc, char **argv)
     pic.occlusion = !arg_flag(argc, argv, "--wire");
     if (!arg_flag(argc, argv, "--plain")) {
         pic.enhance.surface = pic.enhance.stars = pic.enhance.towers = pic.enhance.dogfights = 1;
+        pic.enhance.logo = 1;
         m.enh_towers = 1;
     }
 

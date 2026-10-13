@@ -138,7 +138,7 @@ speichert und kehrt ins Spiel zurück.
 
 | Zeile | |
 |---|---|
-| Occlusion, Surface Plating, Surface Stars, Detailed Towers, Distant Dogfights, Smooth Motion, Frame Pace, Stroke Sorting | die Enhanced Settings, jede abschaltbar (wie `occlusion`, `enh_*`, `smooth`, `steady_frames`, `sort_strokes` unten) |
+| Occlusion, Surface Plating, Surface Stars, Detailed Towers, Distant Dogfights, Yellow Logo, Yoke Auto Center, Smooth Motion, Frame Pace, Stroke Sorting | die Enhanced Settings, jede abschaltbar (wie `occlusion`, `enh_*`, `smooth`, `steady_frames`, `sort_strokes` unten) |
 | Sound Test | Joch links/rechts wählt eine der 59 Anforderungen ([docs/SOUNDS.md](docs/SOUNDS.md)), Feuer spielt sie |
 | Screen Calibration | das Testbild von `--calibrate`; Feuer wechselt Größe, Lage, Gamma, Helligkeit, das Joch stellt ein |
 | Arcade Operator Screens | Statistik und Optionen des Automatenprogramms (Aux-Münze blättert); der Selbsttest-Knopf führt zurück ins Spiel |
@@ -153,7 +153,8 @@ speichert und kehrt ins Spiel zurück.
 |---|---|
 | `steady_frames` | `1` (Standard): die Frames einer Phase kommen in festem Abstand, dem Durchschnitt des Automaten in dieser Phase; gleiches Tempo wie das Original, ohne Schwanken. `2`: überall 20,5 pro Sekunde (im Spiel rund 50 % schneller als der Automat). `0`: jedes Frame so lang, wie der 6809 des Automaten daran rechnete |
 | `smooth` | Bewegung zwischen den Spielframes: `3` (Standard) aus dem Spielzustand neu gerechnet, ohne Verzögerung und mit richtiger Perspektive; `0` aus (jedes Spielbild wie im Original), `1` Linien zwischen den letzten beiden Frames verschoben (die Welt einen Spielframe später), `2` Linien dem letzten Frame voraus (ohne Verzögerung, schießen bei Richtungswechseln kurz über). Auf den Attract-Seiten wandern die Linien bei `3` zum voraus gerechneten Bild des nächsten Frames, ebenfalls ohne Verzögerung. |
-| `yoke_autocenter` | `1`: Fadenkreuz ab dem ersten Bild zentriert, das Joch geht exakt durch (Ruhelage aus der Joystick-Kalibrierung des Automaten). `0`: wie der Automat von 1983, der den Bereich des Jochs nach jedem Einschalten neu lernt |
+| `yoke_autocenter` | `1` (Standard): Fadenkreuz ab dem ersten Bild zentriert. Das Joch geht exakt durch, und seine Ruhelage gilt als Mitte: Sie wird beim Start gelernt und nachgeführt, wenn das Joch im Attract-Modus still liegt. `0`: wie der Automat von 1983, der den Bereich des Jochs nach jedem Einschalten neu lernt |
+| `logo_yellow` | Enhanced. `1` (Standard): der STAR-WARS-Schriftzug im Attract-Modus ist gelb. `0`: blau wie am Automaten |
 | `occlusion` | Enhanced. `1` (Standard): Dinge sind massiv, was hinter einem Schiff, einem Turm, dem Schriftzug oder den eigenen Kanonen liegt, wird nicht gezeichnet. `0`: durchsichtige Drahtmodelle wie am Automaten |
 | `enh_surface` | Enhanced, über der Oberfläche. `1` (Standard): der Boden wird als Plattenmuster des Todessterns gezeichnet |
 | `enh_stars` | Enhanced. `1` (Standard): Sterne am Himmel über der Oberfläche |

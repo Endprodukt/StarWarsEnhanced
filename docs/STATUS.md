@@ -140,7 +140,7 @@ Soundplatine, die Zeit des Vektorgenerators.
 * **Eigenes Testmenü** (`src/platform/menu.c`, 2026-10-13): Der
   Selbsttest-Knopf (`p1_button6`) öffnet es, das Spiel steht solange. Zeilen:
   Enhanced Settings (Occlusion, Surface Plating, Surface Stars, Detailed
-  Towers, Distant Dogfights, Smooth Motion, Frame Pace, Stroke Sorting),
+  Towers, Distant Dogfights, Yellow Logo, Yoke Auto Center, Smooth Motion, Frame Pace, Stroke Sorting),
   Sound Test (alle 59 Anforderungen aus `docs/SOUNDS.md` mit Nummer und
   Name), Screen Calibration, Arcade Operator Screens (die Statistik- und
   Optionsseiten des Automatenprogramms; der Knopf führt von dort zurück),
@@ -164,7 +164,16 @@ Soundplatine, die Zeit des Vektorgenerators.
   Displayliste (`sw_machine.vgnote`: 1/X des Punktes, Objekt, Punktnummer).
   Nie verdeckt: Texte, Punktestand, Fadenkreuz, Laserstrahlen.
   Geprüft: `tests/test_solid.c` und Standbilder mit/ohne (`swvideo --wire`).
-* **Fadenkreuz zentriert** ab dem ersten Bild (`yoke_autocenter`).
+* **Fadenkreuz zentriert** ab dem ersten Bild (`yoke_autocenter`). Seit
+  2026-10-13 gehört dazu ein Auto-Centering (`src/platform/controls.c`):
+  Die Ruhelage des Jochs gilt als Mitte. Sie wird beim Start aus der
+  ersten Messung gelernt und nachgeführt, wenn das Joch im Attract-Modus
+  rund zwei Sekunden still liegt; die Endanschläge bleiben, wo sie sind.
+  Im Testmenü schaltbar (YOKE AUTO CENTER). Am Automaten ungeprüft: Ob
+  sein Joch still genug liegt (Schwelle 1,5 % des Wegs), ist offen.
+* **Schriftzug gelb** (`logo_yellow = 1`, Standard, Enhanced): das STAR-WARS-
+  Logo im Attract-Modus in Gelb statt im Blau des Automaten (`enhance.c`
+  färbt die Linien um). Im Testmenü schaltbar (YELLOW LOGO).
 * **NOVRAM** (Optionen, Buchhaltung, beste drei Scores) in `save/nvram.bin`.
 
 ## Noch nicht am Automaten gesehen oder gehört
@@ -193,9 +202,10 @@ Attract-Modus davor. Ungeprüft am Gerät, also nur gerechnet und gemessen:
   nicht im Weltraum oder im Graben. Der Tod über dem Boden und der Übergang
   zum Graben sind nur flüchtig angesehen.
 
-* **Testmenü**: ungesehen (siehe oben). `yoke_autocenter` steht nicht im
-  Menü (wirkt erst nach Neustart). Der Controls-Test (`--controls`) ist
-  noch kein Menüpunkt.
+* **Testmenü**: ungesehen (siehe oben). YOKE AUTO CENTER schaltet nur mit
+  Feuer um, nicht mit dem Joch; ausgeschaltet lernt das Automatenprogramm
+  den Bereich des Jochs erst nach dem nächsten Start wieder selbst. Der
+  Controls-Test (`--controls`) ist noch kein Menüpunkt.
 
 * **Occlusion**: noch nicht am Automaten gesehen, und die Rechenzeit auf dem
   Pi ist nicht gemessen (jede Linie gegen jede Fläche; am PC unauffällig).
