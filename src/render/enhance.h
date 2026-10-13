@@ -14,6 +14,7 @@
  *              the laser hits them as they are drawn here.
  *   dogfights  far off, TIE fighters chase an X-wing across the sky, two
  *              ships or three
+ *   stars      a few stars in the sky, twinkling
  * In the trench:
  *   stars      stars in the strip of sky between the tops of its walls
  *   clip       what stands on its walls and across it (panels, guns,

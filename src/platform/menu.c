@@ -179,7 +179,7 @@ static void describe(int line, const sw_menu *u, const sw_display_cfg *cfg, cons
     case L_SURFACE:       *label = "SURFACE PLATING";   snprintf(value, size, "%s", on_off(cfg->enh_surface)); break;
     case L_TOWERS:        *label = "DETAILED TOWERS";   snprintf(value, size, "%s", on_off(cfg->enh_towers)); break;
     case L_DOGFIGHTS:     *label = "DISTANT DOGFIGHTS"; snprintf(value, size, "%s", on_off(cfg->enh_dogfights)); break;
-    case L_STARS:         *label = "TRENCH STARS";      snprintf(value, size, "%s", on_off(cfg->enh_stars)); break;
+    case L_STARS:         *label = "STARS";             snprintf(value, size, "%s", on_off(cfg->enh_stars)); break;
     case L_CLIP:          *label = "TRENCH CLIPPING";   snprintf(value, size, "%s", on_off(cfg->enh_clip)); break;
     case L_SAMPLES:       *label = "REPLACED SOUNDS";   snprintf(value, size, "%s", on_off(cfg->sound_replace)); break;
     case L_SOUND_TEST:    *label = "SOUND TEST";        snprintf(value, size, "%02X %s", u->sound, sw_menu_sound_name(u->sound)); break;

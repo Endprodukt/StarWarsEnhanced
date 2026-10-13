@@ -171,10 +171,13 @@ static void view_of(sw_enhance *e, const sw_machine *m)
  * middle and reach from 4096 below up to the height 0 (TBSBL of
  * WSBASE.MAC): a star shows if the way to it leaves the trench through its
  * open top. */
-static void stars(sw_enhance *e, int trench)
+static void stars(sw_enhance *e, int trench, double now)
 {
-    int n = trench ? SW_ENHANCE_STARS : 96;
+    /* over the surface a few (the owner found more too much), over the
+     * trench all (only a strip of sky shows); each twinkles in its own time */
+    int n = trench ? SW_ENHANCE_STARS : 28;
     for (int i = 0; i < n; i++) {
+        float twinkle = 0.55f + 0.45f * (float)sin(now * (2.0 + (double)(i & 7) * 0.7) + (double)i * 1.7);
         if (trench && e->t[2] < 0.0) {
             double up = -e->t[2] / e->star[i][2];           /* how far along it is at the top of the walls */
             if (fabs(e->t[1] + e->star[i][1] * up) >= 1024.0) continue;
@@ -183,7 +186,7 @@ static void stars(sw_enhance *e, int trench)
         if (v.x < 0.05) continue;
         v.x *= 1e6; v.y *= 1e6; v.z *= 1e6;     /* as good as infinitely far */
         int before = e->n;
-        line(e, v, v, WHT, (float)e->star_lum[i], SW_TAG_STAR);
+        line(e, v, v, WHT, (float)e->star_lum[i] * twinkle, SW_TAG_STAR);
         if (e->n > before) e->out[before].w0 = e->out[before].w1 = 0;
     }
 }
@@ -349,17 +352,20 @@ static void towers(sw_enhance *e, const sw_machine *m, double now)
         int sq = (int8_t)(sw_rom16(m, (uint16_t)(x + TGD_SQ)) >> 8);
         int rm = (int8_t)(sw_rom16(m, (uint16_t)(x + TGD_RM)) >> 8);
         uint8_t state = ram8(m, (unsigned)(SW_GDRAM + rm));
-        /* The buildings the game shows, as far as it shows them: those of
-         * the passes so far that it has set up (which it does while they
-         * are out of sight; a bunker shot away it leaves so). When the
+        /* The buildings the game shows, where it shows them (VWGRND): those
+         * of the passes so far that it has set up (which it does while
+         * they are out of sight), a bunker shot away no more (the game
+         * draws it in the color "off"), and only within the game's range
+         * (100h to 3C00h ahead) and its 45 degrees to either side. When the
          * surface ends the game takes them all away, and the player flies
          * on into the dark. */
         if (seq < sq || !(state & TYP_VW)) continue;
+        if (pc == PC_BNK && (state & TYP_DM)) continue;
         /* (the map comes round every 8000h) */
         double ahead = (double)((bx - (unsigned)e->t[0]) & 0x7fff);
         {
             vec c = turn(e, vec3(ahead / 2.0, (double)(int16_t)(by - (int)e->t[1]) / 2.0, (GD_CENTER - e->t[2]) / 2.0));
-            if (c.x < 40.0 || c.x > FAR || fabs(c.y) > c.x * 1.25 + 1500.0) continue;
+            if (c.x < 256.0 || c.x >= FAR || fabs(c.y) >= c.x) continue;
             /* The farthest are dark, and each gets brighter in a straight
              * line as it comes nearer: none comes up at once, and what is
              * behind does not crowd what is before it. */
@@ -535,7 +541,7 @@ int sw_enhance_run(sw_enhance *e, const sw_machine *m, double now, const sw_line
     e->spin_s = 0.0;
     uint8_t phase = ram8(m, SW_PHASE);
     int ground = (phase == SW_PHSGD + 1 || phase == SW_PHSG0D + 1) &&
-                 (e->surface || e->towers || e->dogfights);
+                 (e->surface || e->stars || e->towers || e->dogfights);
     int in_trench = phase == SW_PHSBS + 1 || phase == SW_PHSB0D + 1;
     int trench = in_trench && e->stars;
     int clip = in_trench && e->clip;
@@ -569,7 +575,8 @@ int sw_enhance_run(sw_enhance *e, const sw_machine *m, double now, const sw_line
         }
         e->n++;
     }
-    if (trench) stars(e, 1);
+    if (trench) stars(e, 1, now);
+    if (ground && e->stars) stars(e, 0, now);
     if (ground && e->surface) surface(e);
     if (ground && e->towers) towers(e, m, now);
     if (ground && e->dogfights && e->tie_ready) dogfights(e, now);

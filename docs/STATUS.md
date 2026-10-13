@@ -273,10 +273,14 @@ daraus wurde:
   darauf entfernt. Preis, am Gerät gemessen: Die Highscore-Seite läuft
   unsortiert mit 37 statt 50 Bildern pro Sekunde (Leerweg 172000 statt
   60000 Einheiten).
-* **Oberfläche war zu voll**: Sterne dort entfernt, Türme nur noch so weit
-  wie am Automaten (3C00h) und nur die, die das Spiel eingerichtet hat,
-  Bunker ohne Nähte. Am Ende der Oberfläche fliegt man damit wieder ins
-  Dunkle wie im Original (vorher standen noch Türme da).
+* **Oberfläche war zu voll**: Sterne dort auf 28 funkelnde reduziert
+  (zuerst ganz entfernt, dann auf Wunsch ein paar zurück), Türme nur noch
+  dort, wo das Spiel sie zeigt (100h bis 3C00h voraus, 45 Grad zu jeder
+  Seite, eingerichtet, Bunker nicht abgeschossen; zuerst war der Kegel
+  weiter, und am Start standen Türme neben dem Spieler), Bunker ohne Nähte.
+  Am Ende der Oberfläche fliegt man damit wieder ins Dunkle wie im Original.
+  Zwischendurch blieben abgeschossene Bunker stehen (die Prüfung auf
+  "beschädigt" war beim Umbau verloren gegangen): behoben.
 * **Graben, Hindernisse verändern ihre Form**: Der Automat kann eine Linie
   nicht am Bildrand abschneiden; bei nahen Objekten schiebt er die Punkte
   knapp hinter den Rand (BJBCLP), das verbiegt sie. Neu `enh_clip = 1`
