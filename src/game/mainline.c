@@ -1305,6 +1305,309 @@ static void phibs(sw_machine *m)
     phebs(m);                               /* DROP THRU -- DECREASE SCREEN FREEZE */
 }
 
+/* --- the ground: towers and bunkers --------------------------------------------------- */
+
+/* The ground itself (WSGRND.MAC) is not ported yet: ORIG. */
+
+#define GD_MNT 0x0200       /* GD$MNT, GD$MXT: how low and how high the player flies */
+#define GD_MXT 0x1c00
+
+/* ISTARG: the stars over the ground */
+static void istarg(sw_machine *m)
+{
+    for (uint16_t x = SW_M_STAD; x < SW_M_STAZ; x += 8) {
+        uint8_t a = R8(SW_P_RND2);          /* REVERSE OF INITING ORDER FOR RANDOMNESS */
+        uint8_t b = R8(SW_P_RND1);          /* TRY TO POPULATE EVENLY */
+        W16(x + 0, (uint16_t)((a << 8) | b));
+        uint16_t d = (uint16_t)(a * b);
+        W16(x + 2, (uint16_t)((R8(SW_P_RND2) << 8) | (d & 0xff)));
+        W16(x + 4, 0);
+    }
+}
+
+/* VWMTWR: VEIW MESSAGES RELATED TO TOWERS */
+static void vwmtwr(sw_machine *m)
+{
+    if ((int8_t)R8(SW_GD_WAV) <= 0) {       /* LOWEST WAVE GETS NO MESSAGES ( NO TOWERS ) */
+        if (R8(SW_Q_ATP) != 0) sw_domess(m, SW_MS_ATP);
+        return;
+    }
+    if (R8(SW_GD_TWL) != 0) {               /* ?MORE TOWERS TO HIT? */
+        if ((R8(SW_FRAMEL) & 0x30) != 0) {  /* ?SHOW NEXT TOWERS WORTH? */
+            sw_domess(m, SW_MS_NXT);        /* "XXXXX POINTS NEXT TOWER" */
+            VG(SW_VGCOLR + (VGCGRN << 8));
+            VG(SW_VGRW7 & 0x1fff);          /* Y POS */
+            VG(0x1ed0 & 0x1fff);            /* X POS */
+            W8(SW_BT_SUP, 0x04);            /* SUPRESS 4 ZEROES */
+            sw_vwbyte(m, R8(SW_TWRMUL));
+            sw_vwbyte(m, R8(SW_TWRMUL + 1));
+            sw_vwbyte(m, R8(SW_TWRMUL + 2));
+            VG(SW_VGCNTR);
+        } else {                            /* ELSE SHOW ALL TOWERS WORTH */
+            sw_domess(m, SW_MS_RWD);        /* "50,000 FOR SHOOTING ALL TOWERS" */
+        }
+    }
+    vwmtwz(m);
+}
+
+/* VEWGD: VIEW GROUND FLYING */
+static void vewgd(sw_machine *m)
+{
+    ivgen1(m);
+    is1uv(m, SW_MSS1BC);                    /* MATH BOX, PRIMARY INIT */
+    sw_residu(m);
+    vwmes(m);
+    vwmtwr(m);                              /* TOWER RELATED MESSAGES */
+    sw_vwgas(m);
+    sw_vwsite(m);
+    sw_vwstrg(m);                           /* VIEW GROUND STARS */
+
+    sw_tstlaz(m);                           /* PREPARE FOR LAZAR HITS */
+    sw_vwgun(m);
+    ORIG(SW_VWGRND);
+    sw_clglz(m);                            /* PROCESS COLLISIONS */
+    sw_vwlaz(m);                            /* AND SEE RESULT */
+
+    sw_vwxpld(m);
+    sw_vwglw(m);
+    vgdone(m);
+}
+
+/* VEWG0D: the picture while the player dies over the ground */
+static void vewg0d(sw_machine *m)
+{
+    ivgen1(m);
+    is1uv(m, SW_MSS1BC);                    /* MATH BOX, PRIMARY INIT */
+    sw_residu(m);
+
+    vwmes(m);
+    vwmtwr(m);                              /* TOWER RELATED MESSAGES */
+    sw_vwgas(m);
+    sw_vwstrg(m);                           /* VIEW GROUND STARS */
+
+    sw_vwgun(m);
+    ORIG(SW_VWGRND);
+    vwmovr(m);                              /* VIEW EXPANDING GAME OVER MESSAGE */
+
+    sw_vwglw(m);
+    vgdone(m);
+}
+
+/* VEWG0B, VEWG1B: GROUND TO BASE TRANSITION, over the ground and then
+ * over the trench */
+static void vewgnb(sw_machine *m, int trench)
+{
+    ivgen1(m);
+    is1uv(m, SW_MSS1BC);                    /* MATH BOX, PRIMARY INIT */
+    sw_residu(m);
+    vwmes(m);
+    vwmtwz(m);                              /* TOWER DONE, END MESSAGES ONLY */
+    sw_domess(m, SW_MS_USE);                /* USE THE FORCE */
+    sw_vwgas(m);
+    sw_vwsite(m);
+    if (trench) sw_vwbase(m);
+    else sw_vwstrg(m);                      /* VIEW GROUND STARS */
+
+    sw_vwxpld(m);
+    sw_vwglw(m);
+    vgdone(m);
+}
+
+/* S1MVGD: GROUND FLYING PLAYER MOVEMENT */
+static void s1mvgd(sw_machine *m)
+{
+    /* PLAYERS FORWARD MOVEMENT */
+    int32_t t = (int16_t)R16(SW_M_S1 + M_VX) + (int16_t)R16(SW_M_S1 + M_TX);
+    if (t > 32767 || t < -32768) {          /* ?WRAPPED AROUND? */
+        uint8_t a = R8(SW_GD_SEQ);
+        W8(SW_GD_SEQ, a + 1);               /* THEN START UP NEXT SEQUENCE */
+        if (a == 0x7f) W8(SW_GD_SEQ, a);    /* PREVENT ITS OVERFLOW */
+    }
+    W16(SW_M_S1 + M_TX, (uint16_t)t);
+    W16(SW_M_U1 + M_TX, (uint16_t)t);
+
+    uint16_t d = slalom(m, SW_SI_RSX, 1);   /* FASTEST IS AT 45 DEGREES: FULL SCALE VALUE */
+    W16(SW_M_S1 + M_VY, d);                 /* ALLOW OTHERS TO KNOW OUR SPEED */
+    d = (uint16_t)(d + R16(SW_M_S1 + M_TY));
+    W16(SW_M_S1 + M_TY, d);
+    W16(SW_M_U1 + M_TY, d);
+
+    d = slalom(m, SW_SI_RSY, 0);            /* SLOWER RANGE */
+    W16(SW_M_S1 + M_VZ, d);
+    d = (uint16_t)(d + R16(SW_M_S1 + M_TZ));
+    if ((int16_t)d > GD_MXT) d = GD_MXT;
+    else if ((int16_t)d < GD_MNT) d = GD_MNT;
+    W16(SW_M_S1 + M_TZ, d);
+    W16(SW_M_U1 + M_TZ, d);
+}
+
+/* SMVG9B: REST OF G*B TRANSITION: on, at an even speed, and once around */
+static void smvg9b(sw_machine *m)
+{
+    W16(SW_M_S1 + M_TX, R16(SW_M_S1 + M_VX) + R16(SW_M_S1 + M_TX));    /* MOVE PLAYER FORWARD */
+    uint16_t d = (uint16_t)((int16_t)(uint16_t)(0x300 - R16(SW_M_S1 + M_VX)) >> 3);
+    W16(SW_M_S1 + M_VX, d + R16(SW_M_S1 + M_VX));
+    /* VARY WHICH WAY WE ROTATE: 10.55 DEGREES *34. GIVES A 360 */
+    W16(SW_M_SIN, (R8(SW_GM_WAV) & 1) ? 3000 : (uint16_t)-3000);
+    W16(SW_M_COS, 16107);
+    sw_s1rl(m);                             /* LETS ROLLEM */
+    sw_untwgd(m, (uint16_t)(0 - R16(SW_GD_ACT)));       /* REMEMBER TO UNTWIST ANY GROUND MOVEMENT */
+}
+
+/* SMVG0B: the player comes down to the trench */
+static void smvg0b(sw_machine *m)
+{
+    uint16_t d = R16(SW_M_S1 + M_TZ);
+    if ((int16_t)d > 0x380)                 /* ?PLAYER TOO HI? */
+        W16(SW_M_S1 + M_TZ, d - 0x180);     /* DROP HIM DOWN */
+    smvg9b(m);
+}
+
+/* SMVG1B: and into it */
+static void smvg1b(sw_machine *m)
+{
+    uint16_t d = R16(SW_M_S1 + M_TZ);
+    if ((int16_t)d > -0x0e00 + 0x100)       /* JUST ABOVE BOTTOM OF TRENCH */
+        W16(SW_M_S1 + M_TZ, d - 0x100);     /* DROP PLAYER INTO TRENCH */
+    smvg9b(m);
+}
+
+/* PHIG0D: GROUND TO ENDGAME TRANSITION */
+static void phig0d(sw_machine *m)
+{
+    sw_doxmt(m, SW_IDSSKP);                 /* SKIP ANY WAITING VOICES */
+    W8(SW_PHASE, SW_PHSG0D + 1);            /* EXECUTE THIS PHASE */
+    W16(SW_PH_TIM, 0);                      /* NEW PHASE TIMER JUST STARTED */
+}
+
+static void pheg0d(sw_machine *m)
+{
+    vewg0d(m);
+
+    sw_mvgun(m);
+    sw_kpglow(m);
+
+    uint16_t d = (uint16_t)(R16(SW_PH_TIM) + 1);
+    W16(SW_PH_TIM, d);
+    if (d >= 2 * 20) W8(SW_PHASE, SW_PHSEGM);   /* 2 SECONDS */
+}
+
+/* PHIGD: GROUND TERRAIN FOLLOWING */
+static void phigd(sw_machine *m)
+{
+    uint8_t a = (uint8_t)(R8(SW_GM_WAV) - 1);   /* BUMP TO NEXT GROUND WAVE: ALWAYS SKIPPED ON FIRST GAME WAVE */
+    if (a >= 31) a = 31;
+    W8(SW_GD_WAV, a);
+    a = (uint8_t)(a + R8(SW_GM_DIF));
+    if (a > 15) a = 15;
+    W8(SW_WV_HRD, a);
+    iparm(m);                               /* INIT SHIP AND ALIEN PARMS */
+    istarg(m);
+    ORIG(SW_IGRND);
+    sw_ixpld(m);
+    W16(SW_M_S1 + M_VX, 0x100);             /* INITIAL PLAYER SPEED */
+    W16(SW_M_S1 + M_TX, 0x100 >> 1);        /* OFFSET POSITION INTO MIDDLE FOR COLLISION DETECT */
+    W16(SW_M_S1 + M_TZ, 0x2000);            /* INITIAL HITE */
+    W8(SW_GD_SEQ, 0);
+    W8(SW_Q_ATP, 0);                        /* NOT YET CLEARED ALL TOWER TOPS */
+    W8(SW_Q_KTW, 0);                        /* NO KILL TOWERS */
+
+    W8(SW_PH_TIM, 0);
+
+    sw_doxmt(m, SW_IDP4TH);                 /* BATTLE MUSIC IN FOURTHS */
+
+    W8(SW_PHASE, R8(SW_PHASE) + 1);
+}
+
+/* PHEGD: DO GROUND FLYING */
+static void phegd(sw_machine *m)
+{
+    vewgd(m);
+
+    if (R8(SW_S_GAS) & 0x80) {              /* EXIT WHEN DEAD */
+        phig0d(m);
+        return;
+    }
+
+    sw_mvgun(m);
+    sw_do1glw(m);
+    sw_do1gas(m);
+    sw_doxpld(m);
+
+    /* TWIRL THE SHIP THRU GROUND FLYING */
+    vgtosite(m);                            /* PULL IN SITE COORDS FROM IRQ RHEOSTATS */
+    sw_s1twgd(m);
+    is1uv(m, SW_MSS1BC);
+    s1mvgd(m);
+
+    uint16_t d = (uint16_t)(R16(SW_M_S1 + M_VX) + 1);
+    if (d <= 0x400) W16(SW_M_S1 + M_VX, d);
+
+    if ((R8(SW_FRAME + 1) & 0x0f) == 0) {
+        if (R8(SW_PH_TIM) == 14)
+            sw_doxmt(m, SW_IDPREB);         /* FINISH GROUND WITH REBEL */
+        W8(SW_PH_TIM, R8(SW_PH_TIM) + 1);   /* ONE MORE PSUEDO-SECOND */
+    }
+
+    if (R8(SW_GD_SEQ) >= 5) {               /* ONLY GO SO FAR INTO GROUND SEQUENCES */
+        W8(SW_Q_KTW, 0x01);                 /* CLEAR TOWERS FROM GROUND */
+        if (R8(SW_M_S1 + M_TX) < 0x80)      /* SEQUENCE RUNS 80 TO 80: ?ONE FULL PASS INTO BLANKED SECTION 5? */
+            W8(SW_PHASE, SW_PHSG0B);        /* BASE TRENCH FOLLOWS GROUND TOWERS */
+    }
+}
+
+static void pheg0b(sw_machine *m)
+{
+    vewgnb(m, 0);
+
+    sw_do1glw(m);
+    sw_do1gas(m);
+    sw_doxpld(m);
+    smvg0b(m);
+
+    uint16_t d = (uint16_t)(R16(SW_PH_TIM) + 1);
+    W16(SW_PH_TIM, d);
+    if (d >= 17) W8(SW_PHASE, SW_PHSG1B);   /* 34. COUNTS FOR 360 TURNOVER, DO HALF HERE */
+}
+
+static void pheg1b(sw_machine *m)
+{
+    vewgnb(m, 1);
+
+    sw_do1glw(m);
+    sw_do1gas(m);
+    sw_doxpld(m);
+    smvg1b(m);
+
+    uint16_t d = (uint16_t)(R16(SW_PH_TIM) + 1);
+    W16(SW_PH_TIM, d);
+    if (d < 17) return;                     /* ?TIME TO GOTO BASE? */
+
+    uint16_t x = R16(SW_M_S1 + M_TX);       /* SAVE OUR LOCATION */
+    uint16_t u = R16(SW_M_S1 + M_TY);
+    d = R16(SW_M_S1 + M_TZ);
+    iparm(m);                               /* INIT ALL PARMS */
+    W16(SW_M_S1 + M_TX, x);                 /* RESTORE OUR LOCATION */
+    W16(SW_M_S1 + M_TY, u);
+    W16(SW_M_S1 + M_TZ, d);
+
+    W8(SW_Q_FRC, 0);                        /* ALLOWED TO USE THE FORCE (MAKING SURE) */
+    W8(SW_PHASE, SW_PHSBS);
+}
+
+static void phig1b(sw_machine *m)
+{
+    W16(SW_M_S1 + M_TX, 0);
+    W16(SW_M_S1 + M_TY, 0);                 /* GET US AT START OF TRENCH */
+    W16(SW_PH_TIM, 0);                      /* TIMER */
+
+    smvg1b(m);                              /* ROLL AGAIN TO SKIP JERK */
+    sw_nwbase(m);
+
+    W8(SW_PHASE, R8(SW_PHASE) + 1);
+    pheg1b(m);
+}
+
 /* --- the Death Star explodes, the next wave ------------------------------------------- */
 
 /* VEWDX1: DETH STAR PARTIAL PHASE 1 */
@@ -1535,6 +1838,13 @@ static void run_phase(sw_machine *m)
     case SW_PHSB0B + 1: W8(SW_PHASE, SW_PHSBS); break;  /* PHEB0B */
     case SW_PHSB0D:     phib0d(m); break;
     case SW_PHSB0D + 1: if (!m->original_call) goto unported; pheb0d(m); break;
+    case SW_PHSGD:      if (!m->original_call) goto unported; phigd(m); break;
+    case SW_PHSGD + 1:  if (!m->original_call) goto unported; phegd(m); break;
+    case SW_PHSG0B + 1: pheg0b(m); break;
+    case SW_PHSG1B:     phig1b(m); break;
+    case SW_PHSG1B + 1: pheg1b(m); break;
+    case SW_PHSG0D:     phig0d(m); break;
+    case SW_PHSG0D + 1: if (!m->original_call) goto unported; pheg0d(m); break;
     case SW_PHSDX1:     phidx1(m); break;
     case SW_PHSDX1 + 1: if (!m->original_call) goto unported; phedx1(m); break;
     case SW_PHSDX2:     phidx2(m); break;

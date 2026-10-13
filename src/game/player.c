@@ -234,6 +234,56 @@ void sw_stwsp2(sw_machine *m)
     s1rhyw(m);
 }
 
+/* The end of S1TWGD and UNTWGD: roll from the ACTUAL ROLL AMOUNT towards
+ * D, at most so much in a frame, in whole steps out of the residue. */
+static void roll_towards(sw_machine *m, uint16_t d, int16_t most)
+{
+    int32_t t = (int16_t)d - (int16_t)R16(SW_GD_ACT);   /* COMPARE WITH ACTUAL ROLL AMOUNT */
+    d = (uint16_t)t;
+    if (t > 0) {                            /* ?ROLL PLUS? */
+        if ((int16_t)d > most) d = (uint16_t)most;      /* LIMIT PLUS ROLL */
+    } else {
+        if ((int16_t)d < -most) d = (uint16_t)-most;    /* LIMIT MINUS ROLL */
+    }
+    uint8_t b = (uint8_t)d;
+    W8(SW_RHEOR + RH_RSD, b + R8(SW_RHEOR + RH_RSD));   /* TICS TO ROLL */
+    W16(SW_GD_ACT, (uint16_t)(int16_t)(int8_t)b + R16(SW_GD_ACT));  /* AND KEEP TRACK OF ACTUAL ROLL */
+
+    if (rhrsdu(m, SW_RHEOR)) sw_s1rl(m);    /* ?HAVE SOME ROLLING TO DO? */
+}
+
+/* UNTWGD: D;= NEG(GD.ACT) FOR FAST UNROLL */
+void sw_untwgd(sw_machine *m, uint16_t d)
+{
+    roll_towards(m, d, 50);                 /* 127.(BYTE MAX)-77.(RESIDU MOST)=50.(MAX INCREASE ALLOWED) */
+}
+
+/* S1TWGD: TWIRL THE GROUND FLYER: he banks with the yoke, and when hit */
+void sw_s1twgd(sw_machine *m)
+{
+    uint8_t a = R8(SW_S_ROL);
+    if (a != 0) {                           /* ?TIME TO ROLL PLAYER? */
+        if ((int8_t)a > 0) a--;             /* GO TOWARDS ZERO */
+        else a++;
+        W8(SW_S_ROL, a);
+    }
+
+    a = R8(SW_S_ROL);
+    if (a & 0x80) a = (uint8_t)-a;          /* ABS FOR MULTIPLIER */
+    uint16_t d = (uint16_t)(a * 32);        /* 15 PER DEGREE PER COUNT */
+    if (R8(SW_S_ROL) & 0x80) d = (uint16_t)(0 - d);     /* RESTORE SIGN */
+    W16(SW_GD_ROL, d);                      /* AMOUNT OF OFFSET TO ROLL */
+
+    a = R8(SW_SI_RSX);                      /* NOW ROLL CUZ OF PLAYER AIM */
+    if (a & 0x80) a = (uint8_t)~a;
+    /* MAX COUNT OF 5*128=45 DEGREES(78 PER 5 DEGREES) */
+    d = (uint16_t)(a * 2);
+    if (R8(SW_SI_RSX) & 0x80) d = (uint16_t)(0 - d);    /* RESTORE SIGN */
+    d = (uint16_t)(d + R16(SW_GD_ROL));
+    /* ?NO FANCY COLLISION ROLL?THEN GO SLOW; ELSE IS FANCY ROLL */
+    roll_towards(m, d, R8(SW_S_ROL) == 0 ? 0x10 : 50);
+}
+
 /* SMVSP1, SMVSP2, SMVNXT, S1MV: PLAYER 1 MOVE */
 void sw_smvsp1(sw_machine *m)
 {

@@ -160,6 +160,8 @@ void sw_vwdthb(sw_machine *m);
 /* WSMAIN.MAC, MOVE THE PLAYER (game/player.c) */
 void sw_stwsp1(sw_machine *m);
 void sw_stwsp2(sw_machine *m);
+void sw_s1twgd(sw_machine *m);
+void sw_untwgd(sw_machine *m, uint16_t d);
 void sw_smvsp1(sw_machine *m);
 void sw_residu(sw_machine *m);
 
