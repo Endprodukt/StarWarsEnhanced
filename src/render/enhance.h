@@ -43,6 +43,8 @@ typedef struct sw_enhance {
     float    star[96][3];                       /* directions */
     uint8_t  star_lum[96];
     float    tie[64][3];                        /* the TIE fighter's points, from the ROM */
+    uint8_t  tie_line[160][2];                  /* and its lines */
+    int      tie_lines;
     int      tie_ready;
 } sw_enhance;
 

@@ -251,15 +251,16 @@ static void surface(sw_enhance *e)
 
 /* --- towers and bunkers ---------------------------------------------------------------- */
 
-/* A block of a building: square, a half-width of h0 at the height z0 and
- * of h1 at z1 (the shape's own units, as the points of the ROM's tower),
- * around the place c (V). What of it is drawn: its upright edges, the ring
+/* A block of a building: square, a corner towards the player as the ROM's
+ * tower has an edge there, its corners h0 from the middle at the height z0
+ * and h1 at z1 (the shape's own units, as the points of the ROM's tower:
+ * seen from ahead it is exactly as wide), around the place c (V). What of it is drawn: its upright edges, the ring
  * at its foot, the ring at its top, seams across its sides. */
 enum { B_FOOT = 1, B_TOP = 2, B_SEAMS = 4, B_PLATES = 8 };
 
 static void block(sw_enhance *e, vec c, double h0, double z0, double h1, double z1, unsigned color, float lum, unsigned what)
 {
-    static const int sx[4] = { -1, 1, 1, -1 }, sy[4] = { -1, -1, 1, 1 };
+    static const int sx[4] = { -1, 0, 1, 0 }, sy[4] = { 0, -1, 0, 1 };
     vec lo[4], hi[4];
     for (int i = 0; i < 4; i++) {
         lo[i] = add(c, turn(e, vec3(sx[i] * h0, sy[i] * h0, z0)));
@@ -298,8 +299,8 @@ static void turret(sw_enhance *e, vec c, double z, double h, unsigned color, flo
     block(e, c, h, z, h, z + 720.0, color, lum, B_FOOT | B_TOP);
     if (!detail) return;
     for (int s = -1; s <= 1; s += 2) {
-        vec a = add(c, turn(e, vec3(-h, s * h * 0.4, z + 420.0)));
-        vec b = add(c, turn(e, vec3(-h - 760.0, s * h * 0.4, z + 520.0)));
+        vec a = add(c, turn(e, vec3(-h * 0.6, s * h * 0.4, z + 420.0)));
+        vec b = add(c, turn(e, vec3(-h * 0.6 - 420.0, s * h * 0.4, z + 480.0)));
         line(e, a, b, color, lum, SW_TAG_OBJECT);
     }
 }
@@ -335,20 +336,24 @@ static void towers(sw_enhance *e, const sw_machine *m)
             float lum = (90.0f + 150.0f * (float)(1.0 - c.x / FAR)) * fade;
             int close = c.x < 9000.0, mid = c.x < 17000.0;
             if (++e->inst == 0) e->inst = 0x8000;
+            /* The sizes are the arcade machine's, to the unit (the player
+             * flies between and over them): a bunker 960 at its foot, 720
+             * at its top, 720 high; a tower 960, 720, 600 and 480 at the
+             * heights of its points, its hat 480 and 720 high. */
             if (pc == PC_BNK) {
-                block(e, c, 960.0, -3840.0, 760.0, -3240.0, RED, lum, B_FOOT | B_TOP | (close ? B_SEAMS : 0));
-                block(e, c, 520.0, -3240.0, 440.0, -2880.0, RED, lum, B_TOP);
-                if (close) turret(e, c, -2880.0, 260.0, RED, lum, 1);
+                block(e, c, 960.0, -3840.0, 720.0, -3120.0, RED, lum, B_FOOT | B_TOP | (close ? B_SEAMS | B_PLATES : 0));
+                if (mid) block(e, c, 430.0, -3120.0, 430.0, -3120.0, RED, lum * 0.7f, B_TOP);     /* a hatch on its roof */
                 continue;
             }
             int hat = !(state & TYP_DM) && (state & TYP_BK);
             if (!mid) {
                 /* far off: its outline */
-                block(e, c, 960.0, -3840.0, 400.0, 6000.0, YLW, lum, B_FOOT | B_TOP);
+                block(e, c, 960.0, -3840.0, 480.0, 6000.0, YLW, lum, B_FOOT | B_TOP);
             } else {
-                block(e, c, 960.0, -3840.0, 700.0, -1700.0, YLW, lum, B_FOOT | B_TOP | (close ? B_SEAMS | B_PLATES : 0));
-                block(e, c, 610.0, -1700.0, 500.0, 1700.0, YLW, lum, B_TOP | (close ? B_SEAMS | B_PLATES : 0));
-                block(e, c, 420.0, 1700.0, 380.0, 6000.0, YLW, lum, B_TOP | (close ? B_SEAMS : 0));
+                /* three steps, each set in a little from the one below */
+                block(e, c, 960.0, -3840.0, 720.0, -3120.0, YLW, lum, B_FOOT | B_TOP | (close ? B_SEAMS : 0));
+                block(e, c, 670.0, -3120.0, 600.0, -1440.0, YLW, lum, B_TOP | (close ? B_SEAMS | B_PLATES : 0));
+                block(e, c, 550.0, -1440.0, 480.0, 6000.0, YLW, lum, B_TOP | (close ? B_SEAMS | B_PLATES : 0));
             }
             if (hat) turret(e, c, 6000.0, 480.0, WHT, lum + 40.0f, mid);
         }
@@ -357,22 +362,15 @@ static void towers(sw_enhance *e, const sw_machine *m)
 
 /* --- far off, a chase ------------------------------------------------------------------- */
 
-/* An X-wing, as far as lines go: nose to +x. */
+/* An X-wing, as far as lines go: nose to +x. (The ROM has none: the
+ * player's own ship is never seen from outside. The TIE fighters are the
+ * ROM's.) */
 static const float XWING[][2][3] = {
     { { 330, 0, 0 }, { -210, 0, 45 } }, { { 330, 0, 0 }, { -210, 0, -45 } }, { { -210, 0, 45 }, { -210, 0, -45 } },
     { { -110, 30, 20 }, { -170, 250, 110 } }, { { -110, -30, 20 }, { -170, -250, 110 } },
     { { -110, 30, -20 }, { -170, 250, -110 } }, { { -110, -30, -20 }, { -170, -250, -110 } },
     { { -170, 250, 110 }, { 90, 250, 110 } }, { { -170, -250, 110 }, { 90, -250, 110 } },
     { { -170, 250, -110 }, { 90, 250, -110 } }, { { -170, -250, -110 }, { 90, -250, -110 } },
-};
-
-/* The TIE fighter of the ROM, of its lines the two wings and the ring of
- * the cabin (its points by number). */
-static const uint8_t TIE[][2] = {
-    { 1, 2 }, { 2, 3 }, { 3, 4 }, { 4, 5 }, { 5, 6 }, { 6, 1 },
-    { 13, 14 }, { 14, 15 }, { 15, 16 }, { 16, 17 }, { 17, 18 }, { 18, 13 },
-    { 37, 38 }, { 38, 39 }, { 39, 41 }, { 41, 42 }, { 42, 43 }, { 43, 44 }, { 44, 37 },
-    { 9, 21 }, { 12, 24 },
 };
 
 /* Where a ship of the chase is at the time t of its run (0 to 1), from
@@ -399,19 +397,20 @@ static void ship(sw_enhance *e, vec at, vec ahead, int tie, float lum)
     l.x /= n; l.y /= n;
     /* banked into its turn a little */
     vec u = vec3(f.y * l.z - f.z * l.y, f.z * l.x - f.x * l.z, f.x * l.y - f.y * l.x);
-    const double SIZE = 3.0;                    /* (far off, and still to be made out) */
-    int lines = tie ? (int)(sizeof TIE / sizeof TIE[0]) : (int)(sizeof XWING / sizeof XWING[0]);
+    const double SIZE = 1.6;                    /* (far off, small, and still to be made out) */
+    int lines = tie ? e->tie_lines : (int)(sizeof XWING / sizeof XWING[0]);
     for (int i = 0; i < lines; i++) {
         vec p[2];
         for (int k = 0; k < 2; k++) {
-            const float *q = tie ? e->tie[TIE[i][k] & 63] : XWING[i][k];
+            const float *q = tie ? e->tie[e->tie_line[i][k] & 63] : XWING[i][k];
             /* (the TIE fighter's shape looks along its x too, its wings to both sides) */
             double qx = q[0] * SIZE, qy = q[1] * SIZE, qz = q[2] * SIZE;
             vec w = vec3(at.x + f.x * qx + l.x * qy + u.x * qz, at.y + f.y * qx + l.y * qy + u.y * qz,
                          at.z + f.z * qx + l.z * qy + u.z * qz);
             p[k] = turn(e, w);
         }
-        line(e, p[0], p[1], tie ? GRN : WHT, lum, SW_TAG_OBJECT);
+        /* (the TIE fighter's many lines lie close together this small: dimmer) */
+        line(e, p[0], p[1], tie ? GRN : WHT, tie ? lum * 0.55f : lum, SW_TAG_OBJECT);
     }
 }
 
@@ -423,7 +422,7 @@ static void dogfights(sw_enhance *e, double now)
     if (t >= 1.0) return;
     uint32_t h = hash((uint32_t)pass + 77u);
     double dir = (h & 0x100) ? 1.0 : -1.0;
-    double far = 17000.0 + (double)((h >> 9) & 3) * 2500.0;
+    double far = 21000.0 + (double)((h >> 9) & 3) * 2500.0;
     int chasers = 1 + (int)((h >> 12) & 1);     /* two ships, or three */
     float lum = 150.0f;
     if (t < 0.08) lum *= (float)(t / 0.08);
@@ -434,8 +433,8 @@ static void dogfights(sw_enhance *e, double now)
     for (int k = 1; k <= chasers; k++) {
         double tk = t - 0.055 * k;
         vec p = chase_place(tk, dir, far, h), p1 = chase_place(tk + 0.004, dir, far, h);
-        p.z += (k == 2 ? 1300.0 : -500.0);
-        p.x += (k == 2 ? 1600.0 : 0.0);
+        p.z += (k == 2 ? 900.0 : -400.0);
+        p.x += (k == 2 ? 1200.0 : 0.0);
         ship(e, p, vec3(p1.x - p.x, p1.y - p.y, p1.z - p.z), 1, lum);
         /* its cannons: a bolt on its way to the X-wing, now and then */
         double shot = fmod(now * 1.7 + k * 0.37, 1.0);
@@ -473,7 +472,13 @@ void sw_enhance_init(sw_enhance *e, const sw_machine *m)
             /* (the ROM's TIE fighter has its wings at y = -208 and 208 and looks along x) */
             e->tie[i][0] = pts[i][0]; e->tie[i][1] = pts[i][1]; e->tie[i][2] = pts[i][2];
         }
-        e->tie_ready = np >= 45;
+        /* the TIE fighter as the ROM has it, every line */
+        e->tie_lines = ne < 160 ? ne : 160;
+        for (int i = 0; i < e->tie_lines; i++) {
+            e->tie_line[i][0] = edges[i][0];
+            e->tie_line[i][1] = edges[i][1];
+        }
+        e->tie_ready = np >= 45 && ne > 0;
     }
 }
 

@@ -115,12 +115,19 @@ Soundplatine, die Zeit des Vektorgenerators.
   * `enh_towers`: Türme und Bunker in echter Perspektive statt zum Fuß hin
     geschrumpft (am Automaten wachsen sie deshalb beim Näherkommen aus dem
     Boden), aus doppelter Entfernung sichtbar und eingeblendet, mit Stufen,
-    Nähten, Geschützturm und Rohren (Vorlage: Foto eines Turmmodells). Die
-    Türme des Spiels werden dafür aus dem Bild genommen. Einzige Änderung am
+    Nähten, Geschützturm und Rohren (Vorlage: Foto eines Turmmodells). Ihre
+    Maße sind auf die Einheit die des Automaten (Vorgabe des Besitzers: man
+    muss weiter zwischen ihnen durchpassen): Turm 960, 720, 600, 480 an den
+    Höhen seiner ROM-Punkte, Hut 480 und 720 hoch, Bunker 960 auf 720 und
+    720 hoch; von vorn gesehen genau so breit. Die Türme des Spiels werden
+    dafür aus dem Bild genommen. Einzige Änderung am
     Spiel: Mit `sw_machine.enh_towers` trifft der Laser die Türme so, wie
     sie gezeichnet sind (`grlzcl` ohne den Abzug für den linearen Maßstab).
-  * `enh_dogfights`: in der Ferne jagen TIE Fighter einen X-Wing über den
-    Himmel, alle 13 Sekunden, mal zwei Schiffe, mal drei.
+  * `enh_dogfights`: klein in der Ferne jagen TIE Fighter einen X-Wing
+    über den Himmel, alle 13 Sekunden, mal zwei Schiffe, mal drei. Der TIE
+    Fighter ist das Modell des ROMs, Linie für Linie. Einen X-Wing hat das
+    ROM nicht (das eigene Schiff sieht man nie von außen): er ist aus elf
+    Linien selbst gezeichnet.
   Alles wird aus dem Zustand des Spiels gezeichnet (Ort und Lage des
   Spielers, Karte der Gebäude und ihr Zustand) mit der Perspektive des
   Spiels; die Rechnung stimmt mit der Math Box auf den Punkt überein
