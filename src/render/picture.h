@@ -9,8 +9,12 @@
  *      ahead
  *   1, 2  the lines of the last pictures shown, moved (render/smooth.h)
  *   0  the last picture as it is
- * adds what the port adds to the game's pictures (render/enhance.h) and
- * cuts away what is behind something else, if asked to (render/solid.h).
+ * adds what the port adds to the game's pictures (render/enhance.h), cuts
+ * away what is behind something else, if asked to (render/solid.h), and
+ * puts the stars last: they stand anywhere, so the beam's dark jump to
+ * one is long and from a different place every picture, and the line the
+ * game draws right after them (the top of the logo's T) wobbled on the
+ * tube with the jump. Dots do not mind where the beam comes from.
  */
 #ifndef SWVP_PICTURE_H
 #define SWVP_PICTURE_H
@@ -42,6 +46,8 @@ typedef struct sw_picture {
     sw_machine  next;                       /* the game as it is in the next frame's picture (computed ahead) */
     int         occlusion;                  /* 1: what is behind something is not drawn (render/solid.h) */
     sw_solid    solid;
+    sw_line    *order;                      /* the picture with its stars last (sw_picture_lines) */
+    int         order_cap;
     sw_enhance  enhance;                    /* what the port adds to the picture (its settings are set by the caller) */
     uint8_t     subspace[SW_AVG_SPACE_SIZE];
 } sw_picture;
