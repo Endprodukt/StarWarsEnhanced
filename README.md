@@ -167,7 +167,7 @@ ersetzen (PNG; Größe nach `advmame.rc`, `vector_aux_marquee_display_mode`).
 | `yoke_center_x`, `yoke_center_y`, `yoke_center_known` | die gelernte Ruhelage des Jochs; schreibt das Programm selbst |
 | `logo_yellow` | Enhanced. `1` (Standard): der STAR-WARS-Schriftzug im Attract-Modus ist gelb. `0`: blau wie am Automaten |
 | `occlusion` | Enhanced. `1` (Standard): Dinge sind massiv, was hinter einem Schiff, einem Turm, dem Schriftzug oder den eigenen Kanonen liegt, wird nicht gezeichnet. `0`: durchsichtige Drahtmodelle wie am Automaten |
-| `enh_surface` | Enhanced, über der Oberfläche. `1` (Standard): der Boden wird als Plattenmuster des Todessterns gezeichnet |
+| `enh_surface` | Enhanced, über der Oberfläche. `1` (Standard): der Boden nah um den Spieler als Plattenmuster des Todessterns (bis 7000 voraus) |
 | `enh_stars` | Enhanced. `1` (Standard): ein paar funkelnde Sterne über der Oberfläche und viele über dem Graben, im Streifen zwischen den Oberkanten der Wände |
 | `enh_towers` | Enhanced. `1` (Standard): Türme und Bunker detaillierter, in Größe und Abstand wie am Automaten (dessen Linearmaßstab mit der Entfernung eingeschlossen), aber schon von 6000h statt 3C00h voraus sichtbar, dort klein und dunkel, zur Nähe hin heller; Treffer wie am Automaten. `0`: die Türme des Automaten, die beim Näherkommen aus dem Boden wachsen |
 | `enh_dogfights` | Enhanced. `1` (Standard): in der Ferne jagen TIE Fighter einen X-Wing über den Himmel |

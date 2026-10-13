@@ -329,6 +329,27 @@ wiederholt sich alle 8000h, jedes Gebäude wird auf dieser und der nächsten
 Runde betrachtet. Standbilder: am Start der Oberfläche nichts neben dem
 Spieler, am Horizont die kleinen dunklen Türme.
 
+## Türme genau wie das Original, ohne "Gemüse" (2026-10-13)
+
+Der Besitzer will die Türme genau so groß und so weit auseinander wie im
+Original, aber nicht aus dem Boden wachsend, und keine Option dafür. Eine
+Einstellung mit drei Stärken des Maßstabs (Commit 096c3c5) ist deshalb
+wieder zurückgenommen (80b88fd).
+
+Befund: Größe und Abstand des Originals sind sein linearer Maßstab um den
+Fuß (1 - XP/4000h, `M.GDSC`), und genau der ist das Wachsen: Der Fuß steht
+am wahren Ort, die Spitze steigt schneller als die Perspektive. Beides
+zugleich geht geometrisch nicht; eine Verzerrung der ganzen Szene in der
+Tiefe, die Boden und Türme konsistent machte, ließe den Boden zu einem Punkt
+statt zu einer Horizontlinie zusammenlaufen und schöbe die seitlichen Türme
+zur Mitte (verworfen). Im Original fällt das Wachsen nicht auf, weil kein
+Boden als Bezug da ist. Also: Türme exakt wie das Original (Maßstab, Fuß,
+Trefferprüfung 100h), und das Plattenmuster liegt nur noch nah um den
+Spieler (voll bis 3500, aus bei 7000 voraus; vorher bis 26000). Ferne Türme
+stehen damit auf dunklem Boden wie am Automaten und wachsen ohne Bezug; wenn
+sie das Plattenmuster erreichen, haben sie 70 bis 80 % ihrer Größe. Am
+Gerät nicht gesehen.
+
 ## Free Play (2026-10-13)
 
 Der Besitzer wünschte sich ein Spiel ohne Münzen. Das hat das Original

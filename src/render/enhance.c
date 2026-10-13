@@ -212,9 +212,15 @@ static void ground_line(sw_enhance *e, double ax, double ay, double bx, double b
         double k0 = (double)i / pieces, k1 = (double)(i + 1) / pieces;
         vec p0 = vec3((ax + (bx - ax) * k0) / 2.0, (ay + (by - ay) * k0 - e->t[1]) / 2.0, -e->t[2] / 2.0);
         vec p1 = vec3((ax + (bx - ax) * k1) / 2.0, (ay + (by - ay) * k1 - e->t[1]) / 2.0, -e->t[2] / 2.0);
+        /* The plating lies near the player only, fading out by 7000: the
+         * towers are sized as the arcade machine sizes them (a linear
+         * scale with the distance, about the foot), so against a ground
+         * drawn out to the horizon a far one would visibly grow out of it
+         * as it came. On dark ground it does not show. */
         double far = (p0.x + p1.x) * 0.5;
-        float fade = (float)(1.0 - far / 26000.0);
+        float fade = (float)((7000.0 - far) / 3500.0);
         if (fade <= 0.0f) continue;
+        if (fade > 1.0f) fade = 1.0f;
         line(e, turn(e, p0), turn(e, p1), GRN, lum * fade * fade * e->plate, SW_TAG_TRENCH);
     }
 }
