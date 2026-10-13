@@ -5,8 +5,8 @@
  * pulls from the board's ring (sound/sndboard.h). With no sound device the
  * game runs silent.
  */
-#ifndef SWVP_AUDIO_H
-#define SWVP_AUDIO_H
+#ifndef SWE_AUDIO_H
+#define SWE_AUDIO_H
 
 #include "sound/sndboard.h"
 

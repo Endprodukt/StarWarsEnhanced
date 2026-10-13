@@ -1,4 +1,4 @@
-/* starwarsvp - Star Wars (Atari, 1983), native, for VectorPie.
+/* swenhanced - Star Wars (Atari, 1983), native, for VectorPie.
  *
  * At this stage: finds and checks the ROM set, runs the original's clocks
  * with the native interrupt (coins, switches, yoke and sight) and the
@@ -9,7 +9,7 @@
  *
  * The self-test button opens the port's own test menu (platform/menu.h).
  *
- *   starwarsvp [--calibrate | --controls] [--roms PATH] [--config INI] [--hz N]
+ *   swenhanced [--calibrate | --controls] [--roms PATH] [--config INI] [--hz N]
  *              [--dvg [PORT] | --window | --windowed]
  */
 #include "avg/avg.h"
@@ -268,7 +268,7 @@ static void draw_controls_test(sw_app *app, const sw_display_cfg *cfg, board *b,
     char l1[64], l2[64];
     snprintf(l1, sizeof l1, "CREDITS %u", RAM8(&b->m, SW_SSCRDT));
     snprintf(l2, sizeof l2, "PITCH %02X  YAW %02X", RAM8(&b->m, SW_PT_VL2), RAM8(&b->m, SW_PT_VL1));
-    const char *text[] = { "STAR WARS VP  CONTROLS TEST",
+    const char *text[] = { "STAR WARS ENHANCED  CONTROLS TEST",
                            mbox_ok ? "ROMS OK  MATH BOX OK" : "ROMS OK  MATH BOX DIFFERS", l1, l2 };
     draw_text_lines(app->dvg, text, 4, 3700);
 }
@@ -328,7 +328,7 @@ static void nvram_save(const sw_machine *m)
     nvram_path(path, sizeof path);
     FILE *f = fopen(path, "wb");
     if (!f) {
-        fprintf(stderr, "starwarsvp: cannot write %s\n", path);
+        fprintf(stderr, "swenhanced: cannot write %s\n", path);
         return;
     }
     fwrite(m->nvstore, 1, sizeof m->nvstore, f);
@@ -347,8 +347,8 @@ int main(int argc, char **argv)
         snprintf(cfg_path, sizeof cfg_path, "%s", arg);
     } else {
         /* Package defaults, then the cabinet's own tuning in save/. */
-        sw_display_cfg_load(&cfg, vp_asset_path("starwarsvp.ini", buf, sizeof buf));
-        snprintf(cfg_path, sizeof cfg_path, "%s/starwarsvp.ini", vp_save_dir());
+        sw_display_cfg_load(&cfg, vp_asset_path("swenhanced.ini", buf, sizeof buf));
+        snprintf(cfg_path, sizeof cfg_path, "%s/swenhanced.ini", vp_save_dir());
     }
     sw_display_cfg_load(&cfg, cfg_path);
 
@@ -359,19 +359,19 @@ int main(int argc, char **argv)
     char missing[512];
     int mbox_ok = 0;
     if (roms_ok) {
-        printf("starwarsvp: ROM set starwars1 complete\n");
+        printf("swenhanced: ROM set starwars1 complete\n");
         /* The native math box against the cabinet's own micro-code PROMs. */
         static uint16_t prom[1024];
         sw_mbox_join_proms(roms.mbox_prom, prom);
         int bad = sw_mbox_selftest(prom, 50);
         mbox_ok = bad == 0;
-        if (mbox_ok) printf("starwarsvp: math box matches the PROMs\n");
-        else fprintf(stderr, "starwarsvp: math box: %d program(s) differ from the PROMs\n", bad);
+        if (mbox_ok) printf("swenhanced: math box matches the PROMs\n");
+        else fprintf(stderr, "swenhanced: math box: %d program(s) differ from the PROMs\n", bad);
     }
-    else fprintf(stderr, "starwarsvp: ROMs missing: %s\n", sw_romset_missing(&roms, missing, sizeof missing));
+    else fprintf(stderr, "swenhanced: ROMs missing: %s\n", sw_romset_missing(&roms, missing, sizeof missing));
 
     sw_app app;
-    if (sw_app_open(&app, "Star Wars VP", argc, argv, 50.0) != 0) return 1;
+    if (sw_app_open(&app, "Star Wars Enhanced", argc, argv, 50.0) != 0) return 1;
 
     int calibrate = sw_flag(argc, argv, "--calibrate");
     static calib cal;
@@ -406,7 +406,7 @@ int main(int argc, char **argv)
             snprintf(dir, sizeof dir, "%s/sounds", vp_save_dir());
             int replaced = sw_samples_load(&samples, dir, SW_SOUND_RATE);
             replaced += sw_samples_load(&samples, vp_asset_path("sounds", abuf, sizeof abuf), SW_SOUND_RATE);
-            if (replaced) printf("starwarsvp: %d sound(s) replaced by recordings\n", replaced);
+            if (replaced) printf("swenhanced: %d sound(s) replaced by recordings\n", replaced);
             snd.samples = &samples;
             sw_sndboard_reset(&snd);
             brd.snd = &snd;
@@ -434,7 +434,7 @@ int main(int argc, char **argv)
         brd.ctl.centered = 1;
     }
     if (roms_ok && sw_splash_verify(&brd.m) != 0)
-        fprintf(stderr, "starwarsvp: the splash table differs from the ROM\n");
+        fprintf(stderr, "swenhanced: the splash table differs from the ROM\n");
     sw_sched_hooks hooks = { on_irq, on_vg, on_game, &brd };
 
     int status = 0;
@@ -451,7 +451,7 @@ int main(int argc, char **argv)
             cfg.yoke_center_known = 1;
             cfg.yoke_center_x = brd.ctl.center_x;
             cfg.yoke_center_y = brd.ctl.center_y;
-            if (sw_display_cfg_save(&cfg, cfg_path) != 0) fprintf(stderr, "starwarsvp: cannot write %s\n", cfg_path);
+            if (sw_display_cfg_save(&cfg, cfg_path) != 0) fprintf(stderr, "swenhanced: cannot write %s\n", cfg_path);
         }
         /* The self-test button: out of where it led (the arcade program's
          * operator screens, the calibration), else the menu open or shut. */
@@ -498,8 +498,8 @@ int main(int argc, char **argv)
         }
         if (menu_left) {
             menu.open = 0;
-            if (sw_display_cfg_save(&cfg, cfg_path) == 0) printf("starwarsvp: saved %s\n", cfg_path);
-            else fprintf(stderr, "starwarsvp: cannot write %s\n", cfg_path);
+            if (sw_display_cfg_save(&cfg, cfg_path) == 0) printf("swenhanced: saved %s\n", cfg_path);
+            else fprintf(stderr, "swenhanced: cannot write %s\n", cfg_path);
         }
         if (menu.open) {
             /* the game stands still; the sound board goes on, for the sound test */
@@ -528,14 +528,14 @@ int main(int argc, char **argv)
         sw_app_begin_frame(&app);
 
         if (!roms_ok) {
-            const char *text[] = { "STAR WARS VP", "ROMS NOT FOUND", "NEEDED: MAME SET STARWARS1",
+            const char *text[] = { "STAR WARS ENHANCED", "ROMS NOT FOUND", "NEEDED: MAME SET STARWARS1",
                                    "STARWARS1.ZIP AND STARWARS.ZIP", "IN THE ROM FOLDER OR --ROMS" };
             draw_text_lines(app.dvg, text, 5, 2600);
         } else if (calibrate || menu_calibrate) {
             calib_adjust(&cal, &cfg, app.in);
             if (calibrate && vp_input_pressed(app.in, "p1_button2")) {
-                if (sw_display_cfg_save(&cfg, cfg_path) == 0) printf("starwarsvp: saved %s\n", cfg_path);
-                else fprintf(stderr, "starwarsvp: cannot write %s\n", cfg_path);
+                if (sw_display_cfg_save(&cfg, cfg_path) == 0) printf("swenhanced: saved %s\n", cfg_path);
+                else fprintf(stderr, "swenhanced: cannot write %s\n", cfg_path);
             }
             build_pattern(&cal, &cfg);
             sw_draw_lines(app.dvg, &cfg, cal.lines, cal.count);

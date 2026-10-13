@@ -202,7 +202,7 @@ void sw_menu_draw(const sw_menu *u, const sw_display_cfg *cfg, const sw_machine 
     const float STEP = 190.0f, GAP = 120.0f;
     vp_text_font(VP_FONT_ASTEROIDS);
     vp_color(d, 200, 200, 60);
-    vp_text(d, page == P_MAIN ? "STAR WARS VP  TEST MENU" : PAGES[page].title, 2048, 3650, 110, VP_TEXT_CENTER);
+    vp_text(d, page == P_MAIN ? "STAR WARS ENHANCED  TEST MENU" : PAGES[page].title, 2048, 3650, 90, VP_TEXT_CENTER);
 
     /* the lines, from the top, the gaps where the page has them; the
      * block centred on the screen */

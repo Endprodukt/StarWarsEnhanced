@@ -1,6 +1,6 @@
 /* dvgmap.h - AVG lines onto the VectorPie device layer. */
-#ifndef SWVP_DVGMAP_H
-#define SWVP_DVGMAP_H
+#ifndef SWE_DVGMAP_H
+#define SWE_DVGMAP_H
 
 #include "avg/avg.h"
 #include "render/config.h"

@@ -1,4 +1,4 @@
-# Star Wars VP – Architektur und Plan
+# Star Wars Enhanced – Architektur und Plan
 
 Ziel: Gameplay möglichst identisch zum Automaten von 1983, deutlich flüssigere
 Darstellung auf einem Raspberry Pi 5 mit USB-DVG und Wells-Gardner 6100,
@@ -70,12 +70,12 @@ Damit es vorher schon vollständig und unverändert läuft, gibt es zwei Wege
 nebeneinander:
 
 1. **Das Originalprogramm auf einem 6809-Kern** (`src/cpu/m6809.c`,
-   `src/core/emu.c`), der Standard von `starwarsvp`. Es läuft gegen die
+   `src/core/emu.c`), der Standard von `swenhanced`. Es läuft gegen die
    native Maschine (`sw_machine`: RAM, Math Box, Dividierer, NOVRAM,
    Schalter, Zeit des Vektorgenerators). Das Tempo ergibt sich aus den
    gezählten Zyklen; Math Box und Vektorgenerator brauchen ihre Zeit wie in
    MAME. Die Soundplatine läuft genauso mit (`src/sound`).
-2. **Die von Hand portierten Routinen** (`src/game`, `starwarsvp --native`).
+2. **Die von Hand portierten Routinen** (`src/game`, `swenhanced --native`).
    Sie rechnen Frame für Frame dasselbe und werden mit `swcompare` gegen
    dieselben MAME-Aufnahmen geprüft. Sie sind der Weg zum Remaster: Erst
    wenn eine Phase nativ vorliegt, kann ihr Bild aus dem Spielzustand statt
@@ -207,7 +207,7 @@ Allgemein:
 
 * Bildlage: Das Spiel zeichnet mit `VGSCAL` in Viertelgröße, der Bildrand
   (VGEDG*: ±510 × −612…+600 in Vektorworten) liegt also bei ±127,5 ×
-  −153…+150 AVG-Einheiten. So steht es jetzt in `starwarsvp.ini`; am
+  −153…+150 AVG-Einheiten. So steht es jetzt in `swenhanced.ini`; am
   Automaten füllt das Bild die Röhre. Feinabgleich mit `--calibrate` steht
   aus.
 * Die Skalierung der AVG-Vektoren folgt MAME (lineare Skala `^0xFF`/256,

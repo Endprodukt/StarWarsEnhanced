@@ -18,8 +18,8 @@
  *   speech   one sentence after the other; SPKSKP drops those waiting.
  * Request 00 (the board's reset) silences everything.
  */
-#ifndef SWVP_SAMPLES_H
-#define SWVP_SAMPLES_H
+#ifndef SWE_SAMPLES_H
+#define SWE_SAMPLES_H
 
 #include <stdint.h>
 

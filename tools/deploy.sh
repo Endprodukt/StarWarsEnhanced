@@ -6,9 +6,9 @@
 # Bash, after `cmake --build --preset pi-clang`. Arguments go to the game.
 K="-i $HOME/.ssh/id_ed25519_vectorpie -o ConnectTimeout=8 -o BatchMode=yes"
 H=pi@192.168.0.122
-D=/persistent/games/starwarsvp
+D=/persistent/games/swenhanced
 ssh $K $H "mkdir -p $D/save" || exit 1
-scp -q $K build-pi/starwarsvp $H:$D/starwarsvp.new || exit 1
-scp -q $K build-pi/avgreplay package/game.ini package/starwarsvp.ini package/marquee.png package/run.sh $H:$D/ || exit 1
-ssh $K $H "cd $D && pkill -INT -x starwarsvp; for i in 1 2 3 4 5 6; do pgrep -x starwarsvp > /dev/null || break; sleep 0.5; done; pkill -KILL -x starwarsvp; chmod 755 starwarsvp.new avgreplay run.sh && mv -f starwarsvp.new starwarsvp && md5sum starwarsvp && grep '^version' game.ini && (setsid nohup ./run.sh $* > /dev/null 2>&1 &) ; sleep 6; pgrep -x starwarsvp > /dev/null && echo game-running || echo GAME-NOT-RUNNING; tail -n 5 run.log"
-md5sum build-pi/starwarsvp
+scp -q $K build-pi/swenhanced $H:$D/swenhanced.new || exit 1
+scp -q $K build-pi/avgreplay package/game.ini package/swenhanced.ini package/marquee.png package/run.sh $H:$D/ || exit 1
+ssh $K $H "cd $D && pkill -INT -x swenhanced; for i in 1 2 3 4 5 6; do pgrep -x swenhanced > /dev/null || break; sleep 0.5; done; pkill -KILL -x swenhanced; chmod 755 swenhanced.new avgreplay run.sh && mv -f swenhanced.new swenhanced && md5sum swenhanced && grep '^version' game.ini && (setsid nohup ./run.sh $* > /dev/null 2>&1 &) ; sleep 6; pgrep -x swenhanced > /dev/null && echo game-running || echo GAME-NOT-RUNNING; tail -n 5 run.log"
+md5sum build-pi/swenhanced

@@ -9,7 +9,7 @@
  * the pass they were written in (the speech chip takes its bytes when it
  * is ready, which may be a pass apart).
  *
- * Needs the ROM set: looks in $SWVP_ROMS and the usual folders, and passes
+ * Needs the ROM set: looks in $SWE_ROMS and the usual folders, and passes
  * without testing when there is none. */
 #include "core/machine.h"
 #include "rom/romset.h"
@@ -73,7 +73,7 @@ static void start(side *s, int native)
     s->m.sound_board = 1;
     sw_sndboard_init(&s->snd, &s->m);
     s->snd.native = native;
-    if (getenv("SWVP_LATE")) s->snd.late_cycles = atoi(getenv("SWVP_LATE"));
+    if (getenv("SWE_LATE")) s->snd.late_cycles = atoi(getenv("SWE_LATE"));
     s->snd.trace = trace;
     s->snd.trace_user = s;
     sw_sndboard_reset(&s->snd);
@@ -97,8 +97,8 @@ int main(void)
         while (sw_sndboard_read(&port.snd, pcm, 4096) > 0) { }
     }
 
-    if (getenv("SWVP_SPEECH_FROM")) {       /* for looking into it: the speech bytes from that one on */
-        long from = atol(getenv("SWVP_SPEECH_FROM"));
+    if (getenv("SWE_SPEECH_FROM")) {       /* for looking into it: the speech bytes from that one on */
+        long from = atol(getenv("SWE_SPEECH_FROM"));
         for (long i = from; i < from + 40 && i < orig.log[3].n && i < port.log[3].n; i++)
             printf("speech byte %ld: original %02X in pass %u, in C %02X in pass %u\n", i,
                    orig.log[3].w[i].v, orig.log[3].w[i].pass, port.log[3].w[i].v, port.log[3].w[i].pass);

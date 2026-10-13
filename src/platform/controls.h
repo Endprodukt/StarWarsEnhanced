@@ -8,14 +8,14 @@
  *   right thumb p1_button3              -> IN1 D4
  *   coins       coin1 / coin2           -> IN0 D1 / D0, as a 100 ms pulse
  *   aux coin    p1_button5              -> IN0 D2 (the operator's button: next page in self test)
- *   self test   p1_button6              -> opens Star Wars VP's own test menu (platform/menu.h);
+ *   self test   p1_button6              -> opens Star Wars Enhanced's own test menu (platform/menu.h);
  *                                          from there IN0 D4, the board's self-test switch
  *
  * The same buttons as MAME's Star Wars mapping. Coins are pulses timed in
  * IRQs, because MOOLAH accepts only 16..200 ms of switch closure.
  */
-#ifndef SWVP_CONTROLS_H
-#define SWVP_CONTROLS_H
+#ifndef SWE_CONTROLS_H
+#define SWE_CONTROLS_H
 
 #include "core/machine.h"
 

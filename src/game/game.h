@@ -1,7 +1,7 @@
 /* game.h - the native port of the Star Wars program, routine by routine.
  * Each function names the original routine and file it follows. */
-#ifndef SWVP_GAME_H
-#define SWVP_GAME_H
+#ifndef SWE_GAME_H
+#define SWE_GAME_H
 
 #include "core/machine.h"
 

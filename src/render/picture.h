@@ -16,8 +16,8 @@
  * game draws right after them (the top of the logo's T) wobbled on the
  * tube with the jump. Dots do not mind where the beam comes from.
  */
-#ifndef SWVP_PICTURE_H
-#define SWVP_PICTURE_H
+#ifndef SWE_PICTURE_H
+#define SWE_PICTURE_H
 
 #include "avg/avg.h"
 #include "core/machine.h"

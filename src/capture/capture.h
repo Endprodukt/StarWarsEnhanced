@@ -29,8 +29,8 @@
  *         when it finished the list: how long the 6809 took over it
  * Unknown tags are skipped, so the format can grow.
  */
-#ifndef SWVP_CAPTURE_H
-#define SWVP_CAPTURE_H
+#ifndef SWE_CAPTURE_H
+#define SWE_CAPTURE_H
 
 #include <stdint.h>
 #include <stdio.h>

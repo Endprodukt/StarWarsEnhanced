@@ -1,4 +1,4 @@
-# Star Wars VP
+# Star Wars Enhanced
 
 Star Wars (Atari, 1983) für
 [VectorPie](https://github.com/Goldfinch2/VectorPie): Raspberry Pi 5,
@@ -49,7 +49,7 @@ VectorPie-Automaten liegen. Gesucht wird in:
 
 1. `--roms PFAD`
 2. `dir_rom` aus der `advmame.rc` des Automaten
-3. `$SWVP_ROMS`, `./roms`, `~/.advance/rom`, `~/mame/roms`, `/home/pi/.advance/rom`
+3. `$SWE_ROMS`, `./roms`, `~/.advance/rom`, `~/mame/roms`, `/home/pi/.advance/rom`
 
 Die Dateien werden per CRC erkannt, Namen und Aufteilung auf die zips spielen
 keine Rolle.
@@ -75,7 +75,7 @@ cmake --preset pi-clang && cmake --build --preset pi-clang
 sh tools/deploy.sh        # auf den Automaten kopieren und dort neu starten
 ```
 
-`tools/deploy.sh` legt alles nach `/persistent/games/starwarsvp`, beendet ein
+`tools/deploy.sh` legt alles nach `/persistent/games/swenhanced`, beendet ein
 laufendes Spiel und startet das neue über `run.sh` (hält das Menü an und holt
 es danach zurück). Ausgabe und Bildkosten stehen dort in `run.log`.
 
@@ -93,7 +93,7 @@ Als Paketdatei für einen anderen Automaten oder einen USB-Stick (in WSL,
 nach dem Pi-Build):
 
 ```sh
-sh tools/pack.sh          # -> dist/starwarsvp-<version>.vpk
+sh tools/pack.sh          # -> dist/swenhanced-<version>.vpk
 ```
 
 Eine `.vpk` gehört auf dem Automaten nach `/persistent/games/packages/` (per
@@ -102,7 +102,7 @@ scp oder Netzwerkfreigabe) oder auf einen USB-Stick in dessen Ordner
 GAMES -> INSTALL GAMES; dort steht sie mit NEW, UPDATE, SAME oder OLDER
 gegenüber dem, was installiert ist. Die Version steht in `package/game.ini`:
 vor einem neuen Paket hochzählen, sonst gilt es als SAME. Das Paket enthält
-Programm, `game.ini`, `starwarsvp.ini` und `marquee.png`, nicht die ROMs (die
+Programm, `game.ini`, `swenhanced.ini` und `marquee.png`, nicht die ROMs (die
 sucht das Spiel in `/home/pi/.advance/rom`) und nicht `save/`.
 
 ## Prüfen gegen MAME
@@ -128,12 +128,12 @@ Arbeitszähler pro Frame für das Tempomodell (docs/PLAN.md).
 
 | Programm | Zweck |
 |---|---|
-| `starwarsvp` | das Spiel: Spiel- und Sound-Programm in C, kein 6809 |
-| `starwarsvp --original` | die ganzen Originalprogramme (Spiel und Ton) auf 6809-Kernen, zum Vergleich |
-| `starwarsvp --nosound` | ohne Soundplatine |
-| `starwarsvp --controls` | Testbild für die Steuerung: Fadenkreuz am Joch (mit dem originalen Nachziehen und der Joch-Kalibrierung), Feuer färbt es rot, Münzen zählen Credits |
+| `swenhanced` | das Spiel: Spiel- und Sound-Programm in C, kein 6809 |
+| `swenhanced --original` | die ganzen Originalprogramme (Spiel und Ton) auf 6809-Kernen, zum Vergleich |
+| `swenhanced --nosound` | ohne Soundplatine |
+| `swenhanced --controls` | Testbild für die Steuerung: Fadenkreuz am Joch (mit dem originalen Nachziehen und der Joch-Kalibrierung), Feuer färbt es rot, Münzen zählen Credits |
 | `swcompare AUFNAHME.swcap` | prüft den nativen Kern Frame für Frame gegen eine MAME-Aufnahme |
-| `starwarsvp --calibrate` | Kalibrierbild: Bildschirmrand, Clip-Grenzen, Kreis, alle Farben in 7 Helligkeiten. Joystick ändert, Knopf 1 wechselt den Modus (Größe, Lage, Gamma/Floor, Helligkeit), Knopf 2 speichert nach `save/starwarsvp.ini` |
+| `swenhanced --calibrate` | Kalibrierbild: Bildschirmrand, Clip-Grenzen, Kreis, alle Farben in 7 Helligkeiten. Joystick ändert, Knopf 1 wechselt den Modus (Größe, Lage, Gamma/Floor, Helligkeit), Knopf 2 speichert nach `save/swenhanced.ini` |
 | `swvideo --wav TON.wav > BILDER.rgb` | Film vom Port ohne Automat: Attract, dann ein gespieltes Spiel; Bilder als rohes RGB24 auf die Standardausgabe, Ton als WAV. `python tools/swvideo/mux.py FILM.mp4 TON.wav 960 720 60 < BILDER.rgb` macht daraus ein MP4 (braucht PyAV) |
 | `avgreplay AUFNAHME.swcap` | spielt in MAME aufgenommene Displaylisten im Originaltakt auf dem Monitor ab; `--lerp` zeigt die Interpolation, `--loop` wiederholt |
 
@@ -180,8 +180,8 @@ ersetzen (PNG; Größe nach `advmame.rc`, `vector_aux_marquee_display_mode`).
 
 ## Einstellungen
 
-`starwarsvp.ini` (Paketvorgabe neben dem Programm, eigene Werte in
-`save/starwarsvp.ini`):
+`swenhanced.ini` (Paketvorgabe neben dem Programm, eigene Werte in
+`save/swenhanced.ini`):
 
 | Schlüssel | Bedeutung |
 |---|---|

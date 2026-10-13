@@ -8,8 +8,8 @@
  * of MAME's tms5110r.hxx (BSD-3-Clause; Frank Palazzolo, Couriersud,
  * Jonathan Gevaryahu), verified there against a decapped TMS5220.
  */
-#ifndef SWVP_TMS5220_H
-#define SWVP_TMS5220_H
+#ifndef SWE_TMS5220_H
+#define SWE_TMS5220_H
 
 #include <stdint.h>
 

@@ -1,4 +1,4 @@
-/* menu.h - Star Wars VP's own test menu.
+/* menu.h - Star Wars Enhanced's own test menu.
  *
  * The Tab key or the cabinet's self-test button (p1_button6) opens it;
  * the game stands still meanwhile. It holds what the port adds to the
@@ -15,8 +15,8 @@
  *   BACK                the main page again
  *   Tab / test button   save the settings and go back to the game
  */
-#ifndef SWVP_MENU_H
-#define SWVP_MENU_H
+#ifndef SWE_MENU_H
+#define SWE_MENU_H
 
 #include "core/machine.h"
 #include "render/config.h"

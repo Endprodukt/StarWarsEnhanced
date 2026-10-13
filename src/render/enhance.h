@@ -1,4 +1,4 @@
-/* enhance.h - what Star Wars VP adds to the pictures of the game (the
+/* enhance.h - what Star Wars Enhanced adds to the pictures of the game (the
  * enhanced settings; each can be switched off, and with all of them off
  * the picture is the arcade machine's).
  *
@@ -34,8 +34,8 @@
  * what has become of them) with the game's own perspective, so it stands
  * where the game's things stand.
  */
-#ifndef SWVP_ENHANCE_H
-#define SWVP_ENHANCE_H
+#ifndef SWE_ENHANCE_H
+#define SWE_ENHANCE_H
 
 #include "avg/avg.h"
 #include "core/machine.h"

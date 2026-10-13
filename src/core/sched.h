@@ -14,8 +14,8 @@
  * monitor's own rate. The alphas say how far real time is between the last
  * tick and the next, for interpolation.
  */
-#ifndef SWVP_SCHED_H
-#define SWVP_SCHED_H
+#ifndef SWE_SCHED_H
+#define SWE_SCHED_H
 
 #include <stdint.h>
 

@@ -1,12 +1,12 @@
 /* config.h - display settings: where the AVG picture lands on the tube
  * and how its colors and intensities become the board's 8-bit RGB.
  *
- * Read from starwarsvp.ini (key = value, ';' or '#' comments). The defaults
+ * Read from swenhanced.ini (key = value, ';' or '#' comments). The defaults
  * are a starting point for a Wells-Gardner 6100 driven by a USB-DVG; tune
- * them on the monitor with `starwarsvp --calibrate`.
+ * them on the monitor with `swenhanced --calibrate`.
  */
-#ifndef SWVP_CONFIG_H
-#define SWVP_CONFIG_H
+#ifndef SWE_CONFIG_H
+#define SWE_CONFIG_H
 
 #include <stdint.h>
 

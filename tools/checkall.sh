@@ -9,7 +9,7 @@ cd "$(dirname "$0")/.." || exit 1
 dir=$1
 roms=$2
 shift 2
-SWVP_ROMS="$roms/starwars.zip" sh tools/check.sh || exit 1
+SWE_ROMS="$roms/starwars.zip" sh tools/check.sh || exit 1
 for cap in "$dir"/*.swcap; do
     echo "== $(basename "$cap")"
     ./build-linux/swcompare "$cap" --roms "$roms" "$@" | grep -v "frames, 0 differ"

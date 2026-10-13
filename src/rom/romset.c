@@ -196,7 +196,7 @@ int sw_romset_default_paths(const char **out, int max)
     int nb = 0;
     static char envcopy[2048];
 
-    const char *env = getenv("SWVP_ROMS");
+    const char *env = getenv("SWE_ROMS");
     if (env && *env) {
         snprintf(envcopy, sizeof envcopy, "%s", env);
         for (char *p = strtok(envcopy, ":"); p && n < max && n < 16; p = strtok(NULL, ":"))

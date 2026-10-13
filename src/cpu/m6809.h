@@ -5,8 +5,8 @@
  * addressing modes, IRQ, FIRQ and NMI, SYNC and CWAI. Cycle counts are the
  * data sheet's: the game's pace depends on them.
  */
-#ifndef SWVP_CPU_M6809_H
-#define SWVP_CPU_M6809_H
+#ifndef SWE_CPU_M6809_H
+#define SWE_CPU_M6809_H
 
 #include <stdint.h>
 

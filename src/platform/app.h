@@ -8,8 +8,8 @@
  * board draws, VP_STATS=1) and adds what the game needs: a real-time clock
  * for sw_sched and frame pacing at any rate.
  */
-#ifndef SWVP_APP_H
-#define SWVP_APP_H
+#ifndef SWE_APP_H
+#define SWE_APP_H
 
 #include <stdint.h>
 

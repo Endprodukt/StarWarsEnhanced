@@ -17,8 +17,8 @@
  * screen). The score, the texts, the sight and the laser beams are never
  * cut.
  */
-#ifndef SWVP_SOLID_H
-#define SWVP_SOLID_H
+#ifndef SWE_SOLID_H
+#define SWE_SOLID_H
 
 #include "avg/avg.h"
 #include "core/machine.h"

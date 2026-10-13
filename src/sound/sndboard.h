@@ -8,8 +8,8 @@
  * The board is run in step with the main CPU and makes samples at a fixed
  * rate into a ring; the platform's audio device takes them from there.
  */
-#ifndef SWVP_SNDBOARD_H
-#define SWVP_SNDBOARD_H
+#ifndef SWE_SNDBOARD_H
+#define SWE_SNDBOARD_H
 
 #include "core/machine.h"
 #include "cpu/m6809.h"

@@ -10,7 +10,7 @@
  *     before and after are apart (the picture does move in between, and
  *     in steps smaller than the game's).
  *
- * Needs the ROM set: looks in $SWVP_ROMS and the usual folders, and passes
+ * Needs the ROM set: looks in $SWE_ROMS and the usual folders, and passes
  * without testing when there is none. */
 #include "avg/avg.h"
 #include "core/machine.h"

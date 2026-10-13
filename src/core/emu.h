@@ -16,8 +16,8 @@
  * remaster, where the picture is drawn from the game's state instead of
  * its display list.
  */
-#ifndef SWVP_EMU_H
-#define SWVP_EMU_H
+#ifndef SWE_EMU_H
+#define SWE_EMU_H
 
 #include "core/machine.h"
 #include "cpu/m6809.h"
