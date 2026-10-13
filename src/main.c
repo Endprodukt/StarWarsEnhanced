@@ -291,7 +291,6 @@ static void apply_enhanced(board *b, const sw_display_cfg *cfg)
     b->pic.enhance.stars = on && cfg->enh_stars;
     b->pic.enhance.towers = on && cfg->enh_towers;
     b->pic.enhance.dogfights = on && cfg->enh_dogfights;
-    b->m.enh_towers = (uint8_t)(on && cfg->enh_towers);
     b->pic.enhance.logo = on && cfg->logo_yellow;
     b->pic.enhance.clip = on && cfg->enh_clip;
     if (b->snd && b->snd->samples) b->snd->samples->enabled = on && cfg->sound_replace;

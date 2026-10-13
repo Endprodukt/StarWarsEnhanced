@@ -114,9 +114,7 @@ Soundplatine, die Zeit des Vektorgenerators.
   * `enh_stars`: Sterne am Himmel; auch über dem Graben, im Streifen
     zwischen den Oberkanten der Wände (ein Stern zeigt sich, wenn die
     Sichtlinie den Graben durch die offene Oberseite verlässt).
-  * `enh_towers`: Türme und Bunker in echter Perspektive statt zum Fuß hin
-    geschrumpft (am Automaten wachsen sie deshalb beim Näherkommen aus dem
-    Boden), aus doppelter Entfernung sichtbar und eingeblendet, mit Stufen,
+  * `enh_towers`: Türme und Bunker mit Stufen,
     Nähten, Geschützturm und Rohren (Vorlage: Foto eines Turmmodells). Ihre
     Maße sind auf die Einheit die des Automaten (Vorgabe des Besitzers: man
     muss weiter zwischen ihnen durchpassen): Turm 960, 720, 600, 480 an den
@@ -132,9 +130,11 @@ Soundplatine, die Zeit des Vektorgenerators.
     hinteren die vorderen nicht überdecken). Der Geschützturm dreht sich
     suchend hin und her und richtet sich auf den Spieler, sobald der in
     Reichweite kommt (nur Bild: geschossen wird nach der Regel des
-    Automaten). Die Türme des Spiels werden dafür aus dem Bild genommen. Einzige Änderung am
-    Spiel: Mit `sw_machine.enh_towers` trifft der Laser die Türme so, wie
-    sie gezeichnet sind (`grlzcl` ohne den Abzug für den linearen Maßstab).
+    Automaten). Die Türme des Spiels werden dafür aus dem Bild genommen. Am
+    Spiel selbst ändert sich nichts; der Laser trifft nach der Regel des
+    Automaten (ein Umweg über `enh_towers` für die echte Perspektive ist
+    wieder weg, seit die Türme die Größe des Automaten haben: mit ihm waren
+    die Hüte nicht mehr zu treffen).
   * `enh_dogfights`: klein in der Ferne jagen TIE Fighter einen X-Wing
     über den Himmel, alle 13 Sekunden, mal zwei Schiffe, mal drei. Der TIE
     Fighter ist das Modell des ROMs, Linie für Linie. Einen X-Wing hat das
@@ -397,10 +397,8 @@ daraus wurde:
 
 * **Erweiterungen über der Oberfläche**: nicht am Automaten gesehen; sie
   bringen deutlich mehr Linien ins Bild (Boden rund 80, ein naher Turm rund
-  60), ob die Platine das flüssig schafft, ist offen. Mit `enh_towers`
-  trifft der Laser ferne Türme leichter als am Automaten (ihre Trefferfläche
-  schrumpft dort mit der Entfernung). Die Türme schießen weiter nach der
-  Regel des Automaten. Verfolgungsjagden gibt es nur über der Oberfläche,
+  60), ob die Platine das flüssig schafft, ist offen. Die Türme schießen
+  und werden getroffen nach der Regel des Automaten. Verfolgungsjagden gibt es nur über der Oberfläche,
   nicht im Weltraum oder im Graben. Der Tod über dem Boden und der Übergang
   zum Graben sind nur flüchtig angesehen.
 
