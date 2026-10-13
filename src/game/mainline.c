@@ -1105,7 +1105,7 @@ static void vewbs(sw_machine *m)
 
     sw_vwgas(m);
     sw_vwsite(m);
-    ORIG(SW_VWBASE);                        /* VIEW STAR BASE */
+    sw_vwbase(m);                          /* VIEW STAR BASE */
 
     sw_tstlaz(m);                           /* PREPARE FOR LAZAR HITS */
     sw_vwgun(m);
@@ -1130,7 +1130,7 @@ static void vewb0d(sw_machine *m)
         big_message(m, SW_MS_MSD);          /* MISSED EXHAUST PORT */
 
     sw_vwgas(m);
-    ORIG(SW_VWBASE);                        /* VIEW STAR BASE */
+    sw_vwbase(m);                          /* VIEW STAR BASE */
 
     sw_vwgun(m);
 
@@ -1196,7 +1196,7 @@ static void phis0b(sw_machine *m)
     if (a > 31) a = 31;
     W8(SW_BS_WAV, a);
     wave_hardness(m, a, R8(SW_GM_DIF));
-    ORIG(SW_GNBASE);                        /* GEN A NEW BASE TRENCH */
+    sw_gnbase(m);                          /* GEN A NEW BASE TRENCH */
     sw_doxmt(m, SW_IDSUSE);                 /* USE THE FORCE LUKE */
     W16(SW_PH_TIM, 0);
     W8(SW_PHASE, R8(SW_PHASE) + 1);
@@ -1205,7 +1205,7 @@ static void phis0b(sw_machine *m)
 static void phes0b(sw_machine *m)
 {
     iparm(m);
-    ORIG(SW_NWBASE);
+    sw_nwbase(m);  
     W8(SW_PHASE, SW_PHSBS);
 }
 
@@ -1214,7 +1214,7 @@ static void phib0b(sw_machine *m)
 {
     W8(SW_BS_RPT, 1);                       /* REPEATING THIS WAVE */
     iparm(m);
-    ORIG(SW_NWBASE);                        /* DO NOT GENERATE A NEW BASE: JUST INIT THE CURRENT SELECTION */
+    sw_nwbase(m);                          /* DO NOT GENERATE A NEW BASE: JUST INIT THE CURRENT SELECTION */
     W8(SW_Q_FRC, 0xff);                     /* NO FORCE ALLOWED ON RERUNS */
     /* MAKE TRENCH HARDER ON REPEAT PASSES: BUMP UP THE DIFFICULTY */
     wave_hardness(m, R8(SW_WV_HRD), R8(SW_GM_BMP));
@@ -1252,7 +1252,7 @@ static void phebs(sw_machine *m)
 
     sw_mvgun(m);
     ORIG(SW_MVPTGN);                        /* PLAYERS PROTON TORP GUN */
-    ORIG(SW_DOBASE);                        /* FIRES BASES SHOTS */
+    sw_dobase(m);                          /* FIRES BASES SHOTS */
     sw_do1qglw(m);                          /* QUICKER GLOW IN TRENCH SEQUENCES */
     sw_do1gas(m);
 

@@ -23,6 +23,8 @@
 #define MOV_ST 0
 #define MOV_AM 1
 #define MOV_LV 2
+#define MOV_PL 9
+#define MOV_PR 10
 #define ZMOVE  (11 * 2)
 
 #define TMPOCT 0x4801       /* TEMP OCT,2,SIZ,2 */
@@ -60,6 +62,56 @@ void sw_fragun(sw_machine *m, uint16_t x, uint16_t u)
 
     sw_doxmt(m, SW_IDATC);                  /* TIE FIGHTER CANNONS */
 }
+
+/* GNAVAIL, TSTAVAIL: FIND AN AVAILABLE GUN from X on, PUT INTO GN.PTR AND X.
+ * Returns 0 if there is none (the original then pops to the caller's
+ * caller: nothing is fired). */
+static uint16_t tstavail(sw_machine *m, uint16_t x)
+{
+    do {
+        W16(SW_GN_PTR, x);
+        if (R8(x + G_TYP) == 0) return x;   /* FOUND A GOOD GUN */
+        x += G_IZE;
+    } while (x < SW_GUNZ);
+    return 0;
+}
+
+/* GNBSAVAIL: ONLY ALLOW BASE GUNS (TGNBS: so many by the difficulty) */
+static uint16_t gnbsavail(sw_machine *m)
+{
+    static const uint8_t tgnbs[8] = { 1, 1, 2, 2, 3, 3, 3, 4 };
+    uint8_t b = R8(SW_WV_HRD);
+    if (b > 7) b = 7;                       /* LIMIT TO TABLE SIZE */
+    return tstavail(m, (uint16_t)(SW_GUNZ - tgnbs[b] * G_IZE));
+}
+
+/* FRPLGN, FRPRGN: a PANEL of the trench FIRES A GUN from M.X0, Y0, Z0 */
+static void panel_gun(sw_machine *m, uint8_t mov)
+{
+    uint16_t x;
+    if (R8(SW_BS_PFL) != 0) x = tstavail(m, SW_GUN);    /* ?EXHAUST PORT IN VIEW? THEN FIRE EVERYTHING */
+    else x = gnbsavail(m);                  /* ELSE 3 GUNS MAX */
+    if (x == 0) return;
+    W8(x + G_MOV, mov);
+    uint16_t u = R16(x + G_UVP);
+
+    /* PANLIN: INIT REST OF PANEL GUN */
+    W16(u + 0, R16(SW_M_X0));               /* X POSITION */
+    W16(u + 2, R16(SW_M_Y0));               /* Y POSITION */
+    W16(u + 4, R16(SW_M_Z0));               /* Z POSITION */
+
+    W8(x + G_TMR, 0x40);
+    W8(x + G_TYP, TYP_LV | TYP_UN);         /* ALIVE WITH UNIVERSE COORDS */
+
+    uint8_t a = R8(SW_P_RND1) >> 1;         /* 45 DEGREES */
+    if ((int8_t)R8(SW_M_Z0) >= -4) a = 0;   /* ?TOP PANEL? THEN JUST GO LEVEL */
+    W8(u + 6, a);                           /* Z ANGLE */
+
+    sw_doxmt(m, SW_IDATL);                  /* USE TOWER LAZARS FOR NOW */
+}
+
+void sw_frplgn(sw_machine *m) { panel_gun(m, MOV_PL); }
+void sw_frprgn(sw_machine *m) { panel_gun(m, MOV_PR); }
 
 /* The timer of a shot; nonzero when it has run out and the shot is gone. */
 static int timed_out(sw_machine *m, uint16_t x)

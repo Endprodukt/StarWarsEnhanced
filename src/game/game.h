@@ -99,6 +99,14 @@ void sw_fragun(sw_machine *m, uint16_t x, uint16_t u);
 void sw_mvgun(sw_machine *m);
 void sw_vwgun(sw_machine *m);
 void sw_gnhtsg(sw_machine *m);
+void sw_frplgn(sw_machine *m);
+void sw_frprgn(sw_machine *m);
+/* WSBASE.MAC (game/base.c): the trench. */
+void sw_nwbase(sw_machine *m);
+void sw_gnbase(sw_machine *m);
+void sw_dofar(sw_machine *m);
+void sw_dobase(sw_machine *m);
+void sw_vwbase(sw_machine *m);
 /* WSXPLD.MAC (game/xpld.c): the explosions of the others. */
 void sw_bgaxpld(sw_machine *m, uint16_t x);
 void sw_ixpld(sw_machine *m);
