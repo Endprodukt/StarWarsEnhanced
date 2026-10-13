@@ -125,6 +125,10 @@ vp_program(avgreplay)
 add_executable(swvideo tools/swvideo/main.c)
 target_link_libraries(swvideo PRIVATE swcore m)
 
+# The board's sounds as WAV files (for sounds/, docs/SOUNDS.md).
+add_executable(swsound tools/swsound/main.c)
+target_link_libraries(swsound PRIVATE swcore m)
+
 # Checks the native game frame by frame against a MAME recording.
 add_executable(swcompare tools/swcompare/main.c src/capture/capture.c)
 target_link_libraries(swcompare PRIVATE swcore)

@@ -194,8 +194,11 @@ Soundplatine, die Zeit des Vektorgenerators.
   klingen wie bisher. Regeln und Format in `docs/SOUNDS.md`. Geprüft:
   `tests/test_samples.c` und ein Spiel mit zwei Testtönen (der Ton für
   `AUDXL` bei jedem Schuss, der für `PMTH5` beim Spielstart, gemessen im
-  Spektrum). Es gibt noch **keine echten Ersatz-Sounds**: der Ordner ist
-  leer.
+  Spektrum). Es gibt noch **keine echten Ersatz-Sounds**. Als Ausgangspunkt
+  schreibt `tools/swsound` jeden Sound der Platine als WAV (Musik bis der
+  Musiktreiber fertig ist, Sprache bis der Sprachchip fertig ist, Effekte
+  bis zur Stille); die elf Musikstücke liegen am PC in `sounds/` (6,6 bis
+  28 s, nicht im Repo, nicht am Automaten).
 * **Schriftzug gelb** (`logo_yellow = 1`, Standard, Enhanced): das STAR-WARS-
   Logo im Attract-Modus in Gelb statt im Blau des Automaten (`enhance.c`
   färbt die Linien um). Im Testmenü schaltbar (YELLOW LOGO).

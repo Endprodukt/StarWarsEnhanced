@@ -121,6 +121,17 @@ sounds as before, so sounds can be replaced one at a time.
 The code is `src/sound/samples.c`; the board's program asks it in
 `request()` (`src/sound/sndprog.c`).
 
+To start from the originals: `swsound` (`tools/swsound`) runs the sound
+board on its own and writes any sound as a WAV file, a piece of music
+until the board's music driver is done, speech until the speech chip is,
+an effect until it has been quiet for half a second:
+
+    swsound --roms starwars.zip --out sounds PMTH5 AUDXL
+    swsound --roms starwars.zip --out sounds        (all eleven pieces of music)
+
+The files are made from the ROMs and are not in the repository
+(`sounds/*.wav` is ignored).
+
 ## To keep in mind for replacements
 
 * Music and speech are long and run across phases; a new piece of music
