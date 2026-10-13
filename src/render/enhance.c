@@ -160,9 +160,11 @@ static void view_of(sw_enhance *e, const sw_machine *m)
     static const int off[3][3] = { { M_AX, M_BX, M_CX }, { M_AY, M_BY, M_CY }, { M_AZ, M_BZ, M_CZ } };
     for (int a = 0; a < 3; a++)
         for (int b = 0; b < 3; b++) e->r[a][b] = mb16(m, (unsigned)(SW_M_U1 + off[a][b])) / 16384.0;
-    e->t[0] = (uint16_t)mb16(m, SW_M_S1 + M_TX);
-    e->t[1] = mb16(m, SW_M_S1 + M_TY);
-    e->t[2] = mb16(m, SW_M_S1 + M_TZ);
+    /* (the viewer's place as the view used it: the move after the view
+     * has taken the player's own a step further) */
+    e->t[0] = (uint16_t)mb16(m, SW_M_U1 + M_TX);
+    e->t[1] = mb16(m, SW_M_U1 + M_TY);
+    e->t[2] = mb16(m, SW_M_U1 + M_TZ);
 }
 
 /* --- stars ---------------------------------------------------------------------------- */
@@ -205,7 +207,7 @@ static void ground_line(sw_enhance *e, double ax, double ay, double bx, double b
         double far = (p0.x + p1.x) * 0.5;
         float fade = (float)(1.0 - far / 26000.0);
         if (fade <= 0.0f) continue;
-        line(e, turn(e, p0), turn(e, p1), GRN, lum * fade * fade, SW_TAG_TRENCH);
+        line(e, turn(e, p0), turn(e, p1), GRN, lum * fade * fade * e->plate, SW_TAG_TRENCH);
     }
 }
 
@@ -539,7 +541,7 @@ int sw_enhance_run(sw_enhance *e, const sw_machine *m, double now, const sw_line
     e->line_id = 0;
     e->spin_c = 1.0;
     e->spin_s = 0.0;
-    uint8_t phase = ram8(m, SW_PHASE);
+    uint8_t phase = m->view_phase;          /* (the view that drew the picture, not the phase of the moment) */
     int ground = (phase == SW_PHSGD + 1 || phase == SW_PHSG0D + 1) &&
                  (e->surface || e->stars || e->towers || e->dogfights);
     int in_trench = phase == SW_PHSBS + 1 || phase == SW_PHSB0D + 1;
@@ -577,7 +579,18 @@ int sw_enhance_run(sw_enhance *e, const sw_machine *m, double now, const sw_line
     }
     if (trench) stars(e, 1, now);
     if (ground && e->stars) stars(e, 0, now);
-    if (ground && e->surface) surface(e);
+    if (ground && e->surface) {
+        /* As the ground ends the game takes its buildings away and the
+         * player dives for the trench: the plating fades out with them
+         * rather than sweep across the screen. */
+        double dt = now - e->plate_at;
+        if (dt < 0.0 || dt > 0.2) dt = 0.0;
+        e->plate_at = now;
+        if (ram8(m, SW_Q_KTW)) e->plate -= (float)(dt / 0.8);
+        else e->plate = 1.0f;
+        if (e->plate < 0.0f) e->plate = 0.0f;
+        if (e->plate > 0.0f) surface(e);
+    }
     if (ground && e->towers) towers(e, m, now);
     if (ground && e->dogfights && e->tie_ready) dogfights(e, now);
     *out = e->out;

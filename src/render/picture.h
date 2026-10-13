@@ -39,6 +39,7 @@ typedef struct sw_picture {
     sw_smooth   ahead;                      /* this frame's picture and the next one's, computed ahead */
     sw_avg_list nextlist, sublist;
     sw_machine  scratch;
+    sw_machine  next;                       /* the game as it is in the next frame's picture (computed ahead) */
     int         occlusion;                  /* 1: what is behind something is not drawn (render/solid.h) */
     sw_solid    solid;
     sw_enhance  enhance;                    /* what the port adds to the picture (its settings are set by the caller) */

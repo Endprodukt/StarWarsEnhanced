@@ -56,7 +56,9 @@ typedef struct sw_enhance {
 
     /* the view: where the player is, how he is turned */
     double   r[3][3], t[3];
-    double   spin_c, spin_s;                    /* a block being drawn is turned so about its upright axis (cos, sin) */
+    double   spin_c, spin_s;
+    float    plate;                             /* how bright the plating is (1; fading as the ground ends) */
+    double   plate_at;                    /* a block being drawn is turned so about its upright axis (cos, sin) */
 
     float    star[SW_ENHANCE_STARS][3];         /* directions */
     uint8_t  star_lum[SW_ENHANCE_STARS];
