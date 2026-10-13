@@ -147,6 +147,12 @@ Seite; BACK führt zur Hauptseite, Tab speichert und kehrt ins Spiel zurück.
 | Arcade Operator Screens | Statistik, Optionen, Resets und NOVRAM-Test des Automatenprogramms (Aux-Münze blättert); Tab führt zurück ins Spiel |
 | Save and Exit | wie Tab |
 
+## Marquee
+
+`package/marquee.png` (1920x360) zeigt das SDK auf dem HDMI-Schirm des
+Automaten, solange das Spiel läuft. Ein eigenes Bild: dieselbe Datei
+ersetzen (PNG; Größe nach `advmame.rc`, `vector_aux_marquee_display_mode`).
+
 ## Einstellungen
 
 `starwarsvp.ini` (Paketvorgabe neben dem Programm, eigene Werte in

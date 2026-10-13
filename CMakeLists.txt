@@ -188,4 +188,5 @@ endif()
 # --- package files next to the programs (vp_asset_path looks there) ---------
 
 configure_file(package/starwarsvp.ini ${CMAKE_CURRENT_BINARY_DIR}/starwarsvp.ini COPYONLY)
+configure_file(package/marquee.png ${CMAKE_CURRENT_BINARY_DIR}/marquee.png COPYONLY)
 configure_file(package/game.ini ${CMAKE_CURRENT_BINARY_DIR}/game.ini COPYONLY)
