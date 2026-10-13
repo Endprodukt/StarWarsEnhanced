@@ -52,6 +52,7 @@ typedef struct sw_solid_mask {
     uint64_t group;                 /* which instruction of the list drew it */
     int      count;                 /* its lines, and what they add up to */
     float    sum;
+    float    res;                   /* cells per AVG unit */
     float    ox, oy;                /* the grid's corner */
     int      w, h;
     uint8_t *cells;                 /* 2: outside */

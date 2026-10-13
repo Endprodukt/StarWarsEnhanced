@@ -17,7 +17,11 @@
 #define W_BACK       0.5f       /* the logo and what has no distance: before the stars only */
 #define MIN_PIECE    0.15f      /* what is left of a line and shorter is dropped */
 #define MAX_CUTS     96
-#define MASK_RES     2.0f       /* cells of an outline's grid per AVG unit */
+/* Cells of an outline's grid per AVG unit. The logo is large and changes
+ * with every picture (it is made anew each time, which on the cabinet's
+ * Pi took 22 ms at the fine grid): for it the coarse one. */
+#define RES_FINE     2.0f
+#define RES_LOGO     1.0f
 /* the edges of the screen (VGEDGL/R/B/T at the scale the game draws at) */
 #define SCREEN_X0    -127.5f
 #define SCREEN_X1    127.5f
@@ -271,6 +275,7 @@ static void mask_build(sw_solid *s, sw_solid_mask *k, const sw_line *lines, int 
     if (wall_t) y1 = SCREEN_Y1;
     k->w = k->h = 0;
     if (x1 <= x0 || y1 <= y0) return;
+    const float MASK_RES = k->res;
     int w = (int)((x1 - x0) * MASK_RES) + 4, h = (int)((y1 - y0) * MASK_RES) + 4;
     if (w * h > k->cap) {
         uint8_t *c = (uint8_t *)realloc(k->cells, (size_t)(w * h));
@@ -345,6 +350,7 @@ static void use_mask(sw_solid *s, const sw_line *lines, int n, uint64_t group, u
         k->group = group;
         k->count = n;
         k->sum = sum;
+        k->res = section_of(&lines[0]) == SW_TAG_BANNER ? RES_LOGO : RES_FINE;
         mask_build(s, k, lines, n, min_zz);
     }
     if (!k) return;
@@ -453,6 +459,7 @@ static void cut(sw_solid *s, const sw_line *l)
         /* a thing does not cover itself, but for the front of the logo its sides */
         int own = k->front && k->section == section && l->zz < k->zz;
         if (!own && (k->front || k->section == section)) continue;
+        const float MASK_RES = k->res;
         if (lx1 < k->ox || ly1 < k->oy || lx0 > k->ox + (float)k->w / MASK_RES || ly0 > k->oy + (float)k->h / MASK_RES)
             continue;
         if (!own && wmin >= k->c) continue;
