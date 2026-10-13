@@ -263,6 +263,21 @@ Oberfläche, Graben, Welle 5):
   beim Zurücksetzen; die Resets und der NOVRAM-Test bleiben auf den
   Operator-Seiten.
 
+## Schriftzug wackelte am oberen Rand des T (2026-10-13)
+
+Der Schriftzug im Attract-Modus fliegt davon (er wird jedes Frame kleiner
+und rückt nach oben). Die Occlusion schnitt seine Seitenkanten dort weg, wo
+sie hinter der Vorderseite liegen, auf einem Raster von 1 Zelle pro Einheit,
+das für jedes Bild neu über den Schriftzug gelegt wurde: Je nachdem, wie
+der schrumpfende Schriftzug im Raster lag, fielen kurze Kantenstücke (am
+T oben) mal weg, mal nicht. Jetzt wird die Form des Schriftzugs einmal in
+seinen eigenen Koordinaten gebaut (800x480 Zellen über seiner Box, Schlüssel:
+die Helligkeiten seiner Linien) und jedes Bild nur noch hineingerechnet;
+beim Schrumpfen ändert sich damit nichts am Schnitt. Nebenbei kostet die
+Seite am PC 0,02 statt 0,06 ms pro Bild (die 22 ms am Pi sind damit auch
+weg). Gemessen: Länge der Schriftzug-Linien je Bild fällt mit und ohne
+Occlusion gleichmäßig (Differenz nimmt stetig ab, kein Springen).
+
 ## Marquee (2026-10-13)
 
 Der Marquee-Bildschirm des Automaten (HDMI, 1920x360, `advmame.rc`:

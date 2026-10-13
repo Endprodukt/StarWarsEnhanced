@@ -18,11 +18,15 @@
 #define W_BACK       0.5f       /* the logo and what has no distance: before the stars only */
 #define MIN_PIECE    0.15f      /* what is left of a line and shorter is dropped */
 #define MAX_CUTS     96
-/* Cells of an outline's grid per AVG unit. The logo is large and changes
- * with every picture (it is made anew each time, which on the cabinet's
- * Pi took 22 ms at the fine grid): for it the coarse one. */
+/* Cells of an outline's grid per AVG unit. The logo only grows and dims:
+ * its shape is built once, in its own coordinates (a grid of LOGO_W by
+ * LOGO_H cells laid over its box), and every picture maps into that; it
+ * was made anew for every picture at first, which took the cabinet's Pi
+ * 22 ms, and at a coarse grid the cuts of its edges shifted with the grid
+ * as it grew (the top of the T wobbled). */
 #define RES_FINE     2.0f
-#define RES_LOGO     1.0f
+#define LOGO_W       800
+#define LOGO_H       480
 /* the edges of the screen (VGEDGL/R/B/T at the scale the game draws at) */
 #define SCREEN_X0    -127.5f
 #define SCREEN_X1    127.5f
@@ -293,15 +297,23 @@ static void mask_build(sw_solid *s, sw_solid_mask *k, const sw_line *lines, int 
         if (l->y1 > y1) y1 = l->y1;
     }
     /* beyond the edge of the screen there is nothing to cover */
-    int wall_l = x0 < SCREEN_X0, wall_r = x1 > SCREEN_X1, wall_b = y0 < SCREEN_Y0, wall_t = y1 > SCREEN_Y1;
+    int wall_l = !k->own_space && x0 < SCREEN_X0, wall_r = !k->own_space && x1 > SCREEN_X1;
+    int wall_b = !k->own_space && y0 < SCREEN_Y0, wall_t = !k->own_space && y1 > SCREEN_Y1;
     if (wall_l) x0 = SCREEN_X0;
     if (wall_r) x1 = SCREEN_X1;
     if (wall_b) y0 = SCREEN_Y0;
     if (wall_t) y1 = SCREEN_Y1;
     k->w = k->h = 0;
     if (x1 <= x0 || y1 <= y0) return;
-    const float MASK_RES = k->res;
-    int w = (int)((x1 - x0) * MASK_RES) + 4, h = (int)((y1 - y0) * MASK_RES) + 4;
+    int w, h;
+    if (k->own_space) {
+        w = LOGO_W + 4; h = LOGO_H + 4;
+        k->rx = (float)LOGO_W / (x1 - x0);
+        k->ry = (float)LOGO_H / (y1 - y0);
+    } else {
+        w = (int)((x1 - x0) * k->rx) + 4; h = (int)((y1 - y0) * k->ry) + 4;
+    }
+    const float MASK_RES = k->rx > k->ry ? k->rx : k->ry;
     if (w * h > k->cap) {
         uint8_t *c = (uint8_t *)realloc(k->cells, (size_t)(w * h));
         if (!c) return;
@@ -315,8 +327,8 @@ static void mask_build(sw_solid *s, sw_solid_mask *k, const sw_line *lines, int 
         s->cap_stack = w * h;
     }
     k->w = w; k->h = h;
-    k->ox = x0 - 1.5f / MASK_RES;           /* a cell of room all around */
-    k->oy = y0 - 1.5f / MASK_RES;
+    k->ox = x0 - 1.5f / k->rx;              /* a cell of room all around */
+    k->oy = y0 - 1.5f / k->ry;
     memset(k->cells, 0, (size_t)(w * h));
     for (int i = 0; i < n; i++) {
         const sw_line *l = &lines[i];
@@ -324,8 +336,8 @@ static void mask_build(sw_solid *s, sw_solid_mask *k, const sw_line *lines, int 
         float dx = l->x1 - l->x0, dy = l->y1 - l->y0;
         int steps = (int)(sqrtf(dx * dx + dy * dy) * MASK_RES * 4.0f) + 1;
         for (int q = 0; q <= steps; q++) {
-            int cx = (int)((l->x0 + dx * (float)q / (float)steps - k->ox) * MASK_RES);
-            int cy = (int)((l->y0 + dy * (float)q / (float)steps - k->oy) * MASK_RES);
+            int cx = (int)((l->x0 + dx * (float)q / (float)steps - k->ox) * k->rx);
+            int cy = (int)((l->y0 + dy * (float)q / (float)steps - k->oy) * k->ry);
             if (cx >= 0 && cy >= 0 && cx < w && cy < h) k->cells[cy * w + cx] = 1;
         }
     }
@@ -360,14 +372,30 @@ static void mask_build(sw_solid *s, sw_solid_mask *k, const sw_line *lines, int 
  * one kept from the picture before if they are the same. */
 static void use_mask(sw_solid *s, const sw_line *lines, int n, uint64_t group, unsigned min_zz, int front)
 {
-    float sum = 0;
-    for (int i = 0; i < n; i++)
-        sum += lines[i].x0 * 3.0f + lines[i].y0 * 5.0f + lines[i].x1 * 7.0f + lines[i].y1 * 11.0f;
+    unsigned sec = section_of(&lines[0]);
+    int own_space = sec == SW_TAG_BANNER;
+    /* the same shape as the picture before? by where its lines are, or for
+     * the logo (which only grows and dims) by what its lines are */
+    float sum = 0, x0 = 1e9f, y0 = 1e9f, x1 = -1e9f, y1 = -1e9f;
+    uint32_t zz_key = 0;
+    for (int i = 0; i < n; i++) {
+        const sw_line *l = &lines[i];
+        sum += l->x0 * 3.0f + l->y0 * 5.0f + l->x1 * 7.0f + l->y1 * 11.0f;
+        zz_key = zz_key * 31u + l->zz;
+        if (l->x0 < x0) x0 = l->x0;
+        if (l->x1 < x0) x0 = l->x1;
+        if (l->x0 > x1) x1 = l->x0;
+        if (l->x1 > x1) x1 = l->x1;
+        if (l->y0 < y0) y0 = l->y0;
+        if (l->y1 < y0) y0 = l->y1;
+        if (l->y0 > y1) y1 = l->y0;
+        if (l->y1 > y1) y1 = l->y1;
+    }
     sw_solid_mask *k = NULL, *old = NULL;
     for (int q = 0; q < SW_SOLID_MASKS && !k; q++) {
         sw_solid_mask *c = &s->mask[q];
         if (c->active) continue;
-        if (c->group == group && c->count == n && c->sum == sum && c->used) k = c;
+        if (c->group == group && c->count == n && c->used && (own_space ? c->zz_key == zz_key : c->sum == sum)) k = c;
         else if (!old || c->used < old->used) old = c;
     }
     if (!k && old) {
@@ -375,11 +403,19 @@ static void use_mask(sw_solid *s, const sw_line *lines, int n, uint64_t group, u
         k->group = group;
         k->count = n;
         k->sum = sum;
-        k->res = section_of(&lines[0]) == SW_TAG_BANNER ? RES_LOGO : RES_FINE;
+        k->zz_key = zz_key;
+        k->own_space = (uint8_t)own_space;
+        k->rx = k->ry = RES_FINE;
         mask_build(s, k, lines, n, min_zz);
     }
     if (!k) return;
-    unsigned sec = section_of(&lines[0]);
+    if (k->own_space && k->w && x1 > x0 && y1 > y0) {
+        /* the grid laid over the shape's box as it is in this picture */
+        k->rx = (float)LOGO_W / (x1 - x0);
+        k->ry = (float)LOGO_H / (y1 - y0);
+        k->ox = x0 - 1.5f / k->rx;
+        k->oy = y0 - 1.5f / k->ry;
+    }
     k->active = 1;
     k->used = s->run;
     k->c = sec == SW_TAG_PLANE ? W_FRONT : lines[0].w1 ? (float)lines[0].w1 : W_BACK;
@@ -485,17 +521,17 @@ static void cut(sw_solid *s, const sw_line *l)
         /* a thing does not cover itself, but for the front of the logo its sides */
         int own = k->front && k->section == section && l->zz < k->zz;
         if (!own && (k->front || k->section == section)) continue;
-        const float MASK_RES = k->res;
-        if (lx1 < k->ox || ly1 < k->oy || lx0 > k->ox + (float)k->w / MASK_RES || ly0 > k->oy + (float)k->h / MASK_RES)
+        if (lx1 < k->ox || ly1 < k->oy || lx0 > k->ox + (float)k->w / k->rx || ly0 > k->oy + (float)k->h / k->ry)
             continue;
         if (!own && wmin >= k->c) continue;
+        const float MASK_RES = k->rx > k->ry ? k->rx : k->ry;
         int steps = (int)(sqrtf(dx * dx + dy * dy) * MASK_RES * 2.0f) + 1;
         int from = -1;
         for (int i = 0; i <= steps + 1; i++) {
             int in = 0;
             if (i <= steps) {
                 float tm = (float)i / (float)steps;
-                int cx = (int)((l->x0 + dx * tm - k->ox) * MASK_RES), cy = (int)((l->y0 + dy * tm - k->oy) * MASK_RES);
+                int cx = (int)((l->x0 + dx * tm - k->ox) * k->rx), cy = (int)((l->y0 + dy * tm - k->oy) * k->ry);
                 if (cx >= 0 && cy >= 0 && cx < k->w && cy < k->h) {
                     /* (the logo's sides: not where they run along its front's lines) */
                     uint8_t cell = k->cells[cy * k->w + cx];
