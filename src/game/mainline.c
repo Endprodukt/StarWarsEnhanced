@@ -1043,6 +1043,268 @@ static void phes1g(sw_machine *m)
     W8(SW_ST_BRT, a);
 }
 
+/* --- the trench ----------------------------------------------------------------------- */
+
+/* The trench itself (WSBASE.MAC), the proton torpedo and the laser's
+ * collisions in the trench are not ported yet: ORIG. */
+
+/* DOUBLE SIZE, then a message (the SCALE is RESET AUTOMATICALLY) */
+static void big_message(sw_machine *m, uint8_t b)
+{
+    VG(SW_VGSCAL - 0x100);
+    sw_domess(m, b);
+}
+
+/* VWMTWZ: MESSAGES STILL SEEN IN TRENCH */
+static void vwmtwz(sw_machine *m)
+{
+    if ((int8_t)R8(SW_GD_WAV) > 0) {        /* NO MESSAGES IN FIRST WAVE TRENCH */
+        sw_domess(m, SW_MS_TWR);            /* "TOWERS" */
+        VG(SW_VGCOLR + (VGCGRN << 8));
+        VG(SW_VGRW6 & 0x1fff);
+        VG((SW_VGLIMR - 5 * SW_VGSCW) & 0x1fff);
+        W8(SW_BT_SUP, 1);
+        sw_vwbyte(m, R8(SW_GD_TWL));        /* TOWERS LEFT */
+        VG(SW_VGCNTR);
+    }
+    if (R8(SW_Q_ATP) != 0)                  /* GOT THEM ALL, PROCLAIM SUCH */
+        sw_domess(m, SW_MS_ATP);            /* "ALL TOWER TOPS" */
+}
+
+/* VEWBS: VIEW BASE TRENCH */
+static void vewbs(sw_machine *m)
+{
+    ivgen1(m);
+    is1uv(m, SW_MSS1BC);                    /* MATH BOX, PRIMARY INIT */
+    sw_residu(m);
+
+    vwmes(m);
+    if (R8(SW_PH_TIM) <= 4) {
+        if (R8(SW_BS_RPT) == 0)             /* ?FIRST TIME THRU THIS TRENCH? */
+            vwmtwz(m);                      /* SOME TOWER PHASE MESSAGES SEEN STILL */
+        else                                /* ELSE MUST HAVE MISSED AND AM REPEATING */
+            big_message(m, SW_MS_MSD);      /* MISSED EXHAUST PORT */
+    }
+    if (R8(SW_SC_FWV) == 0 &&               /* ?FIRST WAVE? */
+        R8(SW_PH_TIM) <= 8 &&
+        R8(SW_BS_RPT) == 0 &&               /* ?FIRST TIME THRU THIS TRENCH? */
+        R8(SW_Q_ATP) == 0) {                /* ?SPACE CLEAR SINCE NOT HIT ALL TOWER TOPS? */
+        uint8_t b = SW_MS_SFB;              /* SHOOT FIREBALLS */
+        /* ?FIRST WAVE WITHOUT CATWALKS? ELSE ALTERNATE WITH CATWALK ALSO */
+        if (R8(SW_BS_WAV) != 0 && (R8(SW_FRAMEL) & 0x10) != 0)
+            b = SW_MS_ACW;                  /* AVOID CATWALKS */
+        sw_domess(m, b);
+    }
+    if (R8(SW_SC_FWV) == 0 && R8(SW_BS_PFL) != 0)   /* FIRST WAVE? YES, THEN MAY SHOW MESSAGE */
+        big_message(m, SW_MS_EXH);          /* "EXHAUST PORT AHEAD" */
+    uint8_t a = R8(SW_Q_FRC);
+    if (!(a & 0x80)) {                      /* ?USING THE FORCE? */
+        if (a == 0) sw_domess(m, SW_MS_USE);    /* ?BUT STILL WAITING? */
+        else ORIG(SW_VWFRC);                /* ELSE WAS SUCCESSFUL: VIEW FORCE SCORING */
+    }
+
+    sw_vwgas(m);
+    sw_vwsite(m);
+    ORIG(SW_VWBASE);                        /* VIEW STAR BASE */
+
+    sw_tstlaz(m);                           /* PREPARE FOR LAZAR HITS */
+    sw_vwgun(m);
+    ORIG(SW_CLBLZ);                         /* PROCESS COLLISIONS */
+    sw_vwlaz(m);                            /* AND SEE RESULT */
+
+    ORIG(SW_VWPTGN);                        /* SEE THE PROTON TORPS IMMEDIATELY */
+
+    sw_vwglw(m);
+    vgdone(m);
+}
+
+/* VEWB0D: the picture while the player dies in the trench */
+static void vewb0d(sw_machine *m)
+{
+    ivgen1(m);
+    is1uv(m, SW_MSS1BC);                    /* MATH BOX, PRIMARY INIT */
+    sw_residu(m);
+
+    vwmes(m);
+    if (R8(SW_Q_BSH) != 0)                  /* TEST IF WE BASHED OUR NOSES: ?HIT BACK WALL? */
+        big_message(m, SW_MS_MSD);          /* MISSED EXHAUST PORT */
+
+    sw_vwgas(m);
+    ORIG(SW_VWBASE);                        /* VIEW STAR BASE */
+
+    sw_vwgun(m);
+
+    if (R8(SW_SC_FWV) == 0 && R8(SW_BS_PFL) != 0)   /* FIRST WAVE PLAYED? YES, THEN MAY SHOW MESSAGE */
+        big_message(m, SW_MS_EXH);          /* "EXHAUST PORT AHEAD" */
+
+    vwmovr(m);                              /* VIEW EXPANDING GAME OVER MESSAGE */
+
+    sw_vwglw(m);
+    vgdone(m);
+}
+
+/* One axis of S1MVBS: the speed forward times how far the yoke is over. */
+static uint16_t slalom(sw_machine *m, uint16_t si, int twice)
+{
+    uint8_t a = (uint8_t)((R16(SW_M_S1 + M_VX) << 4) >> 8);     /* SCALE UP *16. */
+    uint8_t b = R8(si);                     /* RESPOND IMMEDIATELY TO CONTROL POSITION--SLALOM */
+    if (b & 0x80) b = (uint8_t)~b;          /* HANDLE 80 CORRECTLY,ABSB */
+    if (twice) b = (uint8_t)(b << 1);       /* *2 FOR MAX SPEED SLALOM(45 DEGREE) */
+    uint16_t d = (uint16_t)(a * b);
+    if (R8(si) & 0x80) d = (uint16_t)(0 - d);   /* REMEMBER TO FLIP DIRECTIONS */
+    return (uint16_t)((int16_t)d >> 4);     /* SCALE BACK DOWN/16. */
+}
+
+/* S1MVBS: WORMHOLE PLAYER MOVEMENT */
+static void s1mvbs(sw_machine *m)
+{
+    uint16_t d = (uint16_t)(R16(SW_M_S1 + M_VX) + R16(SW_M_S1 + M_TX));    /* PLAYERS FORWARD MOVEMENT */
+    W16(SW_M_S1 + M_TX, d);
+    W16(SW_M_U1 + M_TX, d);
+
+    d = slalom(m, SW_SI_RSX, 0);            /* FASTEST IS AT 45 DEGREES */
+    W16(SW_M_S1 + M_VY, d);                 /* ALLOW OTHERS TO KNOW OUR SPEED */
+    d = (uint16_t)(d + R16(SW_M_S1 + M_TY));
+    if ((int16_t)d > 0x1ff) d = 0x1ff;
+    if ((int16_t)d < -0x1ff) d = (uint16_t)-0x1ff;
+    W16(SW_M_S1 + M_TY, d);
+    W16(SW_M_U1 + M_TY, d);
+
+    d = slalom(m, SW_SI_RSY, 1);
+    W16(SW_M_S1 + M_VZ, d);
+    d = (uint16_t)(d + R16(SW_M_S1 + M_TZ));
+    if ((int16_t)d > -0x101) d = (uint16_t)-0x101;
+    if ((int16_t)d < -0xdff) d = (uint16_t)-0xdff;
+    W16(SW_M_S1 + M_TZ, d);
+    W16(SW_M_U1 + M_TZ, d);
+}
+
+/* The difficulty of a wave on the Death Star: its number and the option. */
+static void wave_hardness(sw_machine *m, uint8_t a, uint8_t add)
+{
+    a = (uint8_t)(a + add);
+    if (a > 15) a = 15;
+    W8(SW_WV_HRD, a);
+}
+
+/* PHIS0B, PHIG0B: SPACE TO BASE TRANSITION */
+static void phis0b(sw_machine *m)
+{
+    W8(SW_BS_RPT, 0);                       /* FIRST TIME THIS WAVE: FIRST TIME THRU */
+    W8(SW_Q_FRC, 0);                        /* ALLOWED TO USE THE FORCE */
+    uint8_t a = R8(SW_GM_WAV);
+    if (a > 31) a = 31;
+    W8(SW_BS_WAV, a);
+    wave_hardness(m, a, R8(SW_GM_DIF));
+    ORIG(SW_GNBASE);                        /* GEN A NEW BASE TRENCH */
+    sw_doxmt(m, SW_IDSUSE);                 /* USE THE FORCE LUKE */
+    W16(SW_PH_TIM, 0);
+    W8(SW_PHASE, R8(SW_PHASE) + 1);
+}
+
+static void phes0b(sw_machine *m)
+{
+    iparm(m);
+    ORIG(SW_NWBASE);
+    W8(SW_PHASE, SW_PHSBS);
+}
+
+/* PHIB0B: BASE TO BASE TRANSITION */
+static void phib0b(sw_machine *m)
+{
+    W8(SW_BS_RPT, 1);                       /* REPEATING THIS WAVE */
+    iparm(m);
+    ORIG(SW_NWBASE);                        /* DO NOT GENERATE A NEW BASE: JUST INIT THE CURRENT SELECTION */
+    W8(SW_Q_FRC, 0xff);                     /* NO FORCE ALLOWED ON RERUNS */
+    /* MAKE TRENCH HARDER ON REPEAT PASSES: BUMP UP THE DIFFICULTY */
+    wave_hardness(m, R8(SW_WV_HRD), R8(SW_GM_BMP));
+    W8(SW_PHASE, SW_PHSBS);                 /* PHEB0B */
+}
+
+/* PHIB0D: BASE TRENCH TO ENDGAME TRANSITION */
+static void phib0d(sw_machine *m)
+{
+    sw_doxmt(m, SW_IDSSKP);                 /* SKIP ANY WAITING VOICES */
+    W8(SW_PHASE, SW_PHSB0D + 1);            /* EXECUTE THIS PHASE */
+    W16(SW_PH_TIM, 0);                      /* NEW PHASE TIMER JUST STARTED */
+}
+
+static void pheb0d(sw_machine *m)
+{
+    vewb0d(m);
+
+    sw_mvgun(m);
+    sw_kpglow(m);
+
+    uint16_t d = (uint16_t)(R16(SW_PH_TIM) + 1);
+    W16(SW_PH_TIM, d);
+    if (d >= 2 * 20) W8(SW_PHASE, SW_PHSEGM);   /* 2 SECONDS */
+}
+
+static void phebs(sw_machine *m)
+{
+    vewbs(m);                               /* VIEW BASE TRENCH */
+
+    if (R8(SW_S_GAS) & 0x80) {              /* EXIT WHEN PLAYER DIES */
+        phib0d(m);
+        return;
+    }
+
+    sw_mvgun(m);
+    ORIG(SW_MVPTGN);                        /* PLAYERS PROTON TORP GUN */
+    ORIG(SW_DOBASE);                        /* FIRES BASES SHOTS */
+    sw_do1qglw(m);                          /* QUICKER GLOW IN TRENCH SEQUENCES */
+    sw_do1gas(m);
+
+    /* TWIRL THE SHIP THRU THE WORMHOLE (S1TWBS does nothing) */
+    vgtosite(m);                            /* PULL IN SITE COORDS FROM IRQ RHEOSTATS */
+    is1uv(m, SW_MSS1BC);
+    s1mvbs(m);                              /* BASE TRENCH CONTROLS MOTION */
+
+    if ((R8(SW_FRAME + 1) & 0x0f) == 0) {   /* ?PSUEDO SECOND PASSED? */
+        uint8_t a = R8(SW_PH_TIM);
+        if (a == 2)                         /* ?FINISHED WITH VOICE OR CURSING R2? */
+            sw_doxmt(m, SW_IDPRRP);         /* THEN DO REBEL REPEAT THEME */
+        if ((R8(SW_BS_WAV) & 0x01) == 0) {  /* BEGIN WITH WAVE 0 SAYING . . . */
+            if (a == 16) sw_doxmt(m, SW_IDSTRU);        /* LUKE, TRUST ME */
+            else if (a == 24) sw_doxmt(m, SW_IDSYAU);   /* YAHOO, YOURE ALL CLEAR KID */
+        } else {                            /* ELSE ALTERNATE WAVE: OCCURS A BIT SOONER */
+            if (a == 16) sw_doxmt(m, SW_IDSLET);        /* LET GO LUKE */
+            else if (a == 22) sw_doxmt(m, SW_IDSSTR);   /* THE FORCE IS STRONG WITH THIS ONE */
+        }
+        W8(SW_PH_TIM, R8(SW_PH_TIM) + 1);
+    }
+
+    if (R8(SW_BS_EFL) == 0) return;         /* ?STARTING TO VIEW END OF TRENCH? */
+    if ((uint16_t)(R16(SW_BS_ELC) - R16(SW_M_S1 + M_TX)) > 0x0800) return;
+    /* ABOUT TO BASH OUR NOSE IN THE END WALL */
+    if (R8(SW_PT_LIV) == 0) {               /* DID WE KILL IT?? NO, TOO BAD--NO EXPLOSION */
+        W8(SW_Q_BSH, 1);                    /* FLAG FOR BASHED OUR NOSE */
+        sw_doxmt(m, SW_IDACR);              /* CRASHED */
+        sw_bg1glw(m);                       /* BASHED OUR NOSE -- LIMITS REPEATS */
+        if ((int8_t)R8(SW_S_GAS) <= 0) {    /* ?WILL THIS KILL PLAYER? THEN EXIT */
+            phib0d(m);
+            return;
+        }
+        W8(SW_PHASE, SW_PHSB0B);            /* TRY TRENCH AGAIN UNTIL SUCCESSFUL */
+        sw_doxmt(m, SW_IDSR2N);             /* R2 SWEARS AT PLAYER FOR MISSING EXHAUST PORT */
+    } else {                                /* YES, LET'S WATCH IT EXPLODE! */
+        W8(SW_PHASE, SW_PHSDX1);
+        uint8_t a = R8(SW_GM_WAV);
+        if ((int8_t)a >= 4 - 1 && (a & 1))  /* ?WAVE 4 OR HIGHER? ?ANDIF AN EVEN(ODD-1) WAVE? */
+            sw_doxmt(m, SW_IDSGRE);         /* GREAT SHOT KID, THAT WAS 1 IN A MILLION */
+    }
+}
+
+static void phibs(sw_machine *m)
+{
+    W8(SW_Q_BSH, 0);                        /* NOT YET BASHED OUR NOSES */
+    W8(SW_PH_TIM, 0);                       /* TIMER FOR BASE STAR A */
+    W16(SW_M_S1 + M_VX, 0x300);             /* INITIAL PLAYER SPEED */
+    W8(SW_PHASE, R8(SW_PHASE) + 1);
+    phebs(m);                               /* DROP THRU -- DECREASE SCREEN FREEZE */
+}
+
 /* --- the main line ------------------------------------------------------------------ */
 
 /* MAIN: EXECUTE PHASE (TPHASE) */
@@ -1078,6 +1340,15 @@ static void run_phase(sw_machine *m)
     case SW_PHSS0G + 1: if (!m->original_call) goto unported; phes0g(m); break;
     case SW_PHSS1G:     phis1g(m); break;
     case SW_PHSS1G + 1: if (!m->original_call) goto unported; phes1g(m); break;
+    case SW_PHSS0B:
+    case SW_PHSG0B:     if (!m->original_call) goto unported; phis0b(m); break;
+    case SW_PHSS0B + 1: if (!m->original_call) goto unported; phes0b(m); break;
+    case SW_PHSBS:      if (!m->original_call) goto unported; phibs(m); break;
+    case SW_PHSBS + 1:  if (!m->original_call) goto unported; phebs(m); break;
+    case SW_PHSB0B:     if (!m->original_call) goto unported; phib0b(m); break;
+    case SW_PHSB0B + 1: W8(SW_PHASE, SW_PHSBS); break;  /* PHEB0B */
+    case SW_PHSB0D:     phib0d(m); break;
+    case SW_PHSB0D + 1: if (!m->original_call) goto unported; pheb0d(m); break;
     case SW_PHSS0D:     phis0d(m); break;
     case SW_PHSS0D + 1: if (!m->original_call) goto unported; phes0d(m); break;
     case SW_PHSEGM:     phiegm(m); break;

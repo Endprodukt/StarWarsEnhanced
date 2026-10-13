@@ -63,6 +63,8 @@ static int ported(uint8_t phase)
         SW_PHSENT, SW_PHSENT + 1, SW_PHSSG1, SW_PHSSG1 + 1, SW_PHSSG2, SW_PHSSG2 + 1,
         SW_PHSBGN, SW_PHSBGN + 1, SW_PHSSP1, SW_PHSSP1 + 1, SW_PHSSP2, SW_PHSSP2 + 1,
         SW_PHSS0G, SW_PHSS0G + 1, SW_PHSS1G, SW_PHSS1G + 1,
+        SW_PHSS0B, SW_PHSS0B + 1, SW_PHSG0B, SW_PHSBS, SW_PHSBS + 1,
+        SW_PHSB0B, SW_PHSB0B + 1, SW_PHSB0D, SW_PHSB0D + 1,
         SW_PHSS0D, SW_PHSS0D + 1, SW_PHSEGM, SW_PHSEGM + 1,
     };
     for (unsigned i = 0; i < sizeof p; i++)
