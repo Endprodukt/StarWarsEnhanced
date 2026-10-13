@@ -77,8 +77,17 @@ sh tools/deploy.sh        # auf den Automaten kopieren und dort neu starten
 
 `tools/deploy.sh` legt alles nach `/persistent/games/starwarsvp`, beendet ein
 laufendes Spiel und startet das neue über `run.sh` (hält das Menü an und holt
-es danach zurück). Ausgabe und Bildkosten stehen dort in `run.log`. Einen
-Menüeintrag gibt es noch nicht.
+es danach zurück). Ausgabe und Bildkosten stehen dort in `run.log`.
+
+Das ist zugleich das Paket, das das Menü des Automaten kennt
+(`external/VectorPie/sdk/docs/07-packages.md`): ein Ordner je Spiel unter
+`/persistent/games/<id>/` mit `game.ini` (Manifest), dem Programm und
+`marquee.png`. Aus `package/game.ini` nimmt das Menü den Titel des Eintrags
+(`name = Star Wars Enhanced`), die Gruppe (`manufacturer = Atari`), die
+Beschreibung und das Marquee (`marquee = marquee.png`, 1920x360; dasselbe
+Bild zeigt `vp_run` während des Spiels auf dem Marquee-Bildschirm). Das Menü
+liest die Manifeste beim Start: nach einem Deploy sieht man den neuen Titel,
+sobald das Spiel verlassen wird und das Menü zurückkommt.
 
 ## Prüfen gegen MAME
 
