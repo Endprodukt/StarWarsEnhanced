@@ -734,20 +734,53 @@ static void is1uv(sw_machine *m, uint8_t a)
     sw_mgowt(m, SW_MSDLD1);
 }
 
+/* VIEW: the picture of a space wave */
+static void view(sw_machine *m)
+{
+    ivgen1(m);
+    is1uv(m, SW_MSS1BC);                    /* MATH BOX, PRIMARY INIT */
+    sw_residu(m);
+
+    vwmes(m);
+
+    if (R8(SW_SC_FWV) == 0) {               /* ?FIRST TIME THRU? THEN GIVE INSTRUCTIONS TO PLAYER */
+        uint16_t d = R16(SW_PH_TIM);
+        if (d < 0x20 * 5) {                 /* LOOK AT EACH MESSAGE 5 TIMES, ONE CYCLE TAKES 20 */
+            if ((d & 0x10) == 0) sw_domess(m, SW_MS_SFB);   /* SHOOT FIREBALLS */
+            else sw_domess(m, SW_MS_STF);   /* SHOOT TIE FIGHTERS */
+        }
+    }
+
+    sw_vwgas(m);
+    sw_vwdtha(m);                           /* VIEW DETH STAR, MINIATURE */
+    sw_vwsite(m);
+    sw_vwstar(m);
+    ORIG(SW_VWXPLD);                        /* CAN SEE PARTS ONCE ORIGINAL IS GONE FROM VIEW */
+
+    ORIG(SW_L_TSTLAZ);                      /* PREPARE FOR LAZAR HITS */
+    sw_snvw(m);
+    ORIG(SW_L_VWGUN);
+    ORIG(SW_L_CLSLZ);                       /* PROCESS COLLISIONS */
+    ORIG(SW_L_VWLAZ);                       /* AND SEE RESULT */
+
+    sw_vwglw(m);
+    vgdone(m);
+}
+
 /* What the two space phases do alike before the ships and the player
  * move. Returns 0 if the player has died (the phase is then over). */
 static int space_frame(sw_machine *m)
 {
-    ORIG(SW_L_VIEW);
+    view(m);
     if (R8(SW_S_GAS) & 0x80) {              /* EXIT WHEN PLAYER DIES */
         ORIG(SW_L_PHIS0D);
         return 0;
     }
     ORIG(SW_MVGUN);                         /* MOVE GUN SHOTS */
-    ORIG(SW_DONGLW);
+    sw_donglw(m);
     ORIG(SW_DOXPLD);
-    ORIG(SW_DO1GLW);
-    ORIG(SW_DO1GAS);
+    sw_do1glw(m);
+    sw_do1gas(m);
     return 1;
 }
 
@@ -757,9 +790,9 @@ static void phesp1(sw_machine *m)
     ORIG(SW_CPU);                           /* COMPUTER DRONES */
 
     vgtosite(m);                            /* PULL IN SITE COORDS FROM IRQ RHEOSTATS */
-    ORIG(SW_L_STWSP1);                      /* TWIRL PLAYER */
+    sw_stwsp1(m);                           /* TWIRL PLAYER */
     is1uv(m, SW_MSS1BC);
-    ORIG(SW_L_SMVSP1);                      /* MOVE PLAYER */
+    sw_smvsp1(m);                           /* MOVE PLAYER */
 
     uint16_t d = (uint16_t)(R16(SW_PH_TIM) + 1);
     W16(SW_PH_TIM, d);
@@ -799,9 +832,9 @@ static void phesp2(sw_machine *m)
     ORIG(SW_CPURET);                        /* COMPUTER DRONES RUN AWAY */
 
     vgtosite(m);
-    ORIG(SW_L_STWSP2);                      /* TWIRL PLAYER */
+    sw_stwsp2(m);                           /* TWIRL PLAYER */
     is1uv(m, SW_MSS1BC);
-    ORIG(SW_L_SMVSP1);                      /* MOVE PLAYER */
+    sw_smvsp1(m);                           /* MOVE PLAYER */
 
     for (uint16_t x = SW_ALIEN; x < SW_ALIENZ; x += A_IZE)
         if (R8(x + A_TYP) != 0) return;     /* STILL SOME RUNNING AWAY */

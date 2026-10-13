@@ -86,6 +86,27 @@ void sw_nwchor(sw_machine *m, uint16_t x);
 void sw_chopdo(sw_machine *m, uint16_t x);
 void sw_cpugon(sw_machine *m);
 
+/* WSGLOW.MAC (game/glow.c), WSGAS.MAC (game/gas.c) */
+void sw_bg1glw(sw_machine *m);
+void sw_kpglow(sw_machine *m);
+void sw_do1glw(sw_machine *m);
+void sw_do1qglw(sw_machine *m);
+void sw_donglw(sw_machine *m);
+void sw_vwglw(sw_machine *m);
+void sw_adcgas(sw_machine *m);
+void sw_do1gas(sw_machine *m);
+void sw_vwgas(sw_machine *m);
+
+/* WSMAIN.MAC, the ships and the far Death Star in view (game/shipview.c) */
+void sw_snvw(sw_machine *m);
+void sw_vwdtha(sw_machine *m);
+
+/* WSMAIN.MAC, MOVE THE PLAYER (game/player.c) */
+void sw_stwsp1(sw_machine *m);
+void sw_stwsp2(sw_machine *m);
+void sw_smvsp1(sw_machine *m);
+void sw_residu(sw_machine *m);
+
 /* WSMATH.MAC, WSXMT.MAC, WSSITE.MAC (game/gmath.c) */
 void sw_mgowt(sw_machine *m, uint8_t a);
 void sw_unitv(sw_machine *m, uint16_t u);

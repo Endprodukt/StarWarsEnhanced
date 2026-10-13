@@ -91,6 +91,12 @@ static inline uint8_t sw_bcd_adc(uint8_t a, uint8_t b, int *carry)
 #define SW_L_STWSP2  0x6DFA    /* STWSP2 */
 #define SW_L_SMVSP1  0x6F5F    /* SMVSP1, SMVSP2: MOVE PLAYER */
 #define SW_L_PHIS0D  0x6C76    /* PHIS0D: SPACE TO DIE, TRANSITION */
+#define SW_L_VWDTHA  0x7765    /* VWDTHA: VIEW DETH STAR, VERSION A (MINIATURE) */
+#define SW_L_SNVW    0x786A    /* SNVW: the ships, seen from the player's */
+#define SW_L_TSTLAZ  0xAE60    /* TSTLAZ: PREPARE FOR LAZAR HITS (WSLAZR) */
+#define SW_L_VWLAZ   0xAEBD    /* VWLAZ */
+#define SW_L_CLSLZ   0xB32B    /* CLSLZ: PROCESS COLLISIONS in space */
+#define SW_L_VWGUN   0xAAE4    /* VWGUN (WSGUNS) */
 
 /* A subroutine of the original that is not ported yet (core/machine.h,
  * original_call): the game then needs the ROM's code at hand. */
