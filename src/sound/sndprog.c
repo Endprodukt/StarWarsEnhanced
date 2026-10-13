@@ -262,11 +262,272 @@ static void spkirq(sw_sndboard *s)
     W8(SN_SP_STA, R8(SN_SP_STA) - 1);
 }
 
-/* --- SNDPM: the music (not ported yet) ----------------------------------------------- */
+/* --- SNDPM: (RUSTY'S POKEY MUSIC) DRIVER, 6809 VERSION ------------------------------- */
 
-static void isnd(sw_sndboard *s) { (void)s; }
-static void pkdr(sw_sndboard *s) { (void)s; }
-static void tune(sw_sndboard *s, uint16_t pkcut, uint8_t b) { (void)s; (void)pkcut; (void)b; }
+/* A tune is a list of two bytes each: a note (0: a rest; else an index
+ * into the table of pitches, shifted by the voice's key) and its length
+ * (bit 0: tied to the note before), or a function (bit 7 set) and its
+ * value. The length 0 ends it. A voice runs through its tune at its own
+ * rate, and while a note sounds an amplitude and a frequency envelope
+ * shape it. Four voices are 16 bit POKEY channel pairs; voices 5 to 8
+ * share voice 4's pair and are heard only when the ones before them are
+ * silent ("priority"). Assembled with ..SV3=0, ..SV4=0, ..PRI=5, ..DRE=1,
+ * ..SYM=1, ..FRE=1, ..AME=1, ..SCK=0, ..CNT=0. */
+
+/* a voice's RAM */
+#define OPTR   0            /* POINTER TO START OF CURRENT TUNE: VOICE IN USE IF HI BYTE NON-ZERO */
+#define APTR   2            /* POINTER TO START OF CURRENT AMP. ENVELOPE */
+#define FPTR   4            /* POINTER TO START OF CURRENT FREQ. ENVELOPE */
+#define ONOTE  6            /* CURRENT OUTPUT NOTE COUNT */
+#define ODUR   8            /* CURRENT OUTPUT DURATION REMAINING */
+#define VVOL   10           /* MEDIAN VOICE VOLUME */
+#define VSEQ   11           /* VOICE DURATION SEQUENCE # */
+#define ORATE  12           /* NEG OF CURRENT OUTPUT RATE (BIGGER # = SHORTER DUR.) */
+#define OKEY   13           /* CURRENT KEY OFFSET */
+#define VAC    14           /* VOICE AMPLITUDE CONTROL BITS */
+#define VSF    15           /* VOICE SYNTH. MODE FLAG */
+#define VSA    16           /* VOICE SYNTH. MODE FREQ. ADJUST */
+#define OPTSV  18           /* OUTPUT POINTER SUB-PHRASE SAVE */
+#define OPTLL  20           /* OUTPUT POINTER LOOP SAVE */
+#define VLC    22           /* LOOP COUNTER */
+#define OPTRET 23           /* RETURN ADDRESS FROM GOSUB */
+
+/* a voice's descriptor (TVC) */
+#define TVC    0x74DB       /* TABLE OF VOICE PARAMETERS */
+#define VC_RAM 0            /* POINTER TO VOICE'S RAM */
+#define VC_BIT 2            /* BIT MASK FOR THIS VOICE */
+#define VC_PKF 3            /* BASE POINTER INTO HARDWARE POKEY */
+#define VC_PRI 5            /* PRIORITY MASK */
+#define VC_PKD 6            /* WHEN DYNAMICALLY RECONFIGURED, USE THIS POKEY ADDRESS INSTEAD */
+#define VC_IZE 8
+
+/* local tables (addresses from the program ROM) */
+#define TUNTAB 0x58E5       /* the directory of tunes and sub-phrases */
+#define NOTTAB 0x7953       /* RPM NOTE TABLE (FOR 1.512 MHZ CLOCK) */
+#define FETAB  0x7A17       /* the frequency envelopes */
+#define AETAB  0x7A1B       /* the amplitude envelopes */
+
+#define PKC1   0x1830       /* the control registers of the music's two POKEYs */
+#define PKC2   0x1838
+#define PKI1   0x1837       /* and their SKCTL */
+#define PKI2   0x183F
+
+/* POKVIY: INIT A POKEY VOICE. Y:=POINTER TO THIS VOICE'S DESCRIPTOR TABLE */
+static void pokviy(sw_sndboard *s, uint16_t y)
+{
+    uint16_t u = R16(y + VC_RAM);           /* U-->VOICE RAM BLOCK */
+    W8(SN_VIU, (uint8_t)~R8(y + VC_BIT) & R8(SN_VIU));     /* TURN OFF VIU BIT */
+
+    W8(u + VVOL, 7);                        /* SET UP TO MEDIAN VOLUME */
+    W8(u + ORATE, (uint8_t)-64);            /* REMEMBER TO PRE-NEGATE: SET UP TO MED. RATE */
+    W8(u + VAC, 0xa0);                      /* DEFAULT TO PURE TONES */
+
+    W16(u + OPTR, 0);                       /* CLEAR VOICE IN USE FLAG(HI BYTE POINTER) */
+    W8(u + OKEY, 0);                        /* SET BACK TO UNUSED KEY */
+    W8(u + VSEQ, 0);                        /* CLEAR ENV. SEQ. COUNT */
+    W16(u + ODUR, 0);
+    W8(u + VLC, 0);                         /* CLEAR LOOP COUNT */
+    W16(u + OPTSV, 0);                      /* CLEAR SUB-PHRASE POINTER (FLAG) */
+    W8(u + VSF, 0);                         /* CLEAR SYNTH. MODE */
+    W16(u + VSA, 0);                        /* CLEAR SYNTH. MODE ADJUSTMENT */
+
+    uint16_t d = R16(FETAB);                /* the null envelope */
+    W16(u + APTR, d);
+    W16(u + FPTR, d);
+
+    /* TURN OFF POKEY AMPLITUDE */
+    uint16_t x = R16(y + VC_PKF);           /* SELECT THE POKEY OUTPUT PORT */
+    if (R8(SN_DREF) != 0) {                 /* ?DYNAMICALLY RECONFIG'D? */
+        x = R16(y + VC_PKD);                /* THEN USE DRE PORT INSTEAD */
+        (void)R8(x + 1);
+        W8(x + 1, 0);                       /* ONLY DO LO 8 BITS */
+        return;
+    }
+    (void)R8(x + 3);
+    W8(x + 3, 0);                           /* AMPLITUDE GOES IN SECOND CHANNEL FOR 16 BIT */
+}
+
+/* The .TUNE macro: JSR PKCUTn (CLEAR OUT AND INIT THIS VOICE), LDB #2*tune,
+ * JSR NWTUNE. PKCUTn is LDA #VC$n, BRA POKVI. */
+static void tune(sw_sndboard *s, uint16_t pkcut, uint8_t b)
+{
+    uint16_t y = (uint16_t)(TVC + R8(pkcut + 1));   /* Y-->VOICE DESCRIPTOR TABLE */
+    pokviy(s, y);
+    /* NWTUNE: SETS UP NEW TUNE INTO GIVEN VOICE. B:= TUNE # WORD OFFSET INTO TUNE TABLE */
+    uint16_t d = R16(TUNTAB + b);           /* POINTER TO TUNE */
+    W16(R16(y + VC_RAM) + OPTR, d);
+    W8(SN_VIU, R8(SN_VIU) | R8(y + VC_BIT));    /* SET VOICE IN USE BIT */
+}
+
+/* ISND: INITIALIZE POKEY FOR USE */
+static void isnd(sw_sndboard *s)
+{
+    W8(PKI1, 0);                            /* ALSO, INIT POKEY DEVICES */
+    W8(PKI2, 0);
+    W8(SN_DREF, 0);                         /* CLEAR DYN. RECON. FLAG */
+    for (int v = 0; v < 8; v++)             /* INIT ALL DEFINED VOICES */
+        pokviy(s, (uint16_t)(TVC + v * VC_IZE));
+    W8(PKI1, 3);                            /* OUTPUT SECOND BYTE TO POKEY INIT. */
+    W8(PKI2, 3);
+    W8(PKC1, 0x78);                         /* VOICES 3 AND 4 ARE 16 BIT EACH */
+    W8(PKC2, 0x78);                         /* TIE CHANNEL 2 TO 1, 4 TO 3 */
+}
+
+/* POKSN: HAVE SAME NOTE AS LAST TIME, PLAY IT WITH ENVELOPES */
+static void poksn(sw_sndboard *s, uint16_t y, uint16_t u)
+{
+    /* IF AT HIGHEST PRIORITY, PLAY NOTE; ELSE IF RECONFIGURED, THEN ALL ARE
+     * AT BEST PRIORITY; ELSE, RETURN WITHOUT POKEY UPDATE */
+    if ((R8(SN_VIU) & R8(y + VC_PRI)) != 0 && R8(SN_DREF) == 0) return;
+
+    if ((R8(SN_SINTCT) & 0x06) == 0) {      /* ?TIME TO CHANGE ADJUST? */
+        /* DIVIDE SYNTH ADJUST BY 2 SO ADD 1/2 AS MUCH EACH TIME */
+        W16(u + VSA, (uint16_t)((int16_t)R16(u + VSA) >> 1));
+    }
+    /* FIRST ADD FREQ. ENV. TO NOTE FREQ. */
+    uint16_t x = (uint16_t)(R16(u + FPTR) + (R8(u + VSEQ) >> 1));   /* FOR 128 BYTE TABLE */
+    uint16_t d = (uint16_t)(int16_t)(int8_t)R8(x);  /* GET CURRENT FREQ. ENV. SETTING */
+    if (R8(SN_DREF) == 0) d = (uint16_t)(d << 3);   /* MUSIC FREQ IS *8, SOUNDS ARE AS IS. */
+    d = (uint16_t)(d + R16(u + ONOTE));     /* ADD IN THE NOTES FREQUENCY */
+    d = (uint16_t)(d + R16(u + VSA));       /* ADD SYNTH ADJUST TO SUM OF NOTE FREQ. AND ENV. */
+
+    x = R16(y + VC_PKF);                    /* SELECT THE POKEY OUTPUT PORT */
+    if (R8(SN_DREF) != 0) x = R16(y + VC_PKD);  /* THEN USE DRE PORT INSTEAD AND ONLY DO LO 8 BITS */
+    else W8(x + 2, d >> 8);                 /* OUTPUT MSB OF 16 BIT */
+    W8(x + 0, d);                           /* OUTPUT LO 8 BIT */
+
+    /* CHECK FOR A REST(NO OUTPUT): MASK TO ZERO OUT AMPLITUDE, or TO PERMIT
+     * CURRENT VOLUME */
+    W8(SN_FASV, R16(u + ONOTE) != 0 ? 0xff : 0xf0);
+
+    uint8_t b = R8(u + VSEQ);               /* USE STRAIGHT, LIMIT AT 31(QUARTER SECOND) */
+    if (b >= 31) b = 31;
+    uint8_t a = (uint8_t)(R8(R16(u + APTR) + b) + R8(u + VVOL));    /* GET CURRENT VOLUME ENV. ADJ. */
+    if (a & 0x80) a = 0;                    /* IF NUM .LT. 0, SET VOLUME TO OFF */
+    if (a >= 0x10) a = 0x0f;                /* CHECK FOR VOLUME TOO LARGE: SET TO MAX. */
+    a |= R8(u + VAC);                       /* SET UP CURRENT VOICE CONTROL */
+    a &= R8(SN_FASV);                       /* MASK WITH NOTE ON/OFF SETTING */
+    x = R16(y + VC_PKF);
+    if (R8(SN_DREF) != 0) {
+        W8(R16(y + VC_PKD) + 1, a);         /* ONLY DO LO 8 BITS */
+        return;
+    }
+    W8(x + 3, a);                           /* AMPLITUDE GOES IN SECOND CHANNEL FOR 16 BIT */
+}
+
+/* PKFUN: HAVE A FUNCTION, NOT A NOTE. B:= OPCODE, A:= DATA VALUE */
+static void pkfun(sw_sndboard *s, uint16_t u, uint8_t b, uint8_t a)
+{
+    switch (b & 0x7f) {
+    case 1: a = (uint8_t)(a - R8(u + ORATE));   /* PKCRAT: CHANGE RATE, ADD NEW(POSITIVE) TO OLD(NEGATIVE) */
+        /* fall through */
+    case 0: W8(u + ORATE, (uint8_t)-a); break;  /* PKARAT: FORM NEGATIVE; NEW RATE */
+    case 3: a = (uint8_t)(a + R8(u + VVOL));    /* PKCAMP: CHANGE AMPLITUDE, ADD NEW TO OLD */
+        /* fall through */
+    case 2: W8(u + VVOL, a); break;             /* PKAAMP: NEW MEDIAN AMPLITUDE */
+    case 5: a = (uint8_t)(a + R8(u + OKEY));    /* PKCKEY: CHANGE KEY, ADD NEW TO OLD */
+        /* fall through */
+    case 4: W8(u + OKEY, a); break;             /* PKAKEY: NEW KEY OFFSET */
+    case 6: W16(u + FPTR, R16(FETAB + (uint8_t)(a << 1))); break;   /* PKFRQE: A FREQ. ENVELOPE */
+    case 7: W16(u + APTR, R16(AETAB + (uint8_t)(a << 1))); break;   /* PKAMPE: AN AMPLITUDE ENVELOPE */
+    case 10: W8(u + VAC, a); break;             /* PKCON: NEW VOICE CONTROL BITS */
+    case 11: W8(PKC1, a); break;                /* PKPKC: NEW POKEY CONTROL BITS (FOR POKEY 1) */
+    case 12: W8(u + VSF, a); break;             /* PKSYN: SET OR RESET SYNTH MODE */
+    case 13:                                    /* PKCPH: CALL A SUB-PHRASE */
+        W16(u + OPTSV, R16(u + OPTR));          /* SAVE CURRENT PC */
+        W16(u + OPTR, R16(TUNTAB + (uint8_t)(a << 1)));     /* GET NEW SUBTUNE */
+        break;
+    case 14:                                    /* PKSL: START A PHRASE LOOP */
+        W8(u + VLC, a);                         /* SAVE LOOP COUNT FOR THIS PHRASE */
+        W16(u + OPTLL, R16(u + OPTR));          /* GET CURRENT PC AND SAVE IT */
+        break;
+    case 15:                                    /* PKEL: END A PHRASE LOOP */
+        a = (uint8_t)(R8(u + VLC) - 1);         /* CHECK FOR DONE WITH LOOP */
+        W8(u + VLC, a);
+        if (a != 0) W16(u + OPTR, R16(u + OPTLL));  /* NOT DONE YET: REINSTATE ADDRESSES OF LOOP START */
+        break;
+    case 16: {                                  /* PKGOSB */
+        uint16_t x = (uint16_t)(R16(u + OPTR) + 1); /* BUMP PAST THE 3 BYTE INSTRUCTION */
+        W16(u + OPTRET, x);                     /* SAVE IT IN RETURN POINTER */
+        W16(u + OPTR, R16(x - 2));              /* GET CURRENT ADDRESS TO JUMP TO (SUBPHRASE) */
+        break;
+    }
+    case 17: W16(u + OPTR, R16(u + OPTRET)); break;     /* PKRET */
+    default: break;                             /* (sync check: not assembled) NULL OUT IF NOT IN RANGE */
+    }
+}
+
+/* POKOUT: COMMON OUTPUT ROUTINE FOR ALL POKEY VOICES. A:= OFFSET INTO
+ * CURRENT VOICE DESCRIPTOR TABLE */
+static void pokout(sw_sndboard *s, uint8_t voice)
+{
+    uint16_t y = (uint16_t)(TVC + voice);   /* Y--> THIS VOICE'S DESCRIPTOR TABLE */
+    uint16_t u = R16(y + VC_RAM);           /* U--> RAM BLOCK FOR THIS VOICE */
+    if (R8(u + OPTR) == 0) return;          /* ?VOICE IN USE? (INUSE IF HI POINTER SET) */
+
+    /* SEE IF TIME TO UPDATE CURRENT NOTE */
+    uint8_t a = (uint8_t)(R8(u + VSEQ) + 1);    /* INC. ENVELOPE SEQ. COUNT */
+    W8(u + VSEQ, a);
+    if (a == 0) W8(u + VSEQ, 0xff);         /* KEEP AT FINAL ENV. COUNT */
+    /* BY ADDING NEGATIVE OF CURRENT RATE, UPDATE CURRENT NOTE DURATION */
+    uint16_t d = (uint16_t)((0xff00 | R8(u + ORATE)) + R16(u + ODUR));
+    W16(u + ODUR, d);
+    if (!(d & 0x8000)) { poksn(s, y, u); return; }  /* STILL SAME NOTE */
+
+    for (;;) {                              /* POKNL: HAVE A NEW NOTE TO PLAY */
+        uint16_t x = R16(u + OPTR);         /* GET THIS NOTE IN TUNE */
+        uint8_t b = R8(x);
+        x += 2;                             /* BUMP TO NEXT INSTRUCTION */
+        W16(u + OPTR, x);
+        if (b & 0x80) {                     /* A FUNCTION */
+            if ((uint8_t)(b << 1) < 2 * 18) pkfun(s, u, b, R8(x - 1));
+            continue;
+        }
+        if (b != 0) b = (uint8_t)(b + R8(u + OKEY));    /* ?SOUNDFUL NOTE?(NOT A REST) THEN POSITION NOTE TO CURRENT KEY */
+        if (R8(SN_DREF) != 0) {
+            d = b;                          /* ELSE USE 8 BIT VALUE DIRECTLY */
+        } else {                            /* ELSE IS 16 BIT -- CALC MUSIC NOTE */
+            x = (uint16_t)(NOTTAB + (uint8_t)(b << 1));     /* BASE OF NOTE CONVERSION TABLE */
+            W16(u + VSA, R16(u + ONOTE) - R16(x));  /* COMPUTE DELTA BETWEEN NEW AND OLD: FOR SYNTH MODE */
+            d = R16(x);                     /* GET NOTE VALUE */
+        }
+        W16(u + ONOTE, d);                  /* STORE AS OUTPUT NOTE */
+
+        x = R16(u + OPTR);                  /* GET DURATION OF CURRENT NOTE */
+        a = R8(x - 1);                      /* (WE PREVIOUSLY BUMPED POINTER TO NEXT NOTE) */
+        if (a == 0) {                       /* ?AT FINAL NOTE? */
+            d = R16(u + OPTSV);             /* CHECK FOR ENDING SUB-PHRASE OR MAIN TUNE */
+            if (d == 0) { pokviy(s, y); return; }   /* END OF MAIN TUNE, INIT THIS VOICE */
+            W16(u + OPTR, d);               /* IF HERE, RETURNING FROM SUB-PHRASE */
+            W16(u + OPTSV, 0);              /* RESET SUB-PHRASE FLAG */
+            continue;                       /* GET A NOTE GOING */
+        }
+        /* STILL HAVE A NEW NOTE, GET AND STORE DURATION: SHIFT AND REMOVE LSB
+         * (TIED NOTE FLAG), MULT. DUR * 128 */
+        d = (uint16_t)(((a >> 2) << 8) | ((a & 0x02) ? 0x80 : 0x00));
+        d = (uint16_t)(d + R16(u + ODUR));  /* SUBTRACT ANY OVERRUN FROM PREV. NOTE */
+        W16(u + ODUR, d);
+
+        if ((R8(x - 1) & 0x01) == 0) {      /* ?NOTE NOT TIED? */
+            W8(u + VSEQ, 0);                /* CLEAR SEQ. COUNTER FOR NOT TIED NOTE */
+            W16(u + VSA, 0);                /* AND NO SYNTH ADJUST FOR NOT TIED */
+            /* TEST IF THIS IS NOT HIGH PRIORITY: LET AMPLITUDE ENVELOPE DO
+             * PRE-GAP; ELSE, DON'T UPDATE POKEY WITH THIS VOICE */
+            if ((R8(SN_VIU) & R8(y + VC_PRI)) != 0 && R8(SN_DREF) == 0) return;
+        } else if (R8(u + VSF) == 0) {      /* NOTE IS TIED, TEST FOR SYNTH MODE ON */
+            W16(u + VSA, 0);                /* NOT ON: CLEAR FREQ. ADJUSTMENT */
+        }
+        poksn(s, y, u);
+        return;
+    }
+}
+
+/* PKDR: POKEY 4MS DRIVER: half of the voices each time */
+static void pkdr(sw_sndboard *s)
+{
+    for (int v = (R8(SN_SINTCT) & 1) ? 0 : 1; v < 8; v += 2)
+        pokout(s, (uint8_t)(v * VC_IZE));
+}
 
 /* --- SNDAUX: the main line ----------------------------------------------------------- */
 
@@ -365,7 +626,16 @@ void sw_sndprog_tick(sw_sndboard *s)
 
     if ((R8(SN_SINTCT) & 1) == 0) auddo(s); /* ?8 MILL BOUNDARY? THEN AUDIO SPECIAL EFFECTS */
     pkdr(s);                                /* DONT FORGET THE MUSIC (OK, THEN JUST HUM) */
-    spkirq(s);                              /* THEN END WITH SPEECH, TWICE IN 4 MS */
+    /* THEN END WITH SPEECH, TWICE IN 4 MS: the 6809 got there a while
+     * after the first time, and the speech chip has gone on meanwhile
+     * (sw_sndprog_late). */
+    s->late = s->late_cycles;
+}
+
+/* The end of the main line's pass. */
+void sw_sndprog_late(sw_sndboard *s)
+{
+    spkirq(s);
 }
 
 /* INIT: RESET INITIALISER */

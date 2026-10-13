@@ -5,19 +5,20 @@ Star Wars (Atari, 1983) für
 USB-DVG, Vektormonitor (Wells-Gardner 6100). Das Spiel unverändert, die
 Darstellung flüssig.
 
-* **Das Spiel ist das Original, nativ**: Das Programm von 1983 ist von Hand
+* **Das Spiel ist das Original, in C**: Das Programm von 1983 ist von Hand
   Zeile für Zeile nach C portiert und Frame für Frame gegen MAME-Aufnahmen
-  geprüft (21.609 Frames, alle gleich). Es wartet so lange, wie der 6809
-  gerechnet hätte, und läuft deshalb so schnell wie das Original. Math Box,
-  Dividierer, NOVRAM und die Zeit des Vektorgenerators sind ebenfalls
-  nativ. Ein 6809-Kern führt aus den eigenen ROMs nur noch Selbsttest und
-  Optionsseite aus, und das Programm der Soundplatine.
+  geprüft (21.609 Frames, alle gleich), ebenso das Programm der
+  Soundplatine (Effekte, Musik, Sprache). Im normalen Betrieb läuft kein
+  6809 mehr mit. Math Box, Dividierer, NOVRAM, POKEYs und Sprachchip sind
+  als Bausteine nachgebildet.
+* **Feste Bildrate**: Das Spiel rechnet immer 20,5 Frames pro Sekunde, wie
+  sein Programm es vorsieht, ohne die Einbrüche des Automaten (dort im
+  Graben etwa 13). Abschaltbar (`steady_frames = 0`).
 * **Darstellung flüssig**: Zwischen zwei Spielframes (das Spiel rechnet 12
   bis 20 pro Sekunde) wird jede Linie bewegt, das Bild kommt mit der Rate
   der Platine. Das Fadenkreuz folgt dem Joch ohne Umweg und ist ab dem
   ersten Bild zentriert.
-* **Ton**: Die Soundplatine läuft mit (Sound-Programm aus den ROMs, vier
-  POKEYs, TMS5220-Sprache).
+* **Ton**: das Sound-Programm in C, vier POKEYs, TMS5220-Sprache.
 * **Weg zum Remaster**: Aus dem Spielzustand der C-Routinen (`src/game`)
   lässt sich später das Bild neu zeichnen (verdeckte Linien, neue Modelle).
 
@@ -90,9 +91,9 @@ Arbeitszähler pro Frame für das Tempomodell (docs/PLAN.md).
 
 | Programm | Zweck |
 |---|---|
-| `starwarsvp` | das Spiel: die nach C portierten Routinen; ein 6809-Kern führt aus dem Original-ROM nur Selbsttest, Optionsseite und das Sound-Programm aus |
-| `starwarsvp --original` | das ganze Originalprogramm auf dem 6809-Kern |
-| `starwarsvp --native` | nur die portierten Routinen, ohne Kern und ohne Ton: das ganze Spiel außer Selbsttest und Optionsseite |
+| `starwarsvp` | das Spiel: Spiel- und Sound-Programm in C, kein 6809 |
+| `starwarsvp --hybrid` | dasselbe; für Selbsttest und Optionsseite (nicht portiert) springt ein 6809-Kern mit dem Original-ROM ein |
+| `starwarsvp --original` | die ganzen Originalprogramme (Spiel und Ton) auf 6809-Kernen, zum Vergleich |
 | `starwarsvp --nosound` | ohne Soundplatine |
 | `starwarsvp --controls` | Testbild für die Steuerung: Fadenkreuz am Joch (mit dem originalen Nachziehen und der Joch-Kalibrierung), Feuer färbt es rot, Münzen zählen Credits |
 | `swcompare AUFNAHME.swcap` | prüft den nativen Kern Frame für Frame gegen eine MAME-Aufnahme |
@@ -124,6 +125,7 @@ Belegung über die `advmame.rc` des Automaten, wie bei MAMEs Star Wars:
 
 | Schlüssel | Bedeutung |
 |---|---|
+| `steady_frames` | `1` (Standard): ein Spielframe jeden 12. Interrupt, 20,5 pro Sekunde, immer. `0`: das Spiel wartet wie der 6809 des Automaten und bricht ein, wo er einbrach (Graben und Boden laufen dann langsamer) |
 | `smooth` | Bewegung zwischen den Spielframes: `3` (Standard) aus dem Spielzustand neu gerechnet, ohne Verzögerung und mit richtiger Perspektive; `0` aus (jedes Spielbild wie im Original), `1` Linien zwischen den letzten beiden Frames verschoben (die Welt einen Spielframe später), `2` Linien dem letzten Frame voraus (ohne Verzögerung, schießen bei Richtungswechseln kurz über). Attract-Seiten nutzen auch bei `3` die verschobenen Linien. |
 | `yoke_autocenter` | `1`: Fadenkreuz ab dem ersten Bild zentriert, das Joch geht exakt durch (Ruhelage aus der Joystick-Kalibrierung des Automaten). `0`: wie der Automat von 1983, der den Bereich des Jochs nach jedem Einschalten neu lernt |
 | `sort_strokes` | `1`: Striche in einer Reihenfolge zeichnen, die dem Strahl Leerweg spart (mehr Bilder pro Sekunde auf der Platine) |

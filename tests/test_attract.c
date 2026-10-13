@@ -91,6 +91,8 @@ static int run_game(int irqs, int stand_in)
     /* The sound board with it; $SWVP_WAV names a file for what it plays. */
     static sw_sndboard snd;
     sw_sndboard_init(&snd, &m);
+    snd.native = stand_in == 2;     /* the sound board's program in C with the steady frames */
+    sw_sndboard_reset(&snd);
     emu.snd = &snd;
     emu.yoke_exact = 1;
     m.yoke_exact = 1;

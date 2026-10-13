@@ -56,6 +56,8 @@ typedef struct sw_sndboard {
     /* 1: the board's program is the C one (sndprog.c) and the 6809 is not
      * run. Set before sw_sndboard_reset. */
     int      native;
+    int32_t  late_cycles;       /* how long after its first call of the speech driver a pass makes the second */
+    int32_t  late;              /* CPU cycles until the pass of the main line ends (sw_sndprog_late), 0: it has */
     /* For checking one against the other: called for every byte written to
      * a POKEY (kind 0, reg: 00-3F as on the bus), to the speech chip (kind
      * 1) and to the main board's latch (kind 2). */
@@ -75,6 +77,7 @@ void    sw_snd_wr(sw_sndboard *s, uint16_t a, uint8_t v);
 void sw_sndprog_init(sw_sndboard *s);
 void sw_sndprog_command(sw_sndboard *s);
 void sw_sndprog_tick(sw_sndboard *s);
+void sw_sndprog_late(sw_sndboard *s);
 
 /* Run the sound CPU for `cycles` of the 1.512 MHz clock. */
 void sw_sndboard_run(sw_sndboard *s, int cycles);

@@ -73,6 +73,7 @@ static void start(side *s, int native)
     s->m.sound_board = 1;
     sw_sndboard_init(&s->snd, &s->m);
     s->snd.native = native;
+    if (getenv("SWVP_LATE")) s->snd.late_cycles = atoi(getenv("SWVP_LATE"));
     s->snd.trace = trace;
     s->snd.trace_user = s;
     sw_sndboard_reset(&s->snd);
@@ -96,6 +97,12 @@ int main(void)
         while (sw_sndboard_read(&port.snd, pcm, 4096) > 0) { }
     }
 
+    if (getenv("SWVP_SPEECH_FROM")) {       /* for looking into it: the speech bytes from that one on */
+        long from = atol(getenv("SWVP_SPEECH_FROM"));
+        for (long i = from; i < from + 40 && i < orig.log[3].n && i < port.log[3].n; i++)
+            printf("speech byte %ld: original %02X in pass %u, in C %02X in pass %u\n", i,
+                   orig.log[3].w[i].v, orig.log[3].w[i].pass, port.log[3].w[i].v, port.log[3].w[i].pass);
+    }
     static const char *name[4] = { "effects", "music", "control", "speech" };
     int fails = 0;
     for (int k = 0; k < 4; k++) {
@@ -111,6 +118,19 @@ int main(void)
         printf("%-8s original %6ld writes, in C %6ld, the same: %6ld", name[k], a->n, b->n, same);
         if (k == 3) printf(" (at most %ld passes apart)", late);
         printf("\n");
+        if (k == 3 && late > 0) {
+            long apart[4] = { 0, 0, 0, 0 }, first = -1;
+            for (long i = 0; i < same; i++) {
+                long d = labs((long)a->w[i].pass - (long)b->w[i].pass);
+                apart[d == 0 ? 0 : d <= 2 ? 1 : d <= 8 ? 2 : 3]++;
+                if (d > 2 && first < 0) first = i;
+            }
+            printf("  in the same pass %ld, 1 or 2 apart %ld, 3 to 8 apart %ld, more %ld", apart[0], apart[1], apart[2], apart[3]);
+            if (first >= 0)
+                printf("; first: byte %ld, original pass %u, in C %u (request %02X)", first, a->w[first].pass,
+                       b->w[first].pass, a->w[first].pass / GAP);
+            printf("\n");
+        }
         if (same != a->n || same != b->n) {
             fails++;
             if (same < a->n && same < b->n)

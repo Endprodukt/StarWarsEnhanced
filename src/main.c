@@ -192,11 +192,19 @@ typedef struct board {
     sw_avg_list sublist;
     uint8_t     subspace[SW_AVG_SPACE_SIZE];
     sw_emu      emu;                           /* the original program on the machine */
-    int         native;                        /* --native: the C routines only */
+    int         native;                        /* the C routines only: no 6809 at all */
+    sw_sndboard *snd;                          /* the sound board (its chips; its program in C too), NULL: none */
     int         original;                      /* --original: the whole original program on the 6809 */
 } board;
 
 static float vg13(uint16_t v) { return (float)((int16_t)(uint16_t)(v << 3) >> 3); }
+
+/* sw_machine.sound_wait: the game waits for the sound board to take a byte. */
+static void on_sound_wait(void *u, int cycles)
+{
+    board *b = (board *)u;
+    if (b->snd) sw_sndboard_run(b->snd, cycles);
+}
 
 /* sw_machine.frame_hook: keep the machine before and after each frame. */
 static void on_frame(void *u, int after)
@@ -230,6 +238,7 @@ static void on_irq(void *u)
     if (b->native) {
         sw_irq(&b->m);
         sw_main_poll(&b->m);
+        if (b->snd) sw_sndboard_run(b->snd, SW_CPU_CYCLES_PER_IRQ);
     } else if (b->original) {
         sw_emu_irq(&b->emu);
     } else {
@@ -408,31 +417,37 @@ int main(int argc, char **argv)
     brd.controls_test = sw_flag(argc, argv, "--controls");
     nvram_load(&brd.m);
     uint32_t nv_saved = brd.m.nv_stores;
-    brd.native = sw_flag(argc, argv, "--native");
     brd.m.yoke_exact = cfg.yoke_autocenter != 0;
     brd.m.steady = cfg.steady_frames != 0 && !sw_flag(argc, argv, "--original");
     if (roms_ok) {
         /* Three ways to run the game:
-         *   default     the C routines; the 6809 stands in for the two phases
-         *               that are not ported (self test, options)
-         *   --native    the C routines only (a phase not ported: back to
-         *               the banner)
-         *   --original  the whole original program on the 6809 */
+         *   default     the C routines and the sound board's program in C:
+         *               no 6809 at all (self test and options, which are
+         *               not ported, lead back to the banner)
+         *   --hybrid    the same, with a 6809 core standing in for those
+         *               two phases
+         *   --original  the whole original programs on 6809 cores */
         brd.original = sw_flag(argc, argv, "--original");
+        brd.native = !brd.original && !sw_flag(argc, argv, "--hybrid");
+        if (!brd.controls_test && !sw_flag(argc, argv, "--nosound")) {
+            static sw_sndboard snd;
+            sw_sndboard_init(&snd, &brd.m);
+            snd.native = !brd.original;
+            sw_sndboard_reset(&snd);
+            brd.snd = &snd;
+            brd.emu.snd = &snd;
+            sw_audio_open(&snd);
+        }
         if (brd.native || brd.controls_test) {
             sw_reset(&brd.m);
+            brd.m.sound_board = brd.snd != NULL;
+            brd.m.sound_wait = on_sound_wait;
+            brd.m.sound_user = &brd;
         } else {
             brd.emu.yoke_exact = cfg.yoke_autocenter != 0;
-            if (!sw_flag(argc, argv, "--nosound")) {
-                static sw_sndboard snd;
-                sw_sndboard_init(&snd, &brd.m);
-                brd.emu.snd = &snd;
-                sw_audio_open(&snd);
-            }
             if (brd.original) {
-                struct sw_sndboard *snd = brd.emu.snd;
                 sw_emu_init(&brd.emu, &brd.m);
-                brd.emu.snd = snd;
+                brd.emu.snd = brd.snd;
                 brd.emu.yoke_exact = cfg.yoke_autocenter != 0;
             } else {
                 sw_reset(&brd.m);
@@ -455,7 +470,7 @@ int main(int argc, char **argv)
     while (sw_app_poll(&app, &dt)) {
         sw_controls_read(&brd.ctl, app.in);
         sw_sched_advance(&sched, dt, roms_ok ? &hooks : NULL);
-        if (brd.emu.snd) sw_audio_balance(brd.emu.snd);
+        if (brd.snd) sw_audio_balance(brd.snd);
         if (brd.m.nv_stores != nv_saved) {      /* the program stored its NOVRAM */
             nv_saved = brd.m.nv_stores;
             nvram_save(&brd.m);

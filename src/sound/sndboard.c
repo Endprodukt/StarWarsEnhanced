@@ -181,6 +181,7 @@ void sw_sndboard_init(sw_sndboard *s, sw_machine *m)
     memset(s, 0, sizeof *s);
     s->m = m;
     s->volume = 1.0f;
+    s->late_cycles = 800;
     m6809_init(&s->cpu, bus_read, bus_write, s);
     sw_sndboard_reset(s);
 }
@@ -220,7 +221,13 @@ void sw_sndboard_run(sw_sndboard *s, int cycles)
              * done when their cause comes up. */
             cy = 16;
             if (s->m->sound_out_full) sw_sndprog_command(s);
-            if (s->timer_flag) sw_sndprog_tick(s);
+            if (s->late > 0 && (s->late -= cy) <= 0) sw_sndprog_late(s);
+            /* (the 6809 has the timer going again 42 to 47 cycles after it
+             * ran out: so long does its interrupt take to get there) */
+            if (s->timer_flag && s->timer_sub >= 36) {
+                if (s->late > 0) { s->late = 0; sw_sndprog_late(s); }
+                sw_sndprog_tick(s);
+            }
         } else {
             cy = m6809_step(&s->cpu);
         }

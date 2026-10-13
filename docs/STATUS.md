@@ -17,26 +17,42 @@ Explosion des Todessterns, Wellenwechsel, alle Tode, Spielende mit
 Buchhaltung und Highscore-Eingabe. In `src/game` gibt es keinen Aufruf ins
 Originalprogramm mehr (`grep -rn "ORIG(" src/game` ist leer).
 
+Ebenso das Programm der Soundplatine (`src/sound/sndprog.c`: Hauptschleife,
+Effekte SNDAUD, Musik SNDPM, Sprache SNDSPK).
+
 `starwarsvp` kennt drei Arten:
 
-* **Standard**: die C-Routinen. Der 6809-Kern steht nur noch für zwei
-  Dinge bereit: die Phasen Selbsttest und Optionen (STS, OPT, nur mit
-  Testschalter erreichbar) und die Soundplatine.
-* `--original`: das ganze Originalprogramm auf dem 6809-Kern (zum Vergleich).
-* `--native`: nur C, ohne Kern und ohne Ton.
+* **Standard**: alles in C, kein 6809. Selbsttest und Optionsseite (STS,
+  OPT; nur mit Testschalter erreichbar) sind nicht portiert und führen
+  zurück zum Banner.
+* `--hybrid`: dasselbe, für STS und OPT springt ein 6809-Kern ein.
+* `--original`: Spiel- und Sound-Programm ganz auf 6809-Kernen (zum Vergleich).
 
-Nativ sind außerdem Math Box, Dividierer, NOVRAM, Schalter und Joch, die
-Zeit des Vektorgenerators, die Bildausgabe und die Zwischenbilder. **Noch
-Emulation ist der Ton**: die nachgebildete Soundplatine (zweiter 6809-Kern
-mit dem Programm aus den Sound-ROMs, RIOT, vier POKEYs, TMS5220).
+Als Bausteine nachgebildet (keine Programme, sondern Hardware): Math Box,
+Dividierer, NOVRAM, die vier POKEYs, der Sprachchip TMS5220, der RIOT der
+Soundplatine, die Zeit des Vektorgenerators.
 
+* **Feste Bildrate** (`steady_frames = 1`, Standard, Wunsch des Besitzers):
+  ein Spielframe jeden 12. Interrupt, 20,5 pro Sekunde, in jeder Phase
+  (gemessen: 12,0 Interrupts je Frame überall). So ist das Programm
+  geschrieben ("20 PER SECOND", alle Zeiten rechnen mit 20 Frames je
+  Sekunde); der Automat schaffte das in Graben und Boden nicht (13 bis 15).
+  Folge: Graben und Boden laufen schneller als am Automaten. Mit
+  `steady_frames = 0` wartet das Spiel wie der 6809 (siehe Tempo).
+* **Ton in C, geprüft gegen das Original** (`tests/test_sound.c`): Zwei
+  Soundplatinen bekommen dieselben 59 Anforderungen (alle, die es gibt);
+  die eine führt das Original-Programm auf dem 6809-Kern aus, die andere
+  das C-Programm. Alle Schreibzugriffe sind gleich und im selben Durchlauf
+  der Hauptschleife: 3.656 auf die Effekt-Kanäle, 55.296 auf die
+  Musik-Kanäle, 18 auf die Steuerregister; die 6.685 Sprachbytes sind
+  gleich und höchstens einen Durchlauf (4 ms) versetzt.
 * **Geprüft gegen MAME**, Frame für Frame (RAM, Math-Box-RAM,
   Displayliste), sechs Aufnahmen mit 21.609 Frames: Attract und fünf
   gespielte (Tod im Graben, Tod im Weltraum, verfehlter Schacht mit
   Wiederholung, zerstörter Todesstern, vier Wellen am Stück mit Darth
   Vader, Bunkern und Türmen). Alle Frames stimmen, mit den C-Routinen wie
   mit dem ganzen Original auf dem Kern.
-* **Tempo**: Im Original bestimmt die Rechenzeit des 6809 die Bildrate (im
+* **Tempo ohne feste Bildrate** (`steady_frames = 0`): Im Original bestimmt die Rechenzeit des 6809 die Bildrate (im
   Graben etwa 13 Bilder pro Sekunde). Die C-Routinen sind sofort fertig und
   warten deshalb so lange, wie der 6809 gebraucht hätte (`src/game/pace.c`):
   aus gezählter Arbeit (gelesene Bytes, Math-Box-Läufe, Zeichen) und einem
@@ -70,7 +86,8 @@ mit dem Programm aus den Sound-ROMs, RIOT, vier POKEYs, TMS5220).
 Der Automat war bei dieser Arbeit aus. Aufgespielt ist der Stand vom
 Attract-Modus davor. Ungeprüft am Gerät, also nur gerechnet und gemessen:
 
-* das ganze Spiel in C am Gerät (Münzen, Start, Joch, Feuer),
+* das ganze Spiel in C am Gerät (Münzen, Start, Joch, Feuer), die feste
+  Bildrate (ob das Tempo in Graben und Boden so gewollt ist),
 * die neu gerechneten Zwischenbilder (`smooth = 3`): Aussehen, Rechenzeit
   auf dem Pi, Fadenkreuz. Steht in der Einstellungsdatei am Automaten noch
   `smooth = 1`, bleibt es dabei, bis man es dort ändert.
@@ -100,7 +117,7 @@ Attract-Modus davor. Ungeprüft am Gerät, also nur gerechnet und gemessen:
 * Selbsttest und Optionsseite brauchen den Testschalter: `p1_button6`
   schaltet ihn um, `p1_button5` ist die Aux-Münze. Beide sind am Automaten
   nicht belegt, solange `advmame.rc` sie nicht zuweist. Diese beiden Phasen
-  laufen über den 6809-Kern.
+  gibt es nur mit `--hybrid` (6809-Kern).
 
 ## Als Nächstes
 
@@ -109,11 +126,11 @@ Attract-Modus davor. Ungeprüft am Gerät, also nur gerechnet und gemessen:
 2. Die Zwischenbilder aus dem Spielzustand auch für die Attract-Seiten
    (Banner, Anleitung, Highscores), die Explosion des Todessterns (DX2, DX3)
    und den Wellenwechsel (NXT); das Fadenkreuz mit jedem Bild nachführen.
-3. Den Ton nativ: SNDAUD, SNDPM, SNDSPK (Sound-Programm) portieren, wie das
-   Spielprogramm. Vorher nach Gehör prüfen: POKEY-Hochpass, TMS5220 genauer
-   (Vergleich mit einer MAME-Aufnahme, `-wavwrite`).
-4. STS und OPT portieren (TCTEST.MAC), dann braucht das Spielprogramm den
-   6809-Kern gar nicht mehr.
+3. Den Ton nach Gehör prüfen: POKEY-Hochpass, TMS5220 genauer (Vergleich
+   mit einer MAME-Aufnahme, `-wavwrite`). Das Programm ist portiert; was
+   noch von MAME abweichen kann, sind die Bausteine.
+4. STS und OPT portieren (TCTEST.MAC); dann kann `--hybrid` entfallen und
+   der 6809-Kern dient nur noch den Vergleichstests.
 5. Menüeintrag und `.vpk`.
 6. Mehr Aufnahmen: ab Welle 5 (schwerer Todesstern), Tod über dem Boden.
 
