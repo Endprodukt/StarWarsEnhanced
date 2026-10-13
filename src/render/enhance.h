@@ -5,13 +5,13 @@
  * Over the surface of the Death Star:
  *   surface    the ground is drawn: the plating of the Death Star, lines
  *              in perspective out to the horizon
- *   towers     the towers and bunkers in true perspective, with more to
- *              them, dark where they come into sight and brighter as they
- *              come nearer. (The arcade
- *              machine shrinks a far tower towards its foot, so that it
- *              grows out of the ground as it comes nearer.) The game's own
- *              are taken out of the picture; with sw_machine.enh_towers
- *              the laser hits them as they are drawn here.
+ *   towers     the towers and bunkers with more to them, sized as the
+ *              arcade machine sizes them (a linear scale with the distance
+ *              on top of the perspective, about the foot, so that a far
+ *              tower is small and grows as it comes), dark where they come
+ *              into sight and brighter as they come nearer. The game's own
+ *              are taken out of the picture; the laser hits them by the
+ *              game's own rule.
  *   dogfights  far off, TIE fighters chase an X-wing across the sky, two
  *              ships or three
  *   stars      a few stars in the sky, twinkling

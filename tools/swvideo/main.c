@@ -253,7 +253,6 @@ int main(int argc, char **argv)
         pic.enhance.surface = pic.enhance.stars = pic.enhance.towers = pic.enhance.dogfights = 1;
         pic.enhance.logo = 1;
         pic.enhance.clip = 1;
-        m.enh_towers = 1;
     }
 
     wav_header(wav, 0);

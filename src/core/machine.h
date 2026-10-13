@@ -87,10 +87,6 @@ typedef struct sw_machine {
      * 6809 took over it. 1: the frames of a phase come at one fixed pace,
      * the average of the arcade machine in that phase. 2: a frame every
      * 12th interrupt in every phase. */
-    /* 1: the towers of the surface are drawn in true perspective
-     * (render/enhance.h), and the laser hits them as they are drawn: not
-     * shrunk towards their foot when far away, as the arcade machine has it. */
-    uint8_t    enh_towers;
     /* For the renderer: the phase whose view drew the list now in VG RAM
      * (set when a view begins). Between a phase's set-up and its first
      * view the phase byte is already the new one while the list, and the
