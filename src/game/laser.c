@@ -8,8 +8,7 @@
  * found under the sight (CL.xDS: the distances of the nearest ship, shot,
  * bunker, tower).
  *
- * Ported so far: space and ground. The trench (CLBLZ, LZCPNW) follows with
- * its phase. Line by line after the 1983 source; comments in capitals are
+ * Line by line after the 1983 source; comments in capitals are
  * the original's. */
 #include "game/game.h"
 #include "game/m6809.h"
@@ -168,6 +167,173 @@ void sw_clslz(sw_machine *m)
         return;
     }
     if (!(R8(SW_CL_ADS) & 0x80)) htsa(m);   /* IF NO GUN, CHECK ALIEN: IF ALIEN VALID, HIT HIM */
+}
+
+/* --- the trench -------------------------------------------------------------------- */
+
+#define TMPTX  0x4801       /* TEMP TX,2,TY,2,TZ,2: where the beam ends */
+#define TMPTY  0x4803
+#define TMPTZ  0x4805
+#define TMPMSK 0x4801       /* TEMP MSK,1,FLG,1 */
+#define TMPFLG 0x4802
+#define LZD    0x80         /* 80 MAX DIAMETER of the laser */
+#define LZR    (LZD / 2)    /* RADIUS IS HALF DIAMETER */
+
+/* The splash where the beam ends on the trench: how big by how far. */
+static void splash_at(sw_machine *m, uint8_t typ)
+{
+    W8(SW_LZ_HIT, 0xff);                    /* AT LEAST HIT THE BOTTOM, THE SIDES */
+    W8(SW_SP_TYP, typ);
+    uint16_t d = (uint16_t)((uint8_t)(R8(TMPTX) - R8(SW_M_U1 + M_TX)) * 3);    /* RELATIVE DISTANCE AWAY */
+    W8(SW_SP_LOC, d >= 0x00e0 ? 0xe0 : (uint8_t)d);     /* LIMIT THE SCALE */
+    W16(SW_SP_COL, (VGCGRN << 8) + SW_VGCOPC);
+}
+
+/* LZHPN: HIT A PANEL */
+static void lzhpn(sw_machine *m, uint16_t x)
+{
+    uint8_t a = R8(TMPMSK) & R8(x);         /* CHECK FOR TYPE OF PANEL */
+    if (a == 0) return;                     /* ?ALIVE? */
+    W8(TMPFLG, a);                          /* SAVEIT, IS 1,2,3 IN THE SLOT */
+
+    a = (uint8_t)(R8(TMPMSK) << 1) & R8(TMPMSK);    /* GEN A TYPE 2 IN CORRECT SLOT */
+    if (a == R8(TMPFLG)) return;            /* ?NOT A FORCE FIELD? */
+    W8(SW_LZ_HIT, 4);                       /* STICK HERE AND SHOW A HIT */
+    W8(x, R8(x) ^ R8(TMPFLG));              /* GET RID OF PANEL */
+    if (a > R8(TMPFLG)) sw_scrpnl(m);       /* MUST HAVE BEEN A 1, I.E. A DECORATIVE PANEL */
+    else sw_scrtrt(m);                      /* MUST BE A TURRET: KILLED A TURRET */
+    sw_doxmt(m, SW_IDASX);
+}
+
+/* LZCPNW: CHECK COLLIDE WITH WIDE WALL PANELS. X: the wall */
+static void lzcpnw(sw_machine *m, uint16_t x)
+{
+    if (R8(SW_LZ_ON) == 0) return;          /* EXIT IF LAZARS NOT ON */
+    x += (R8(SW_LZ_PNX) >> 3) & 0x0f;       /* PANEL EVERY 800(16 PANELS DEEP): POINT INTO PANEL FLAG RAM */
+    int32_t d = (R16(SW_LZ_PNX) & 0x07ff) - (0x200 - LZR);
+    if (d < 0) return;                      /* TOO SHORT ON X */
+    if (d - (0x400 + LZD) > 0) return;      /* TOO LONG ON X */
+    W8(TMPMSK, 3);                          /* SET UP MASK */
+    /* CHECK FOR PROPER WIDTH: LEAST EDGE OF FIRST PANEL */
+    uint16_t w = (uint16_t)(R16(SW_LZ_PNW) - (0x80 - LZR));
+    do {
+        d = (int16_t)w - (0x300 + LZD);     /* GREATER EDGE OF PANEL */
+        w = (uint16_t)d;
+        if (d <= 0) {
+            if ((int16_t)w + (0x300 + LZD) < 0) return;     /* SIZE OF PANEL: MISSED */
+            lzhpn(m, x);                    /* HIT A PANEL */
+            return;
+        }
+        w = (uint16_t)(w - (0x100 - LZD));  /* ADVANCE TO NEXT PANEL */
+        W8(TMPMSK, R8(TMPMSK) << 1);
+        W8(TMPMSK, R8(TMPMSK) << 1);        /* SLIDE MASK FOR NEXT PANEL */
+    } while (R8(TMPMSK) != 0);              /* LOOP TILL NO LIVE PANELS */
+}
+
+/* A wall of CLBLZ's 10$: the beam has passed the side by D. Where along
+ * the wall and how high? */
+static void wall_hit(sw_machine *m, uint16_t dvn, uint16_t dvd, uint16_t y, uint8_t typ, uint16_t wall)
+{
+    W16(SW_M_DVN, dvn);                     /* % OF LINE BENEATH SIDE */
+    W16(SW_M_DVD, dvd);                     /* LENGTH OF LINE: UNSIGNED DIVIDE ONLY */
+    W16(SW_M_ZP, R16(TMPTZ) - R16(SW_M_U1 + M_TZ));     /* POTENTIAL Z VALUES */
+    W16(SW_M_YP, R16(TMPTX) - R16(SW_M_U1 + M_TX));     /* POTENTIAL X VALUES: MISNAMED--DELTA X */
+    W16(SW_M_XP, R16(SW_M_QUO));            /* GET THE FRACTION OF LINE: GEN %*DZ,%*DX */
+    sw_mgowt(m, SW_MSPERS);
+    /* FARTHEST POSSIBLE Z: INTERSECTED NOT QUITE THAT FAR */
+    uint16_t d = (uint16_t)(R16(TMPTZ) - R16(SW_M_ZP));
+    if (!(d & 0x8000)) {
+        if ((int16_t)d > 0) return;         /* ?BENEATH TOP? IF OUTSIDE THEN STOP TRYING */
+    } else {
+        if ((int16_t)d < -0x1000) return;   /* ?ABOVE BOTTOM? */
+    }
+    W16(TMPTZ, d);                          /* Z: ACTUAL END OF LAZAR ON SIDE */
+    W16(SW_LZ_PNW, d + 0x1000);             /* BASE IT AT ZERO: WIDTH */
+    d = (uint16_t)(R16(TMPTX) - R16(SW_M_YP));  /* MISNAMED: X OFFSET */
+    W16(TMPTX, d);                          /* COLLIDED X POSITION */
+    W16(SW_LZ_PNX, d);                      /* X DEPTH */
+    W16(TMPTY, y);                          /* Y POSITION: the SIDE OF TRENCH */
+    splash_at(m, typ);
+    lzcpnw(m, wall);                        /* ?COLLIDE WITH PANELS? */
+}
+
+/* 10$ of CLBLZ: where the beam ends in the trench */
+static void trench_beam(sw_machine *m)
+{
+    W16(TMPTX, 0x7000 + R16(SW_M_U1 + M_TX));       /* FARTHEST FORWARD POINT */
+    /* LEFT/RIGHT: (8X-1X) FOR 7000 MAX */
+    uint16_t d = (uint16_t)((int16_t)(uint16_t)(0 - R16(SW_LZ_RSX)) >> 3);
+    W16(TMPTY, d + R16(SW_LZ_RSX) + R16(SW_M_U1 + M_TY));
+    /* UP/DOWN: (8Y-1Y) FOR 7000 MAX VALUE */
+    d = (uint16_t)((int16_t)(uint16_t)(0 - R16(SW_LZ_RSY)) >> 3);
+    W16(TMPTZ, d + R16(SW_LZ_RSY) + R16(SW_M_U1 + M_TZ));
+
+    /* *** BE SURE TO RESTORE DIVIDER UPON EXIT */
+    int32_t below = -0x1000 - (int16_t)R16(TMPTZ);  /* ?PASSED BOTTOM OF TRENCH? KEEP RESULT POSITIVE */
+    if (below >= 0) {
+        W16(SW_M_DVN, (uint16_t)below);     /* % OF LINE BENEATH BOTTOM */
+        W16(SW_M_DVD, R16(SW_M_U1 + M_TZ) - R16(TMPTZ));    /* OLD TZ: LENGTH OF LINE, UNSIGNED DIVIDE ONLY */
+        W16(SW_M_YP, R16(TMPTY) - R16(SW_M_U1 + M_TY));     /* POTENTIAL Y VALUES */
+        W16(SW_M_ZP, R16(TMPTX) - R16(SW_M_U1 + M_TX));     /* NEW-OLD:MAX RANGE: MISNAMED--DELTA X */
+        W16(SW_M_XP, R16(SW_M_QUO));        /* GET THE FRACTION OF LINE: GEN %*DY,%*DX */
+        sw_mgowt(m, SW_MSPERS);
+        /* FARTHEST POSSIBLE NEW Y: INTERSECTED NOT QUITE THAT FAR */
+        d = (uint16_t)(R16(TMPTY) - R16(SW_M_YP));
+        /* ?WITHIN RIGHT SIDE? ?WITHIN LEFT SIDE? IF OUTSIDE THEN TRY SIDES */
+        if ((d & 0x8000) ? (int16_t)d >= -0x400 : (int16_t)d <= 0x400) {
+            W16(TMPTY, d);                  /* Y: ACTUAL END OF LAZAR ON BOTTOM */
+            d = (uint16_t)(R16(TMPTX) - R16(SW_M_ZP));      /* NEW-%(NEW-OLD): MISNAMED: X OFFSET */
+            W16(TMPTX, d);                  /* COLLIDED X POSITION */
+            W16(SW_LZ_PNX, d);              /* X DEPTH */
+            W16(TMPTZ, (uint16_t)-0x1000);  /* BOTTOM OF TRENCH */
+            splash_at(m, 0x01 + 0x02);      /* UPPER HALF */
+
+            if (R8(SW_BS_PFL) != 0 &&       /* ?EXHAUST PORT ON? */
+                R8(SW_PT_LZF) == 0) {       /* ?PROTON TORP STILL PRIMED? */
+                int32_t e = (int16_t)R16(TMPTY) + 0x200;
+                if (e >= 0 && (int16_t)(uint16_t)e - 0x400 <= 0) {  /* ?WITHIN LEFT EDGE? ?WITHIN RIGHT EDGE? */
+                    /* GET DELTA FROM PORTHOLE LOC */
+                    e = (int16_t)(uint16_t)(R16(TMPTX) - R16(SW_BS_PLC)) + 0x200;
+                    if (e >= 0 && (int16_t)(uint16_t)e - 0x400 <= 0)    /* ?ABOVE BOTTOM EDGE? ?BELOW TOP EDGE? */
+                        W8(SW_PT_LZF, 1);   /* SET LAZAR FIRE FLAG */
+                }
+            }
+            return;                         /* EXIT DONE WITH BOTTOM */
+        }
+    }
+
+    /* ---SIDE CHECK */
+    d = R16(TMPTY);
+    if (d & 0x8000) {                       /* ---CHECK LEFT SIDE COLLISION */
+        int32_t past = -0x400 - (int16_t)d; /* ?PASSED LEFT SIDE OF TRENCH? KEEP RESULT POSITIVE */
+        if (past < 0) return;               /* NOT YET PASSED SIDE */
+        wall_hit(m, (uint16_t)past, (uint16_t)(R16(SW_M_U1 + M_TY) - R16(TMPTY)),
+                 (uint16_t)-0x400, 0x01 + 0x08, SW_PNLW);   /* RIGHT HALF; LEFT WALL PANELS */
+    } else {                                /* ---CHECK RIGHT SIDE COLLISION */
+        int32_t past = (int16_t)d - 0x400;  /* ?PASSED RIGHT SIDE OF TRENCH? */
+        if (past < 0) return;
+        wall_hit(m, (uint16_t)past, (uint16_t)(R16(TMPTY) - R16(SW_M_U1 + M_TY)),
+                 0x400, 0x02 + 0x04, SW_PNRW);              /* LEFT HALF; RIGHT WALL */
+    }
+}
+
+/* CLBLZ: COLLIDE WITH LAZAR, BASE STAR TRENCH */
+void sw_clblz(sw_machine *m)
+{
+    if (R8(SW_LZ_ON) == 0) return;          /* ?LAZARS ON? */
+
+    trench_beam(m);
+    W16(SW_M_DVN, 0x200);                   /* AND IN TYPICAL NON-STRUCTURED MANNER, RESTORE DIVIDER */
+
+    if (!(R16(SW_CL_GDS) & 0x8000)) {       /* CHECK THE GUNS ALSO: ?GOT A GUN? */
+        W8(SW_LZ_HIT, 4);
+        sw_gnhtsg(m);                       /* ALWAYS HIT A GUN SINCE NO DISTANCE CLUE */
+    }
+
+    if ((int8_t)R8(SW_PT_LZF) > 0) {        /* ?LAZAR GOT CLOSE ENUF TO FIRE PROTON TORPS? */
+        W8(SW_PT_LZF, 0xff);                /* MARK THAT PROTON TORP HAS FIRED */
+        sw_frptgn(m);                       /* THEN LAUNCH DIRECT HIT PROTON TORPS */
+    }
 }
 
 /* CLGLZ: COLLIDE WITH GROUND LAZAR */

@@ -93,6 +93,7 @@ void sw_tstlaz(sw_machine *m);
 void sw_vwlaz(sw_machine *m);
 void sw_clslz(sw_machine *m);
 void sw_clglz(sw_machine *m);
+void sw_clblz(sw_machine *m);
 void sw_cphtsa(sw_machine *m);      /* game/aliencpu.c */
 /* WSGUNS.MAC (game/guns.c): the enemies shots. */
 void sw_fragun(sw_machine *m, uint16_t x, uint16_t u);
@@ -101,6 +102,9 @@ void sw_vwgun(sw_machine *m);
 void sw_gnhtsg(sw_machine *m);
 void sw_frplgn(sw_machine *m);
 void sw_frprgn(sw_machine *m);
+void sw_frptgn(sw_machine *m);
+void sw_mvptgn(sw_machine *m);
+void sw_vwptgn(sw_machine *m);
 /* WSBASE.MAC (game/base.c): the trench. */
 void sw_nwbase(sw_machine *m);
 void sw_gnbase(sw_machine *m);
@@ -123,6 +127,8 @@ void sw_scrtrt(sw_machine *m);
 void sw_scrsht(sw_machine *m);
 void sw_scrport(sw_machine *m);
 void sw_scrall(sw_machine *m);
+void sw_scrfrc(sw_machine *m);
+void sw_vwfrc(sw_machine *m);
 
 /* WSGLOW.MAC (game/glow.c), WSGAS.MAC (game/gas.c) */
 void sw_bg1glw(sw_machine *m);

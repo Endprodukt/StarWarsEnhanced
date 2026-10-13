@@ -6,9 +6,10 @@
  * shots, finds the one under the sight for the laser and the one that has
  * reached the ship, which then glows on the shields (GNAHIT, GLOWVW).
  *
- * Ported so far: what the space wave needs. The shots of bunkers, towers
- * and panels and the proton torpedo follow with their phases; their move
- * routines still run from the original. Line by line after the 1983
+ * Ported so far: all but the bunkers and towers firing (FRBxGN, FRWxGN)
+ * and the proton torpedo, which follow with their phases. The moves of
+ * the shots of bunkers and towers (MOVBx, MOVWx) are ported but not yet
+ * checked against a recording. Line by line after the 1983
  * source; comments in capitals are the original's. */
 #include "game/game.h"
 #include "game/m6809.h"
@@ -19,10 +20,16 @@
 #define TYP_GL 0x10         /* GLOWING AGAINST PLAYERS SHIELDS */
 #define TYP_HR 0x20         /* GUN HAS BEEN HURT BY PLAYER */
 
-#define TMOVE  0xA675       /* MOVE ROUTINES (local: MVGUN's LDU) */
+/* TMOVE: MOVE ROUTINES */
 #define MOV_ST 0
 #define MOV_AM 1
 #define MOV_LV 2
+#define MOV_WF 3
+#define MOV_WL 4
+#define MOV_WR 5
+#define MOV_BF 6
+#define MOV_BL 7
+#define MOV_BR 8
 #define MOV_PL 9
 #define MOV_PR 10
 #define ZMOVE  (11 * 2)
@@ -36,6 +43,12 @@
 static uint16_t asrd3(uint16_t d)
 {
     return (uint16_t)((int16_t)d >> 3);
+}
+
+/* ASRD4 */
+static uint16_t asrd4(uint16_t d)
+{
+    return (uint16_t)((int16_t)d >> 4);
 }
 
 /* FRAGUN: FIRE ALIENS GUN. X-->ALIEN PARM, U-->GUN PARM */
@@ -157,6 +170,108 @@ static void movlv(sw_machine *m, uint16_t x)
     }
 }
 
+/* PANLMV, TOWRMV, BNKRMV: the end of the moves of the shots of panels,
+ * towers and bunkers */
+static void bnkrmv(sw_machine *m, uint16_t x)
+{
+    /* ?IS THE SHOT ONLY PRETTY?(NO COLLISION CUZ PASSED PLAYER) THEN KILL IT */
+    if (R8(x + G_TYP) & TYP_PR) W8(x + G_TYP, 0);
+}
+
+/* MOVWF, MOVWL, MOVWR: a tower's shot, forward and to a side */
+static void movw(sw_machine *m, uint16_t x, int16_t dy)
+{
+    uint16_t u = R16(x + G_UVP);
+    W16(u + 0, R16(u + 0) - 0x100);         /* GOTO PLAYER */
+    if (dy) W16(u + 2, R16(u + 2) + (uint16_t)dy);
+    bnkrmv(m, x);
+}
+
+/* SLEWX: a shot ahead of the player comes towards him */
+static void slewx(sw_machine *m, uint16_t u)
+{
+    uint8_t b = (uint8_t)(R8(u + 0) - R8(SW_M_S1 + M_TX));
+    if (b & 0x80) return;                   /* MAKE SURE ITS OK */
+    W16(u + 0, R16(u + 0) - (uint16_t)(b << 2));
+}
+
+/* SLWYL, SLWYR: SLEW Y SHOTS TO THE LEFT or RIGHT WITH PLAYER */
+static void slwy(sw_machine *m, uint16_t u, int right)
+{
+    uint16_t vy = R16(SW_M_S1 + M_VY);      /* MATCH Y VELOCITY ALSO */
+    uint16_t d = (uint16_t)(asrd3((uint16_t)(0 - vy)) + vy);
+    /* RIGHT BUNKER MOVES LEFT ONLY, LEFT BUNKER SHOOTS TOWARDS RIGHT */
+    if (((d & 0x8000) != 0) == right) return;
+    W16(u + 2, d + R16(u + 2));
+}
+
+/* The shot rises to the player's height (and a bit above). */
+static void rise(sw_machine *m, uint16_t u, uint16_t above, int16_t most)
+{
+    uint16_t d = (uint16_t)(R16(SW_M_S1 + M_TZ) + above - R16(u + 4));
+    if (d & 0x8000) return;                 /* ?AIMING UPWARD? */
+    d = asrd3(d);
+    if ((int16_t)d > most) d = (uint16_t)most;
+    W16(u + 4, d + R16(u + 4));             /* THEN MOVE THE GUN UP */
+}
+
+/* MOVBL, MOVBR: a shot of a bunker to the left or right of the player.
+ * 6(U): the attack is reversed, 7(U): FRACTION FOR DIRECTION */
+static void movb(sw_machine *m, uint16_t x, int right)
+{
+    uint16_t u = R16(x + G_UVP);
+    slwy(m, u, !right);                     /* NORMAL LEFT BUNKER SLEWS RIGHT */
+    slewx(m, u);
+    /* DISTANCE FORWARDS times the fraction */
+    uint16_t d = (uint16_t)(((uint16_t)(R16(u + 0) - R16(SW_M_S1 + M_TX)) >> 8) * R8(u + 7));
+    /* NORMAL IS TO THE LEFT (RIGHT), REVERSED the other way */
+    if ((R8(u + 6) == 0) != right) d = (uint16_t)(0 - d);
+    d = (uint16_t)(d + R16(SW_M_S1 + M_TY));
+    /* LEFT BUNKER SHOOTS FOR PLAYERS RIGHT, RIGHT BUNKER AIMS FOR PLAYERS LEFT */
+    d = (uint16_t)(d - R16(u + 2) + (right ? (uint16_t)-0x100 : 0x100));
+    int fast = ((d & 0x8000) != 0) == right;    /* THIS IS THE BUNKERS PREFFERED DIRECTION */
+    if (!(d & 0x8000)) {                    /* ?AIMING RIGHT? */
+        d = (uint16_t)((int16_t)d >> (fast ? 3 : 5));
+        if ((int16_t)d > 0x180) d = 0x180;
+    } else {                                /* ELSE AIMING LEFT */
+        d = (uint16_t)((int16_t)d >> (fast ? 3 : 5));
+        if ((int16_t)d < -0x180) d = (uint16_t)-0x180;
+    }
+    W16(u + 2, d + R16(u + 2));
+    rise(m, u, 0x100, 0x200);
+}
+
+/* MOVBF: a bunker's shot straight ahead */
+static void movbf(sw_machine *m, uint16_t x)
+{
+    uint16_t u = R16(x + G_UVP);
+    W16(u + 0, R16(u + 0) - 0x100);         /* GOTO PLAYER */
+    rise(m, u, 0x80, 0x180);
+    bnkrmv(m, x);
+}
+
+/* MOVPL, MOVPR: MOVE LEFT or RIGHT PANEL GUN's shot (the trench) */
+static void movp(sw_machine *m, uint16_t x, int right)
+{
+    uint16_t u = R16(x + G_UVP);
+    slewx(m, u);
+
+    uint16_t d = (uint16_t)(R16(SW_M_S1 + M_TZ) - R16(u + 4));
+    if (!(d & 0x8000))                      /* ?NEED TO GO UP TO PLAYER? */
+        W16(u + 4, asrd4(d) + R16(u + 4));  /* DO IT SLOWLY */
+
+    if (R8(SW_WV_HRD) >= 1)                 /* ?ON OR ABOVE THE FIRST WAVE? */
+        d = R16(SW_M_S1 + M_TY);            /* THEN HEAT SEEK THE PLAYER */
+    else                                    /* ELSE MOVE TO INSIDE OF SIDELINE */
+        d = right ? 0x180 : (uint16_t)-0x180;
+    d = (uint16_t)(d - R16(u + 2));         /* GUN Y LOC */
+    /* LEFT GUNS ONLY MOVE TO RIGHT, RIGHT GUNS ONLY MOVE TO LEFT */
+    if (((d & 0x8000) != 0) == right)
+        W16(u + 2, asrd4(d) + R16(u + 2));  /* REDUCE DOWN TO SMALL FRACTION OF DISTANCE */
+
+    bnkrmv(m, x);
+}
+
 /* MVGUN: MOVE THE GUNS, SHELLS, ETC. */
 void sw_mvgun(sw_machine *m)
 {
@@ -169,10 +284,14 @@ void sw_mvgun(sw_machine *m)
         case MOV_ST: movst(m, x); break;
         case MOV_AM: movam(m, x); break;
         case MOV_LV: movlv(m, x); break;
-        default:
-            m->rx = x;
-            ORIG(R16(TMOVE + b));
-            break;
+        case MOV_WF: movw(m, x, 0); break;
+        case MOV_WL: movw(m, x, -0x100); break;
+        case MOV_WR: movw(m, x, 0x100); break;
+        case MOV_BF: movbf(m, x); break;
+        case MOV_BL: movb(m, x, 0); break;
+        case MOV_BR: movb(m, x, 1); break;
+        case MOV_PL: movp(m, x, 0); break;
+        case MOV_PR: movp(m, x, 1); break;
         }
     }
 }
@@ -405,4 +524,105 @@ void sw_vwgun(sw_machine *m)
         vw1gun(m, x);
     }
     restore_u1(m);
+}
+
+/* --- PTGUN: PLAYERS PROTON TORPEDO GUN ---------------------------------------------- */
+
+/* FRPTGN: the torpedoes leave for the exhaust port */
+void sw_frptgn(sw_machine *m)
+{
+    W8(SW_PT_LIV, 1);                       /* PT IS ALIVE */
+    W16(SW_PT_X, R16(SW_M_S1 + M_TX) + 0x100);  /* JUST A BIT IN FRONT */
+    W16(SW_PT_Y, R16(SW_M_S1 + M_TY));
+    W16(SW_PT_Z, R16(SW_M_S1 + M_TZ));
+    uint16_t x = SW_GUN;
+    do {
+        W16(SW_CL_GP, x);                   /* GUN POINTER */
+        sw_gnhtsg(m);                       /* PROTON HITS BASE GUN */
+        x = (uint16_t)(R16(SW_CL_GP) + G_IZE);
+    } while (x < SW_GUNZ);                  /* DONE? */
+    sw_doxmt(m, SW_IDPSF2);                 /* SOUND THE DEATH KNELL */
+    sw_doxmt(m, SW_IDAPH);                  /* OTHER POKEY ASSIST TO PROTONING PORTHOLE */
+}
+
+/* MVPTGN: the torpedoes glide into the port */
+void sw_mvptgn(sw_machine *m)
+{
+    if (R8(SW_PT_LIV) == 0) return;         /* ?PT ALIVE? */
+
+    /* MOVE FORWARD AHEAD OF SHIP */
+    uint16_t d = (uint16_t)(R16(SW_PT_X) + 0x300 + R16(SW_M_S1 + M_VX));
+    if (!((uint16_t)(d - R16(SW_BS_PLC)) & 0x8000))     /* ?BEYOND PORTHOLE LOCATION?(NOTE WRAPAROUND) */
+        d = R16(SW_BS_PLC);                 /* THEN STOP ABOVE PORTHOLE */
+    W16(SW_PT_X, d);
+
+    /* FORWARD DISTANCE TO HOLE: GET UPWARD DISTANCE FROM BOTTOM HOLE */
+    d = (uint16_t)(R16(SW_BS_PLC) - R16(SW_PT_X) - 0x1000);
+    if ((int16_t)d < (int16_t)R16(SW_PT_Z))
+        W16(SW_PT_Z, d);                    /* WHEN PROTON TORP IS CLOSE, ANGLE INTO HOLE */
+
+    d = asrd4((uint16_t)(R16(SW_BS_PLC) - R16(SW_PT_X)));   /* (BUT ALWAYS A POSITIVE RESULT) */
+    if (!(R8(SW_PT_Y) & 0x80)) {            /* ?Y TO RIGHT OF MIDLINE? */
+        if ((int16_t)d < (int16_t)R16(SW_PT_Y)) W16(SW_PT_Y, d);    /* ?DOES GLIDE SLOPE SAY GET CLOSER? */
+    } else {                                /* ELSE Y TO LEFT OF MIDLINE */
+        d = (uint16_t)(0 - d);
+        if ((int16_t)d > (int16_t)R16(SW_PT_Y)) W16(SW_PT_Y, d);    /* ?IS GLIDE SLOPE CLOSER TO MIDLINE? */
+    }
+}
+
+/* PTVW: VIEW A SINGLE TORP IN M.X0 */
+static void ptvw(sw_machine *m)
+{
+    W16(SW_M_BIC, SW_MSX0BC);               /* TRANSFORM CENTER POINT */
+    sw_mgowt(m, SW_MSPSB2);
+
+    /* CHECK TO SEE IF HOLE HAS BEEN PASSED: WELL PAST HOLE(AND OUT IN SPACE USUALLY) */
+    if ((int16_t)R16(SW_M_XP) + 0x2000 <= 0)
+        W8(SW_PT_LIV, 0);                   /* THEN TURN OFF PROTON TORPS */
+
+    uint16_t xp = R16(SW_M_XP);
+    if ((int16_t)xp < 1) return;            /* ?FAR ENUF IN FRONT? */
+    W16(SW_M_DVD, xp);
+    W16(SW_M_XT, xp);
+    if ((int16_t)sw_absd(R16(SW_M_YP)) - (int16_t)R16(SW_M_XP) >= 0) return;    /* ?Y IN FRONT VIEW? */
+    if ((int16_t)sw_absd(R16(SW_M_ZP)) - (int16_t)R16(SW_M_XP) >= 0) return;    /* ?Z IN FRONT VIEW? */
+    W16(SW_M_XP, R16(SW_M_QUO));
+    sw_mgowt(m, SW_MSPERS);                 /* PERSPECTIVE MULTIPLY */
+
+    VG((R16(SW_M_ZP) + SW_VGOFFY) & 0x1fff);    /* GET TO PROPER PLACE ON SCREEN */
+    VG(R16(SW_M_YP) & 0x1fff);
+
+    VG(((VGCTRQ << 8) + SW_VGCOPC) | 0xff); /* BRITE TURQOISE SHOTS */
+
+    /* ---DETERMINE SCALE */
+    uint8_t bin = 6;                        /* MAX FOR BINARY SCALE: MAX 0 IS AT 200 */
+    uint16_t d = R16(SW_M_XT);
+    uint8_t lin;
+    W8(TMPBIN, bin);
+    for (;;) {                              /* ---LOOP FOR BINARY SCALE */
+        W8(TMPBIN, --bin);
+        if (bin == 0) { lin = (uint8_t)(d >> 8); break; }
+        d = (uint16_t)(d << 1);
+        if (d & 0x8000) { lin = (uint8_t)(d >> 8) & 0x7f; break; }  /* MAX FOR LINEAR SCALE */
+    }
+    VG(((bin | 0x70) << 8) | lin);          /* SCALE INSTRUCTION */
+
+    VG(SW_VJGNT);
+    VG(SW_VGSCAL);
+    VG(SW_VGCNTR);
+}
+
+/* VWPTGN: VIEW PLAYERS PROTON TORPEDO */
+void sw_vwptgn(sw_machine *m)
+{
+    if (R8(SW_PT_LIV) == 0) return;         /* ?PLAYER TORP ALIVE? */
+    W16(SW_M_X0, R16(SW_PT_X));             /* THEN SETUP COORDS */
+    W16(SW_M_Y0, R16(SW_PT_Y) + 0x80);
+    W16(SW_M_Z0, R16(SW_PT_Z));
+    TAG(SW_TAG_SHOT, 16);
+    ptvw(m);
+
+    W16(SW_M_Y0, R16(SW_PT_Y) - 0x80);      /* DO LEFT PROTON TORP NOW */
+    TAG(SW_TAG_SHOT, 17);
+    ptvw(m);
 }

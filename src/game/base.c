@@ -61,7 +61,7 @@ static void iwedge(sw_machine *m)
         W8(SW_PT_LIV, 0);                   /* PROTON TORP NOT LIVE YET */
         if (R8(SW_Q_FRC) == 0) {            /* ?DID THE PLAYER USE THE FORCE IN THE TRENCH? */
             W8(SW_Q_FRC, R8(SW_Q_FRC) + 1); /* MARK SUCCESS */
-            ORIG(SW_SCRFRC);                /* SCORE ONE FOR ASSERTIVENESS TRAINING(FORCEFUL) */
+            sw_scrfrc(m);                   /* SCORE ONE FOR ASSERTIVENESS TRAINING(FORCEFUL) */
         }
     }
 

@@ -177,3 +177,29 @@ void sw_scrtrt(sw_machine *m)   { sw_aduscr(m, TSCTRT); }   /* TRENCH GUN TURRET
 void sw_scrsht(sw_machine *m)   { sw_aduscr(m, TSCSHT); }   /* HIT FIREBALL */
 void sw_scrport(sw_machine *m)  { sw_aduscr(m, TSCPRT); }   /* HIT EXHAUST PORT ( KILLED DEATH STAR ) */
 void sw_scrall(sw_machine *m)   { sw_aduscr(m, TSCATP); }   /* GOT ALL TOWER TOPS OR BUNKERS IN A WAVE */
+
+#define TSCFRC 0x983B       /* the points for using the force, by the wave */
+#define TSCFRN 5
+
+/* GETFRP: GET POINTER TO THIS WAVES POINTS */
+static uint16_t getfrp(sw_machine *m)
+{
+    uint8_t b = R8(SW_GM_WAV);
+    if (b >= TSCFRN) return TSCFRC + 3 * (TSCFRN - 1);  /* HIGHER LEVELS USE MAX SCORE */
+    return (uint16_t)(TSCFRC + (uint8_t)((uint8_t)(b << 1) + R8(SW_GM_WAV)));   /* *3 */
+}
+
+/* SCRFRC: PLAYER USED THE FORCE IN THE TRENCH */
+void sw_scrfrc(sw_machine *m) { sw_aduscr(m, getfrp(m)); }
+
+/* VWFRC: VIEW THE SUCCESSFUL FORCE SCORE */
+void sw_vwfrc(sw_machine *m)
+{
+    VG(SW_VJMFL);                           /* COLOR */
+    VG(SW_VGRW7 & 0x1fff);                  /* Y DISTANCE UP */
+    VG((uint16_t)-320 & 0x1fff);            /* X POSITION ON LEFT SCREEN */
+    W8(SW_BT_SUP, 4);                       /* SUPPRESS UP TO 4 LEADING ZEROS */
+    /* U-->6 DIGIT SCORE TO USE, X-->8 DIGIT FIELD, BUT DISPLAY LO 6 DIGITS ONLY */
+    sw_vw6dig(m, (uint16_t)(getfrp(m) - 1));
+    sw_domess(m, SW_MS_USE + 1);            /* FOLLOW WITH TEXT, FOR USING THE FORCE */
+}

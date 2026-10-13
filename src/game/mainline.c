@@ -1100,7 +1100,7 @@ static void vewbs(sw_machine *m)
     uint8_t a = R8(SW_Q_FRC);
     if (!(a & 0x80)) {                      /* ?USING THE FORCE? */
         if (a == 0) sw_domess(m, SW_MS_USE);    /* ?BUT STILL WAITING? */
-        else ORIG(SW_VWFRC);                /* ELSE WAS SUCCESSFUL: VIEW FORCE SCORING */
+        else sw_vwfrc(m);                  /* ELSE WAS SUCCESSFUL: VIEW FORCE SCORING */
     }
 
     sw_vwgas(m);
@@ -1109,10 +1109,10 @@ static void vewbs(sw_machine *m)
 
     sw_tstlaz(m);                           /* PREPARE FOR LAZAR HITS */
     sw_vwgun(m);
-    ORIG(SW_CLBLZ);                         /* PROCESS COLLISIONS */
+    sw_clblz(m);                            /* PROCESS COLLISIONS */
     sw_vwlaz(m);                            /* AND SEE RESULT */
 
-    ORIG(SW_VWPTGN);                        /* SEE THE PROTON TORPS IMMEDIATELY */
+    sw_vwptgn(m);                           /* SEE THE PROTON TORPS IMMEDIATELY */
 
     sw_vwglw(m);
     vgdone(m);
@@ -1251,7 +1251,7 @@ static void phebs(sw_machine *m)
     }
 
     sw_mvgun(m);
-    ORIG(SW_MVPTGN);                        /* PLAYERS PROTON TORP GUN */
+    sw_mvptgn(m);                           /* PLAYERS PROTON TORP GUN */
     sw_dobase(m);                          /* FIRES BASES SHOTS */
     sw_do1qglw(m);                          /* QUICKER GLOW IN TRENCH SEQUENCES */
     sw_do1gas(m);
