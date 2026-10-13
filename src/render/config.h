@@ -69,10 +69,6 @@ typedef struct sw_display_cfg {
      * in true perspective, with more to them, seen from farther and fading
      * in; far off, TIE fighters chasing an X-wing. */
     int enh_surface, enh_stars, enh_towers, enh_dogfights;
-    /* How a far tower is sized: 0 as the arcade machine (a linear scale
-     * with the distance, 1 - XP/4000h, so that it grows out of the ground
-     * as it comes), 1 the same with half that scale, 2 true perspective. */
-    int enh_tower_size;
     /* Enhanced, in the trench: 1: what stands in it keeps its shape as it
      * comes near, its lines cut at the edge of the screen. 0: as the arcade
      * machine, which pushes the points of a near object to the edge. */

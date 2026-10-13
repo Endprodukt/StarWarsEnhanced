@@ -290,9 +290,6 @@ static void apply_enhanced(board *b, const sw_display_cfg *cfg)
     b->pic.enhance.surface = on && cfg->enh_surface;
     b->pic.enhance.stars = on && cfg->enh_stars;
     b->pic.enhance.towers = on && cfg->enh_towers;
-    b->pic.enhance.tower_size = cfg->enh_tower_size;
-    /* the laser's hit test meets the towers as they are drawn */
-    b->m.tower_adjust = (uint16_t)(!(on && cfg->enh_towers) ? 0x100 : cfg->enh_tower_size == 0 ? 0x100 : cfg->enh_tower_size == 1 ? 0x80 : 0);
     b->pic.enhance.dogfights = on && cfg->enh_dogfights;
     b->pic.enhance.logo = on && cfg->logo_yellow;
     b->pic.enhance.clip = on && cfg->enh_clip;

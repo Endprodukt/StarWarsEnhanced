@@ -402,8 +402,9 @@ static void towers(sw_enhance *e, const sw_machine *m, double now)
              * as it comes. (In true perspective the towers stood larger
              * and closer together than the owner knows them.) */
             {
-                double k = e->tower_size == 0 ? 16384.0 : e->tower_size == 1 ? 32768.0 : 1e12;
-                e->shrink = (float)(1.0 - c.x / k);
+                unsigned a = ((unsigned)c.x >> 8) << 2;
+                if (a > 255) a = 255;
+                e->shrink = (float)(255 - a) / 255.0f;
                 if (e->shrink < (float)SMALLEST) e->shrink = (float)SMALLEST;
                 vec foot = add(c, turn(e, vec3(0.0, 0.0, -3840.0)));
                 if (foot.x < 1.0) foot.x = 1.0;
