@@ -17,6 +17,7 @@
 
 #include <stdint.h>
 
+#include "avg/avg.h"
 #include "core/sw_symbols.h"
 #include "core/tags.h"
 #include "mbox/mbox.h"
@@ -49,6 +50,9 @@ typedef struct sw_inputs {
  * what a read sees depends on the CPU's timing). NULL: an LFSR stepped a
  * varying amount per read. Recordings can inject MAME's values. */
 typedef uint8_t (*sw_prng_fn)(void *user);
+
+/* A note next to a word of VG RAM (see sw_machine.vgnote). */
+typedef sw_avg_note sw_vgnote;
 
 typedef struct sw_machine {
     const sw_romset *rom;
@@ -123,6 +127,15 @@ typedef struct sw_machine {
     uint16_t   vgtag[0x1800];
     uint8_t    vgstart[0x1800];  /* 1: the word begins a new piece (a new call of the routine that writes it) */
     uint16_t   tag;
+    /* Also for the renderer only (render/solid.h): how far away the point a
+     * word draws to is (the divider's quotient, 1/X: larger is nearer; 0:
+     * not known), and for the lines of a 3-D object which object it is
+     * (model: its number + 1), which one drawn (inst) and which of its
+     * points (pt: number + 1). */
+    sw_vgnote  vgnote[0x1800];
+    sw_vgnote  note;             /* what is noted for the words written now */
+    uint16_t   pt_w[64];         /* 1/X of the points of the object projected last */
+    uint16_t   inst_n;           /* objects drawn so far */
     uint8_t    star_gen[64];     /* how often star n was replaced */
     uint8_t    star_of[64];      /* the star of the nth queued entry */
     /* Work done, counted for the pace of the game (game/pace.c): characters,

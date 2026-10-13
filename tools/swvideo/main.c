@@ -1,7 +1,10 @@
 /* swvideo - a film of the port, without the cabinet.
  *
  *   swvideo [--roms DIR] [--seconds N] [--attract N] [--fps N] [--size WxH] [--aim XX,YY]
- *           --wav FILE > frames.rgb
+ *           [--wire] [--every N] --wav FILE > frames.rgb
+ *
+ * --wire: wire frames as the arcade machine drew them (no occlusion).
+ * --every N: only every Nth picture is written (stills to look at).
  *
  * Runs the game as starwarsvp does (the programs in C, steady frames, the
  * pictures in between computed), played by a script: N seconds of the
@@ -52,6 +55,13 @@ static const char *arg(int argc, char **argv, const char *name)
     for (int i = 1; i + 1 < argc; i++)
         if (!strcmp(argv[i], name)) return argv[i + 1];
     return NULL;
+}
+
+static int arg_flag(int argc, char **argv, const char *name)
+{
+    for (int i = 1; i < argc; i++)
+        if (!strcmp(argv[i], name)) return 1;
+    return 0;
 }
 
 /* A dot of light, spread over the four pixels around it. */
@@ -188,6 +198,8 @@ int main(int argc, char **argv)
     unsigned aim_x = 0x08, aim_y = 0xb6;
     if (arg(argc, argv, "--aim")) sscanf(arg(argc, argv, "--aim"), "%x,%x", &aim_x, &aim_y);
     W &= ~3; H &= ~3;
+    long every = arg(argc, argv, "--every") ? atol(arg(argc, argv, "--every")) : 1;
+    if (every < 1) every = 1;
     FILE *wav = arg(argc, argv, "--wav") ? fopen(arg(argc, argv, "--wav"), "wb") : NULL;
     if (!wav) {
         fprintf(stderr, "swvideo: --wav FILE is needed\n");
@@ -213,6 +225,7 @@ int main(int argc, char **argv)
     m.sound_board = 1;
     m.sound_wait = on_sound_wait;
     sw_picture_init(&pic, &m);
+    pic.occlusion = !arg_flag(argc, argv, "--wire");
 
     wav_header(wav, 0);
     uint32_t samples = 0;
@@ -264,6 +277,7 @@ int main(int argc, char **argv)
         }
         const sw_line *lines;
         int count = sw_picture_lines(&pic, now, 3, &lines);
+        if (f % every != 0) continue;
         picture(lines, count);
         if (fwrite(rgb, 3, (size_t)W * H, stdout) != (size_t)W * H) return 1;
         if (f % 600 == 0)

@@ -44,7 +44,23 @@ typedef struct sw_line {
     uint8_t zz;           /* the vector's own 0..7 */
     uint8_t defocus;      /* FUZZ: the beam was defocused */
     uint64_t id;          /* what the line is, for finding it again in the next list (0: unknown) */
+    /* From the notes of the list (sw_avg_run_noted), for hiding what is
+     * behind something (render/solid.h): how far away its ends are (1/X,
+     * larger is nearer; 0: not known), and if it is a line of a 3-D object
+     * which one drawn (inst), of which model (its number + 1) and between
+     * which of its points (number + 1; 0: none). */
+    uint16_t w0, w1;
+    uint16_t inst;
+    uint8_t  model, p0, p1;
 } sw_line;
+
+/* A note next to a word of VG RAM (the same as sw_vgnote, core/machine.h). */
+typedef struct sw_avg_note {
+    uint16_t w;
+    uint16_t inst;
+    uint8_t  pt;
+    uint8_t  model;
+} sw_avg_note;
 
 enum sw_avg_status {
     SW_AVG_OK = 0,          /* reached HALT */
@@ -80,6 +96,10 @@ int sw_avg_run(const uint8_t *space, uint16_t start, sw_avg_list *out, int max_i
  * (render/smooth.h). */
 int sw_avg_run_tagged(const uint8_t *space, uint16_t start, const uint16_t *tags, const uint8_t *starts,
                       sw_avg_list *out, int max_instructions);
+
+/* The same, with the notes of the words of VG RAM as well (may be NULL). */
+int sw_avg_run_noted(const uint8_t *space, uint16_t start, const uint16_t *tags, const uint8_t *starts,
+                     const sw_avg_note *notes, sw_avg_list *out, int max_instructions);
 
 /* How long the board takes to draw the list at byte address start, in
  * cycles of the 12.096 MHz master clock, until HALT: the time the game

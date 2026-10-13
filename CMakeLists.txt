@@ -78,6 +78,7 @@ add_library(swcore STATIC
     src/game/gas.c
     src/render/smooth.c
     src/render/picture.c
+    src/render/solid.c
     src/cpu/m6809.c
     src/core/emu.c
     src/sound/pokey.c
@@ -155,6 +156,10 @@ if(BUILD_TESTING)
     add_executable(test_subframe tests/test_subframe.c)
     target_link_libraries(test_subframe PRIVATE swcore)
     add_test(NAME subframe COMMAND test_subframe)
+
+    add_executable(test_solid tests/test_solid.c)
+    target_link_libraries(test_solid PRIVATE swcore)
+    add_test(NAME solid COMMAND test_solid)
 
     add_executable(test_sound tests/test_sound.c)
     target_link_libraries(test_sound PRIVATE swcore)

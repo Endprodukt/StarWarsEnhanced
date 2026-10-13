@@ -32,6 +32,7 @@ void sw_display_cfg_defaults(sw_display_cfg *c)
     c->smooth = 3;
     c->steady_frames = 1;
     c->sort_strokes = 1;
+    c->occlusion = 1;
 }
 
 static char *trim(char *s)
@@ -57,6 +58,7 @@ static int set(sw_display_cfg *c, const char *key, const char *val)
         { "yoke_autocenter", &c->yoke_autocenter }, { "smooth", &c->smooth },
         { "steady_frames", &c->steady_frames },
         { "sort_strokes", &c->sort_strokes },
+        { "occlusion", &c->occlusion },
     };
     for (size_t i = 0; i < sizeof floats / sizeof floats[0]; i++)
         if (strcmp(key, floats[i].k) == 0) { *floats[i].f = (float)atof(val); return 0; }
@@ -127,6 +129,9 @@ int sw_display_cfg_save(const sw_display_cfg *c, const char *path)
                "; machine in play); 0 as long as its 6809 took over each\n"
                "steady_frames = %d\n", c->steady_frames);
     fprintf(f, "\n; draw strokes in an order that saves the beam dark travel\nsort_strokes = %d\n", c->sort_strokes);
+    fprintf(f, "\n; enhanced: things are solid, what is behind them is not drawn (0: wire frames\n"
+               "; you see through, as the arcade machine)\n"
+               "occlusion = %d\n", c->occlusion);
     fclose(f);
     return 0;
 }

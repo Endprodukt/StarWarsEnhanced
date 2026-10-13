@@ -60,6 +60,7 @@ static void project(sw_machine *m)
 /* OBJCEN (BJCNTR): EXPECTS VG AT CENTER, INFO AT QUO, YP, XP */
 void sw_objcen(sw_machine *m)
 {
+    m->note.w = sw_divider_quotient(&m->div);   /* (for the renderer: how far away) */
     project(m);
     uint16_t d = R16(SW_M_ZP);
     W16(SW_BJ_CY, d);                       /* NEW CURRENT Y */
@@ -71,6 +72,7 @@ void sw_objcen(sw_machine *m)
 
 static void line_to(sw_machine *m, uint8_t brite)
 {
+    m->note.w = sw_divider_quotient(&m->div);
     project(m);
     VG((R16(SW_M_ZP) - R16(SW_BJ_CY)) & 0x1fff);    /* CURRENT UP/DOWN POSITION */
     W16(SW_BJ_CY, R16(SW_M_ZP));
@@ -107,12 +109,34 @@ void sw_objpnt(sw_machine *m)
     do {
         sw_mgowt(m, SW_MSPAD);
         W16(SW_M_DVD, R16(SW_M_XP));        /* X */
+        m->pt_w[((x - SW_BJ_PNT) >> 2) & 63] = sw_divider_quotient(&m->div);
         project(m);                         /* 1/X (*Y,*Z) */
         W16(x + 0, R16(SW_M_YP));
         W16(x + 2, R16(SW_M_ZP));
         x += 4;
         W8(SW_L_TMPCNT, R8(SW_L_TMPCNT) - 1);
     } while ((int8_t)R8(SW_L_TMPCNT) > 0);
+}
+
+/* For the renderer (sw_machine.vgnote): the lines that follow are those of
+ * object BJ.ID, each drawn to one of its points. */
+static void note_object(sw_machine *m)
+{
+    if (++m->inst_n == 0) m->inst_n = 1;
+    m->note.inst = m->inst_n;
+    m->note.model = (uint8_t)(m->ram[SW_BJ_ID - 0x4800] + 1);
+}
+
+static void note_point(sw_machine *m, unsigned n)
+{
+    m->note.pt = (uint8_t)(n + 1);
+    m->note.w = m->pt_w[n & 63];
+}
+
+static void note_end(sw_machine *m)
+{
+    m->note.inst = 0;
+    m->note.model = m->note.pt = 0;
 }
 
 /* OBJDRW: the object's lines between the projected points. A line code is
@@ -122,13 +146,17 @@ void sw_objdrw(sw_machine *m)
 {
     uint16_t u = O16(SW_TDRWLN + 2 * R8(SW_BJ_ID));
     u++;                                    /* (a first byte not 0: NOT AN INTERPRETABLE OBJECT) */
+    note_object(m);
     for (;;) {
         uint8_t b = O8(u++);
         if (b & 0x02) {
-            if (b == 0xff) return;
-            if ((b >> 2) > R8(SW_BJ_DMC)) continue;     /* CONTINUE IF BACK DAMAGE */
-            return;
+            if (b == 0xff || (b >> 2) <= R8(SW_BJ_DMC)) {
+                note_end(m);
+                return;
+            }
+            continue;                       /* CONTINUE IF BACK DAMAGE */
         }
+        note_point(m, b >> 2);
         W8(SW_BJ_BRT, (b & 0x03) ? 0x00 : 0xe0);        /* 0 CODE HAS BRITNESS: PRE FORMATTED */
         uint16_t x = (uint16_t)(SW_BJ_PNT + (b & 0xfc));    /* ADD OFFSET TO POINT TABLE */
         VG((R16(x + 2) - R16(SW_BJ_CY)) & 0x1fff);      /* Y */
@@ -205,6 +233,7 @@ static void project_ground(sw_machine *m, int clip)
          * X BEHIND(HS 8000) GIVES LO QUOTIENT(LS 100): SIGNED LE 100 CATCHES BOTH */
         if (clip && (int16_t)u <= 0x100) u = 0x7fff;
         uint16_t x = R16(SW_M_XT);          /* X FOR THE NEXT LOOP */
+        m->pt_w[(n - a) & 63] = u;
         W16(SW_M_YT, u);                    /* SPECIAL PERS USES YT FOR MULT */
         W8(SW_M_PCGO, SW_MSPRS2);           /* DO SPECIAL PERS */
         W16(SW_M_DVD, x);                   /* START NEXT 1/X */
@@ -306,26 +335,75 @@ static const gline G_PORT[] = {             /* THERMAL EXHAUST PORT */
     TO(2), TO(0), TO(1), TO(3), ENDPLOT
 };
 
+static const gline *ground_lines(unsigned id)
+{
+    switch (id) {
+    case SW_TDSBNK:  return G_BNK;
+    case SW_TDSTWR:
+    case SW_TDSGND:  return G_TWR;
+    case SW_TDSSTB:  return G_STB;
+    case SW_TDSWGA:
+    case SW_TDSWGB:  return G_WGA;
+    case SW_TDSWPN:  return G_WPN;
+    case SW_TDSWFF:  return G_WFF;
+    case SW_TDSWFG:  return G_WFG;
+    case SW_TDSPOR:  return G_PORT;
+    default:         return NULL;
+    }
+}
+
+/* For the renderer (render/solid.h): the points of object id as they are
+ * in the ROM and the lines between them, whatever way it is drawn. Returns
+ * the number of points, 0 if there is no such object. */
+int sw_obj_model(const sw_machine *m, unsigned id, int16_t (*pts)[3], int max_pts,
+                 uint8_t (*edges)[2], int max_edges, int *n_edges)
+{
+    *n_edges = 0;
+    if (id > SW_TDSPOR) return 0;
+    int n = O8(SW_TDRWNM + id);
+    if (n > max_pts) return 0;
+    uint16_t x = O16(SW_TDRWPC + 2 * id);
+    for (int i = 0; i < n; i++, x += 6)
+        for (int k = 0; k < 3; k++) pts[i][k] = (int16_t)O16(x + 2 * k);
+    int from = -1;
+    const gline *g = ground_lines(id);
+    if (g) {
+        for (; g->op != G_END; g++) {
+            if (g->op != G_PLOT && g->op != G_TO && g->op != G_MOVE) continue;
+            if (g->op == G_TO && from >= 0 && *n_edges < max_edges) {
+                edges[*n_edges][0] = (uint8_t)from;
+                edges[*n_edges][1] = (uint8_t)g->arg;
+                (*n_edges)++;
+            }
+            from = g->arg;
+        }
+    } else {
+        uint16_t u = (uint16_t)(O16(SW_TDRWLN + 2 * id) + 1);
+        for (int k = 0; k < 400; k++) {
+            uint8_t b = O8(u++);
+            if (b == 0xff) break;
+            if (b & 0x02) continue;         /* (the end of what shows at some damage) */
+            if (!(b & 0x01) && from >= 0 && *n_edges < max_edges) {
+                edges[*n_edges][0] = (uint8_t)from;
+                edges[*n_edges][1] = (uint8_t)(b >> 2);
+                (*n_edges)++;
+            }
+            from = b >> 2;
+        }
+    }
+    return n;
+}
+
 /* BJGDRW: the lines of ground object BJ.ID between its projected points */
 void sw_bjgdrw(sw_machine *m)
 {
-    const gline *g;
-    switch (R8(SW_BJ_ID)) {
-    case SW_TDSBNK:  g = G_BNK; break;
-    case SW_TDSTWR:
-    case SW_TDSGND:  g = G_TWR; break;
-    case SW_TDSSTB:  g = G_STB; break;
-    case SW_TDSWGA:
-    case SW_TDSWGB:  g = G_WGA; break;
-    case SW_TDSWPN:  g = G_WPN; break;
-    case SW_TDSWFF:  g = G_WFF; break;
-    case SW_TDSWFG:  g = G_WFG; break;
-    case SW_TDSPOR:  g = G_PORT; break;
-    default: return;                        /* (SWI: OOPS, NOT CORRECT TYPE) */
-    }
+    const gline *g = ground_lines(R8(SW_BJ_ID));
+    if (!g) return;                         /* (SWI: OOPS, NOT CORRECT TYPE) */
     uint16_t old = 0;
+    note_object(m);
     for (;; g++) {
         uint16_t p = (uint16_t)(SW_M_GDXS + g->arg * GD_BLOCK);
+        if (g->op == G_PLOT || g->op == G_TO || g->op == G_MOVE) note_point(m, g->arg);
         switch (g->op) {
         case G_PLOT:
             /* ASSUMING START FROM CENTER OF VG -- MUST OFFSET */
@@ -344,6 +422,7 @@ void sw_bjgdrw(sw_machine *m)
         case G_WORD: VG(g->arg); break;
         case G_MEM:  VG(R16(g->arg)); break;
         default:
+            note_end(m);
             VG(SW_VGSCAL);                  /* RESET SCALE */
             VG(SW_VGCNTR);                  /* AND CENTER */
             return;

@@ -95,6 +95,8 @@ void sw_bjgpnt(sw_machine *m);
 void sw_bjbclp(sw_machine *m);
 void sw_bjgclp(sw_machine *m);
 void sw_bjgdrw(sw_machine *m);
+int  sw_obj_model(const sw_machine *m, unsigned id, int16_t (*pts)[3], int max_pts,
+                  uint8_t (*edges)[2], int max_edges, int *n_edges);
 
 /* WSCPU.MAC (game/alien.c): the enemy ships. X is an alien's record. */
 void sw_nwnshp(sw_machine *m);

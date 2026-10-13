@@ -380,6 +380,7 @@ int main(int argc, char **argv)
             brd.emu.yoke_exact = cfg.yoke_autocenter != 0;
         }
         sw_picture_init(&brd.pic, &brd.m);
+        brd.pic.occlusion = brd.native && cfg.occlusion;
     }
     sw_controls_init(&brd.ctl, app.in);
     if (roms_ok && sw_splash_verify(&brd.m) != 0)

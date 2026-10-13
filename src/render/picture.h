@@ -9,6 +9,7 @@
  *      ahead
  *   1, 2  the lines of the last pictures shown, moved (render/smooth.h)
  *   0  the last picture as it is
+ * and cuts away what is behind something else, if asked to (render/solid.h).
  */
 #ifndef SWVP_PICTURE_H
 #define SWVP_PICTURE_H
@@ -17,6 +18,7 @@
 #include "core/machine.h"
 #include "game/subframe.h"
 #include "render/smooth.h"
+#include "render/solid.h"
 
 typedef struct sw_picture {
     sw_machine *m;
@@ -35,6 +37,8 @@ typedef struct sw_picture {
     sw_smooth   ahead;                      /* this frame's picture and the next one's, computed ahead */
     sw_avg_list nextlist, sublist;
     sw_machine  scratch;
+    int         occlusion;                  /* 1: what is behind something is not drawn (render/solid.h) */
+    sw_solid    solid;
     uint8_t     subspace[SW_AVG_SPACE_SIZE];
 } sw_picture;
 

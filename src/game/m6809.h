@@ -8,6 +8,8 @@
 
 #include "core/machine.h"
 
+#include <string.h>
+
 #define R8(a)     sw_rd8(m, (uint16_t)(a))
 #define R16(a)    sw_rd16(m, (uint16_t)(a))
 #define W8(a, v)  sw_wr8(m, (uint16_t)(a), (uint8_t)(v))
@@ -18,8 +20,9 @@
 
 /* What the words written from here on belong to (core/tags.h), and the
  * note of it for a word written at address a. */
-#define TAG(section, key) (m->tag = SW_TAG(section, key))
-#define VGT(a)    (m->vgtag[((uint16_t)(a) >> 1) % 0x1800] = m->tag, m->vgstart[((uint16_t)(a) >> 1) % 0x1800] = 0)
+#define TAG(section, key) (m->tag = SW_TAG(section, key), memset(&m->note, 0, sizeof m->note))
+#define VGT(a)    (m->vgtag[((uint16_t)(a) >> 1) % 0x1800] = m->tag, m->vgstart[((uint16_t)(a) >> 1) % 0x1800] = 0, \
+                   m->vgnote[((uint16_t)(a) >> 1) % 0x1800] = m->note)
 
 /* The overlay bank of the program ROM (6000-7FFF with W.BANK set), where
  * the "J" routines of the source and their tables live: read there

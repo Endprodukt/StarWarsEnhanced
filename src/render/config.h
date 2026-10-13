@@ -55,6 +55,10 @@ typedef struct sw_display_cfg {
      * beam's dark travel short (the board then manages more pictures a
      * second). 0: in the game's order. */
     int sort_strokes;
+    /* 1: things are solid: what is behind a ship, a tower, the logo or the
+     * X-wing's own guns is not drawn (render/solid.h). 0: wire frames you
+     * see through, as the arcade machine drew them. */
+    int occlusion;
 } sw_display_cfg;
 
 void sw_display_cfg_defaults(sw_display_cfg *c);

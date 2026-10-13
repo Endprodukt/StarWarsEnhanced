@@ -106,6 +106,23 @@ Soundplatine, die Zeit des Vektorgenerators.
   nicht betroffen.
 * **Liste aller Sounds** für den späteren Ersatz: `docs/SOUNDS.md`.
 * **Strich-Sortierung**: 3-mal weniger Leerweg auf der Highscore-Seite.
+* **Occlusion** (`occlusion = 1`, Standard; erste "Enhanced"-Funktion,
+  abschaltbar, Wunsch des Besitzers vom 2026-10-13): Dinge sind nicht mehr
+  durchsichtig. `src/render/solid.c` schneidet aus dem fertigen Bild die
+  Linien weg, die hinter etwas Näherem liegen; am Spiel ändert sich nichts
+  (alle Aufnahmen stimmen weiter). Was verdeckt:
+  * die Flächen der 3-D-Objekte (TIE Fighter, Darth Vaders Schiff, Türme,
+    Bunker, Wandgeschütze, Wandplatten, Kraftfelder, Schacht). Das ROM kennt
+    nur Punkte und Linien; die Flächen werden beim Start als Ringe von
+    Linien gefunden, die (fast) in einer Ebene liegen.
+  * was als Umriss gezeichnet ist: der STAR-WARS-Schriftzug (seine Vorderseite
+    verdeckt auch die eigenen hinteren Kanten), Nase und Kanonen des X-Wing,
+    der Todesstern. Die Form wird auf einem Raster bestimmt, weil die
+    Umrisse des X-Wing über den Bildrand laufen und keine Ringe sind.
+  Die Entfernung notieren die Zeichenroutinen neben jedem Wort der
+  Displayliste (`sw_machine.vgnote`: 1/X des Punktes, Objekt, Punktnummer).
+  Nie verdeckt: Texte, Punktestand, Fadenkreuz, Laserstrahlen.
+  Geprüft: `tests/test_solid.c` und Standbilder mit/ohne (`swvideo --wire`).
 * **Fadenkreuz zentriert** ab dem ersten Bild (`yoke_autocenter`).
 * **NOVRAM** (Optionen, Buchhaltung, beste drei Scores) in `save/nvram.bin`.
 
@@ -125,6 +142,14 @@ Attract-Modus davor. Ungeprüft am Gerät, also nur gerechnet und gemessen:
 * `--calibrate`, die Bildrate der Platine im Spiel.
 
 ## Bekannte Grenzen
+
+* **Occlusion**: noch nicht am Automaten gesehen, und die Rechenzeit auf dem
+  Pi ist nicht gemessen (jede Linie gegen jede Fläche; am PC unauffällig).
+  Die Wände und der Boden des Grabens und der Boden der Oberfläche
+  verdecken nichts (sie haben keine Flächen, nur Kanten). Explosionen und
+  Feuerbälle verdecken nichts. Texte scheinen durch den Schriftzug. Der
+  Todesstern in der Auswahl und im Anflug verdeckt nur Sterne. Im Modus
+  `--original` (Programm auf dem 6809) gibt es keine Occlusion.
 
 * `smooth = 3`: Unstetiges (Laser, Blinken, Zähler, neu erscheinende
   Dinge) wechselt wie im Original im Takt der Spielframes; Drehungen werden

@@ -18,7 +18,7 @@ static void run_list(sw_picture *p, const sw_machine *s, uint8_t *space, sw_avg_
 {
     memcpy(space, s->vgram, sizeof s->vgram);
     memcpy(space + 0x3000, p->m->rom->vrom, sizeof p->m->rom->vrom);
-    sw_avg_run_tagged(space, 0, s->vgtag, s->vgstart, out, 0);
+    sw_avg_run_noted(space, 0, s->vgtag, s->vgstart, (const sw_avg_note *)s->vgnote, out, 0);
 }
 
 /* sw_machine.frame_hook: keep the machine before and after each frame. */
@@ -52,6 +52,7 @@ void sw_picture_init(sw_picture *p, sw_machine *m)
     p->frame_time = 0.05;
     m->frame_hook = on_frame;
     m->frame_user = p;
+    sw_solid_init(&p->solid, m);
     /* The sight is drawn by the routine the word at VGSITE calls. */
     if (m->rom)
         p->ahead.sight_routine = p->smooth.sight_routine =
@@ -88,7 +89,15 @@ void sw_picture_irq_end(sw_picture *p)
                   vg13(ram16(m, SW_VG_CX)) * 0.25f, vg13(ram16(m, SW_VG_CY)) * 0.25f);
 }
 
+static int picture_lines(sw_picture *p, double now, int smooth, const sw_line **lines);
+
 int sw_picture_lines(sw_picture *p, double now, int smooth, const sw_line **lines)
+{
+    int n = picture_lines(p, now, smooth, lines);
+    return p->occlusion ? sw_solid_run(&p->solid, *lines, n, lines) : n;
+}
+
+static int picture_lines(sw_picture *p, double now, int smooth, const sw_line **lines)
 {
     if (smooth >= 3 &&
         sw_subframe_render(&p->shown, p->m, (float)((now - p->shown_at) / p->frame_time), &p->scratch)) {
