@@ -86,6 +86,7 @@ add_library(swcore STATIC
     src/sound/tms5220.c
     src/sound/sndboard.c
     src/sound/sndprog.c
+    src/sound/samples.c
 )
 target_include_directories(swcore PUBLIC src)
 target_link_libraries(swcore PUBLIC miniz)
@@ -162,6 +163,10 @@ if(BUILD_TESTING)
     add_executable(test_solid tests/test_solid.c)
     target_link_libraries(test_solid PRIVATE swcore)
     add_test(NAME solid COMMAND test_solid)
+
+    add_executable(test_samples tests/test_samples.c)
+    target_link_libraries(test_samples PRIVATE swcore)
+    add_test(NAME samples COMMAND test_samples)
 
     add_executable(test_sound tests/test_sound.c)
     target_link_libraries(test_sound PRIVATE swcore)

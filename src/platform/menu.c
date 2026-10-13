@@ -1,29 +1,21 @@
 /* menu.c - see menu.h. */
 #include "platform/menu.h"
 
+#include "sound/samples.h"
+
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
 
-/* The requests of the sound board in their order (SNDPBX.MAC, docs/SOUNDS.md). */
-static const char *const SOUNDS[] = {
-    "", "AUDTST", "PMTST",
-    "SPKALW", "SPKELE", "SPKFOA", "SPKFOR", "SPKGRE", "SPKHAV", "SPKHIT", "SPKI", "SPKIMO", "SPKLET",
-    "SPKLOS", "SPKR2N", "SPKR2T", "SPKRED", "SPKREM", "SPKSHK", "SPKSIZ", "SPKSKP", "SPKSTA", "SPKSTR",
-    "SPKTHI", "SPKTRU", "SPKUSE", "SPKYAU",
-    "PMBEN", "PMCNT", "PMDAR", "PMDES", "PMEND", "PM4TH", "PMREB", "PMRRP", "PMSF2", "PMTH5", "PMTHB",
-    "AUDCR", "AUDDF", "AUDDR", "AUDNAY", "AUDPB", "AUDPBZ", "AUDPF", "AUDPH", "AUDPS", "AUDRC", "AUDRD",
-    "AUDRS", "AUDRY", "AUDSH", "AUDSS", "AUDSX", "AUDTC", "AUDTCZ", "AUDTH", "AUDTL", "AUDXL", "AUDYEA",
-};
-#define N_SOUNDS ((int)(sizeof SOUNDS / sizeof SOUNDS[0]))
+#define N_SOUNDS SW_SOUND_REQUESTS
 
 const char *sw_menu_sound_name(int n)
 {
-    return n > 0 && n < N_SOUNDS ? SOUNDS[n] : "";
+    return sw_sound_name(n);
 }
 
 enum {
-    I_OCCLUSION, I_SURFACE, I_STARS, I_TOWERS, I_DOGFIGHTS, I_LOGO, I_YOKE, I_SMOOTH, I_STEADY, I_SORT,
+    I_OCCLUSION, I_SURFACE, I_STARS, I_TOWERS, I_DOGFIGHTS, I_LOGO, I_SAMPLES, I_YOKE, I_SMOOTH, I_STEADY, I_SORT,
     I_SOUND, I_CALIBRATE, I_OPERATOR, I_EXIT,
     N_ITEMS
 };
@@ -92,6 +84,9 @@ int sw_menu_update(sw_menu *u, sw_display_cfg *cfg, vp_input *in, double now)
     case I_LOGO:
         if (d) { cfg->logo_yellow = !cfg->logo_yellow; return SW_MENU_CHANGED; }
         break;
+    case I_SAMPLES:
+        if (d) { cfg->sound_replace = !cfg->sound_replace; return SW_MENU_CHANGED; }
+        break;
     case I_YOKE:
         if (fire) { cfg->yoke_autocenter = !cfg->yoke_autocenter; return SW_MENU_CHANGED; }    /* (not by the yoke itself) */
         break;
@@ -126,10 +121,11 @@ void sw_menu_draw(const sw_menu *u, const sw_display_cfg *cfg, vp_dvg *d)
     memset(value, 0, sizeof value);
     label[I_OCCLUSION] = "OCCLUSION";       snprintf(value[I_OCCLUSION], 40, "%s", on_off(cfg->occlusion));
     label[I_SURFACE] = "SURFACE PLATING";   snprintf(value[I_SURFACE], 40, "%s", on_off(cfg->enh_surface));
-    label[I_STARS] = "SURFACE STARS";       snprintf(value[I_STARS], 40, "%s", on_off(cfg->enh_stars));
+    label[I_STARS] = "STARS";               snprintf(value[I_STARS], 40, "%s", on_off(cfg->enh_stars));
     label[I_TOWERS] = "DETAILED TOWERS";    snprintf(value[I_TOWERS], 40, "%s", on_off(cfg->enh_towers));
     label[I_DOGFIGHTS] = "DISTANT DOGFIGHTS"; snprintf(value[I_DOGFIGHTS], 40, "%s", on_off(cfg->enh_dogfights));
     label[I_LOGO] = "YELLOW LOGO";          snprintf(value[I_LOGO], 40, "%s", on_off(cfg->logo_yellow));
+    label[I_SAMPLES] = "REPLACED SOUNDS";   snprintf(value[I_SAMPLES], 40, "%s", on_off(cfg->sound_replace));
     label[I_YOKE] = "YOKE AUTO CENTER";     snprintf(value[I_YOKE], 40, "%s", on_off(cfg->yoke_autocenter));
     label[I_SMOOTH] = "SMOOTH MOTION";      snprintf(value[I_SMOOTH], 40, "%s", SMOOTH[cfg->smooth & 3]);
     label[I_STEADY] = "FRAME PACE";         snprintf(value[I_STEADY], 40, "%s", STEADY[cfg->steady_frames % 3]);
@@ -144,10 +140,10 @@ void sw_menu_draw(const sw_menu *u, const sw_display_cfg *cfg, vp_dvg *d)
     vp_text(d, "STAR WARS VP  TEST MENU", 2048, 3750, 110, VP_TEXT_CENTER);
     vp_color(d, 60, 160, 200);
     vp_text(d, "ENHANCED SETTINGS", 600, 3450, 70, VP_TEXT_LEFT);
-    vp_text(d, "TESTS", 600, 3450 - (I_SOUND + 1) * 165 - 50, 70, VP_TEXT_LEFT);
+    vp_text(d, "TESTS", 600, 3450 - (I_SOUND + 1) * 158 - 45, 70, VP_TEXT_LEFT);
 
     for (int i = 0; i < N_ITEMS; i++) {
-        float y = 3450.0f - 165.0f * (float)(i + 1) - (i >= I_SOUND ? 230.0f : 0.0f);
+        float y = 3450.0f - 158.0f * (float)(i + 1) - (i >= I_SOUND ? 220.0f : 0.0f);
         if (i == u->item) vp_color(d, 255, 255, 255);
         else vp_color(d, 120, 120, 120);
         if (i == u->item) {             /* an arrow before the line chosen */

@@ -39,6 +39,11 @@ typedef struct sw_display_cfg {
      * the arcade machine, which learns the yoke's range anew after every
      * power-on. */
     int yoke_autocenter;
+    /* Where the yoke rests (-1..1 on both axes, 0 0: exactly in the
+     * middle), once it has been learned (yoke_center_known): kept here, so
+     * that the sight is right from the first frame after every start. */
+    int   yoke_center_known;
+    float yoke_center_x, yoke_center_y;
     /* How the picture moves between the game's frames. 0: not at all, every
      * game frame is shown as it is. 1, 2: its lines are moved
      * (render/smooth.h). 3: it is computed from the state of the game
@@ -68,6 +73,10 @@ typedef struct sw_display_cfg {
     /* Enhanced: 1: the STAR WARS logo of the attract mode is yellow, as in
      * the films. 0: blue, as the arcade machine has it. */
     int logo_yellow;
+    /* Enhanced: 1: sounds for which a recording is in the folder sounds/
+     * are played from it (sound/samples.h, docs/SOUNDS.md). 0: every sound
+     * comes from the board's chips, as on the arcade machine. */
+    int sound_replace;
 } sw_display_cfg;
 
 void sw_display_cfg_defaults(sw_display_cfg *c);

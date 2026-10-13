@@ -15,6 +15,7 @@
 #include "cpu/m6809.h"
 #include "sound/pokey.h"
 #include "sound/tms5220.h"
+#include "sound/samples.h"
 
 #define SW_SOUND_RATE 44100
 #define SW_SOUND_RING 16384     /* samples: a third of a second */
@@ -58,6 +59,9 @@ typedef struct sw_sndboard {
     int      native;
     int32_t  late_cycles;       /* how long after its first call of the speech driver a pass makes the second */
     int32_t  late;              /* CPU cycles until the pass of the main line ends (sw_sndprog_late), 0: it has */
+    /* Recordings that replace sounds of the board (sound/samples.h), NULL:
+     * none. Only the program in C asks them (native). */
+    sw_samples *samples;
     /* For checking one against the other: called for every byte written to
      * a POKEY (kind 0, reg: 00-3F as on the bus), to the speech chip (kind
      * 1) and to the main board's latch (kind 2). */

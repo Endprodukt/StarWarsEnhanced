@@ -198,6 +198,7 @@ static void emit_sample(sw_sndboard *s)
     /* The POKEYs' output is all positive: take the standing part out. */
     s->dc += (v - s->dc) * 0.002f;
     v = (v - s->dc) * s->volume * 28000.0f;
+    if (s->samples) v += (float)sw_samples_next(s->samples) * s->volume;
     if (v > 32767.0f) v = 32767.0f;
     if (v < -32768.0f) v = -32768.0f;
     uint32_t w = s->ring_w;

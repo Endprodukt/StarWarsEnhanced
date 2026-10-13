@@ -166,10 +166,18 @@ static void view_of(sw_enhance *e, const sw_machine *m)
 
 /* --- stars ---------------------------------------------------------------------------- */
 
-static void stars(sw_enhance *e)
+/* trench: 1 in the trench, whose walls stand 1024 to each side of its
+ * middle and reach from 4096 below up to the height 0 (TBSBL of
+ * WSBASE.MAC): a star shows if the way to it leaves the trench through its
+ * open top. */
+static void stars(sw_enhance *e, int trench)
 {
-    int n = (int)(sizeof e->star / sizeof e->star[0]);
+    int n = trench ? SW_ENHANCE_STARS : 96;
     for (int i = 0; i < n; i++) {
+        if (trench && e->t[2] < 0.0) {
+            double up = -e->t[2] / e->star[i][2];           /* how far along it is at the top of the walls */
+            if (fabs(e->t[1] + e->star[i][1] * up) >= 1024.0) continue;
+        }
         vec v = turn(e, vec3(e->star[i][0], e->star[i][1], e->star[i][2]));
         if (v.x < 0.05) continue;
         v.x *= 1e6; v.y *= 1e6; v.z *= 1e6;     /* as good as infinitely far */
@@ -524,12 +532,13 @@ int sw_enhance_run(sw_enhance *e, const sw_machine *m, double now, const sw_line
     uint8_t phase = ram8(m, SW_PHASE);
     int ground = (phase == SW_PHSGD + 1 || phase == SW_PHSG0D + 1) &&
                  (e->surface || e->stars || e->towers || e->dogfights);
+    int trench = (phase == SW_PHSBS + 1 || phase == SW_PHSB0D + 1) && e->stars;
     int logo = e->logo && phase >= SW_PHSBNR && phase <= SW_PHSHIS + 1;     /* (the attract mode) */
-    if (!ground && !logo) {
+    if (!ground && !logo && !trench) {
         *out = in;
         return n;
     }
-    if (ground) view_of(e, m);
+    if (ground || trench) view_of(e, m);
 
     /* the game's picture, without its buildings if they are drawn here */
     if (e->cap < n + 64) {
@@ -545,7 +554,8 @@ int sw_enhance_run(sw_enhance *e, const sw_machine *m, double now, const sw_line
         if (logo && SW_TAG_SECTION(tag) == SW_TAG_BANNER) e->out[e->n].color = YLW;
         e->n++;
     }
-    if (ground && e->stars) stars(e);
+    if (ground && e->stars) stars(e, 0);
+    if (trench) stars(e, 1);
     if (ground && e->surface) surface(e);
     if (ground && e->towers) towers(e, m, now);
     if (ground && e->dogfights && e->tie_ready) dogfights(e, now);

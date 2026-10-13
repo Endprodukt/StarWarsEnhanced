@@ -96,6 +96,31 @@ In attract mode the program plays the pieces through the table `TMUSIC`
 
 00 is not a sound: it resets the sound board.
 
+## Replacing a sound
+
+Put a WAV file named after the request into the folder `sounds` (next to
+the program, or `save/sounds` on the cabinet, which is looked at first):
+`sounds/AUDXL.wav` replaces the X-wing's lasers, `sounds/PMTH5.wav` the main
+theme, `sounds/SPKRED.wav` "Red Five standing by". A request without a file
+sounds as before, so sounds can be replaced one at a time.
+
+* Format: WAV, PCM, 8 or 16 bit, mono or stereo, any sample rate (converted
+  to mono at 44.1 kHz when loaded). Full scale in the file is full scale at
+  the output; the board's own sounds stay well below that, so keep
+  replacements at a moderate level.
+* Effects: several play at once; one requested again starts again.
+  `AUDPBZ` stops `AUDPB`, `AUDTCZ` stops `AUDTC`.
+* Music: one piece at a time. A new piece, replaced or not, ends the one
+  playing; a replaced piece also ends the board's own music.
+* Speech: sentences play one after the other; `SPKSKP` drops those waiting.
+* Request 00 (the board's reset) silences everything.
+* The setting `sound_replace = 0` (test menu: REPLACED SOUNDS) switches all
+  of them off. The test menu's SOUND TEST plays any request, replaced or
+  not. `swvideo --sounds DIR` films with a folder of replacements.
+
+The code is `src/sound/samples.c`; the board's program asks it in
+`request()` (`src/sound/sndprog.c`).
+
 ## To keep in mind for replacements
 
 * Music and speech are long and run across phases; a new piece of music

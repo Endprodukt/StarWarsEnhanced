@@ -542,6 +542,12 @@ void sw_sndprog_init(sw_sndboard *s);
  *   JSR PKCUTn, LDB #2*tune, JSR NWTUNE (four times), RTS    a piece of music */
 static void request(sw_sndboard *s, uint8_t b)
 {
+    if (s->samples) {
+        /* (a recording in its place: sound/samples.h) */
+        int taken = sw_samples_request(s->samples, b);
+        if (taken == 2) isnd(s);            /* the board's own music ends */
+        if (taken) return;
+    }
     uint16_t r = R16(SN_PBX + 2 * b);
     if (r == SN_RESET) { sw_sndprog_init(s); return; }
     if (r == SN_SPKSKP) { spkskp(s); return; }
@@ -642,6 +648,7 @@ void sw_sndprog_late(sw_sndboard *s)
 void sw_sndprog_init(sw_sndboard *s)
 {
     uint16_t x;
+    if (s->samples) sw_samples_request(s->samples, 0);
     (void)R8(SIN);                          /* MAIN BOARD DIAG, CLEAR INPUT */
     W8(PBDD, 0xff);                         /* SET UP PBD AS OUTPUTS */
     W8(PBD, 0xff);                          /* ALL ONES IS THE SAFEST */

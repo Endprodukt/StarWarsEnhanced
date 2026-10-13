@@ -5,7 +5,8 @@
  * Over the surface of the Death Star:
  *   surface    the ground is drawn: the plating of the Death Star, lines
  *              in perspective out to the horizon
- *   stars      stars in the sky
+ *   stars      stars in the sky; in the trench too, between the tops of its
+ *              walls
  *   towers     the towers and bunkers in true perspective, with more to
  *              them, seen from twice as far and fading in. (The arcade
  *              machine shrinks a far tower towards its foot, so that it
@@ -30,6 +31,10 @@
 #include "core/machine.h"
 #include "render/solid.h"
 
+/* Stars of the sky: over the surface the first 96 of them, over the trench
+ * (where only a strip of sky shows) all. */
+#define SW_ENHANCE_STARS 420
+
 typedef struct sw_enhance {
     int surface, stars, towers, dogfights;      /* the settings */
     int logo;                                   /* 1: the STAR WARS logo yellow */
@@ -45,8 +50,8 @@ typedef struct sw_enhance {
     double   r[3][3], t[3];
     double   spin_c, spin_s;                    /* a block being drawn is turned so about its upright axis (cos, sin) */
 
-    float    star[96][3];                       /* directions */
-    uint8_t  star_lum[96];
+    float    star[SW_ENHANCE_STARS][3];         /* directions */
+    uint8_t  star_lum[SW_ENHANCE_STARS];
     float    tie[64][3];                        /* the TIE fighter's points, from the ROM */
     uint8_t  tie_line[160][2];                  /* and its lines */
     int      tie_lines;

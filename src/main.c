@@ -291,6 +291,7 @@ static void apply_enhanced(board *b, const sw_display_cfg *cfg)
     b->pic.enhance.dogfights = on && cfg->enh_dogfights;
     b->m.enh_towers = (uint8_t)(on && cfg->enh_towers);
     b->pic.enhance.logo = on && cfg->logo_yellow;
+    if (b->snd && b->snd->samples) b->snd->samples->enabled = on && cfg->sound_replace;
     /* the yoke: its rest as its middle, and passed through exactly (the
      * arcade machine's own learning comes back with the next start) */
     b->ctl.autocenter = cfg->yoke_autocenter != 0;
@@ -394,6 +395,15 @@ int main(int argc, char **argv)
             static sw_sndboard snd;
             sw_sndboard_init(&snd, &brd.m);
             snd.native = !brd.original;
+            /* Recordings in place of sounds of the board: the cabinet's own
+             * in save/sounds first, then those that come with the program. */
+            static sw_samples samples;
+            char dir[1024], abuf[1024];
+            snprintf(dir, sizeof dir, "%s/sounds", vp_save_dir());
+            int replaced = sw_samples_load(&samples, dir, SW_SOUND_RATE);
+            replaced += sw_samples_load(&samples, vp_asset_path("sounds", abuf, sizeof abuf), SW_SOUND_RATE);
+            if (replaced) printf("starwarsvp: %d sound(s) replaced by recordings\n", replaced);
+            snd.samples = &samples;
             sw_sndboard_reset(&snd);
             brd.snd = &snd;
             brd.emu.snd = &snd;
@@ -414,6 +424,11 @@ int main(int argc, char **argv)
     }
     sw_controls_init(&brd.ctl, app.in);
     brd.ctl.autocenter = cfg.yoke_autocenter != 0;
+    if (cfg.yoke_center_known) {            /* where the yoke rests, as learned before */
+        brd.ctl.center_x = cfg.yoke_center_x;
+        brd.ctl.center_y = cfg.yoke_center_y;
+        brd.ctl.centered = 1;
+    }
     if (roms_ok && sw_splash_verify(&brd.m) != 0)
         fprintf(stderr, "starwarsvp: the splash table differs from the ROM\n");
     sw_sched_hooks hooks = { on_irq, on_vg, on_game, &brd };
@@ -424,6 +439,16 @@ int main(int argc, char **argv)
         /* (the yoke's rest is learned while nobody plays: in the attract mode) */
         brd.ctl.learn = RAM8(&brd.m, SW_PHASE) >= SW_PHSBNR && RAM8(&brd.m, SW_PHASE) <= SW_PHSHIS + 1;
         sw_controls_read(&brd.ctl, app.in);
+        /* Where the yoke rests is kept for the next start as soon as it is
+         * known, or has moved (a cabinet is switched off, not shut down). */
+        if (brd.ctl.autocenter && brd.ctl.centered &&
+            (!cfg.yoke_center_known || fabsf(brd.ctl.center_x - cfg.yoke_center_x) > 0.01f ||
+             fabsf(brd.ctl.center_y - cfg.yoke_center_y) > 0.01f)) {
+            cfg.yoke_center_known = 1;
+            cfg.yoke_center_x = brd.ctl.center_x;
+            cfg.yoke_center_y = brd.ctl.center_y;
+            if (sw_display_cfg_save(&cfg, cfg_path) != 0) fprintf(stderr, "starwarsvp: cannot write %s\n", cfg_path);
+        }
         /* The self-test button: out of where it led (the arcade program's
          * operator screens, the calibration), else the menu open or shut. */
         int menu_left = 0;

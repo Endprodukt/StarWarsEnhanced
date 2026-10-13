@@ -35,6 +35,7 @@ void sw_display_cfg_defaults(sw_display_cfg *c)
     c->occlusion = 1;
     c->enh_surface = c->enh_stars = c->enh_towers = c->enh_dogfights = 1;
     c->logo_yellow = 1;
+    c->sound_replace = 1;
 }
 
 static char *trim(char *s)
@@ -48,6 +49,7 @@ static char *trim(char *s)
 static int set(sw_display_cfg *c, const char *key, const char *val)
 {
     struct { const char *k; float *f; } floats[] = {
+        { "yoke_center_x", &c->yoke_center_x }, { "yoke_center_y", &c->yoke_center_y },
         { "avg_left", &c->avg_left }, { "avg_right", &c->avg_right },
         { "avg_bottom", &c->avg_bottom }, { "avg_top", &c->avg_top },
         { "gamma", &c->gamma }, { "floor", &c->floor }, { "brightness", &c->brightness },
@@ -57,13 +59,13 @@ static int set(sw_display_cfg *c, const char *key, const char *val)
         { "margin_bottom", &c->margin_bottom }, { "margin_top", &c->margin_top },
         { "flip_x", &c->flip_x }, { "flip_y", &c->flip_y },
         { "defocus_mode", &c->defocus_mode },
-        { "yoke_autocenter", &c->yoke_autocenter }, { "smooth", &c->smooth },
+        { "yoke_autocenter", &c->yoke_autocenter }, { "yoke_center_known", &c->yoke_center_known }, { "smooth", &c->smooth },
         { "steady_frames", &c->steady_frames },
         { "sort_strokes", &c->sort_strokes },
         { "occlusion", &c->occlusion },
         { "enh_surface", &c->enh_surface }, { "enh_stars", &c->enh_stars },
         { "enh_towers", &c->enh_towers }, { "enh_dogfights", &c->enh_dogfights },
-        { "logo_yellow", &c->logo_yellow },
+        { "logo_yellow", &c->logo_yellow }, { "sound_replace", &c->sound_replace },
     };
     for (size_t i = 0; i < sizeof floats / sizeof floats[0]; i++)
         if (strcmp(key, floats[i].k) == 0) { *floats[i].f = (float)atof(val); return 0; }
@@ -127,6 +129,9 @@ int sw_display_cfg_save(const sw_display_cfg *c, const char *path)
     fprintf(f, "\n; sight centered from the first frame, the yoke's rest taken as its middle\n"
                "; (0: learns the yoke anew, as the arcade machine)\n"
                "yoke_autocenter = %d\n", c->yoke_autocenter);
+    fprintf(f, "; where the yoke rests, learned (-1..1; kept from start to start)\n"
+               "yoke_center_known = %d\nyoke_center_x = %g\nyoke_center_y = %g\n",
+            c->yoke_center_known, c->yoke_center_x, c->yoke_center_y);
     fprintf(f, "\n; motion between the game's frames: 0 off, 1 lines between the last two frames,\n"
                "; 2 lines ahead of the last, 3 computed from the state of the game\n"
                "smooth = %d\n", c->smooth);
@@ -144,6 +149,8 @@ int sw_display_cfg_save(const sw_display_cfg *c, const char *path)
             c->enh_surface, c->enh_stars, c->enh_towers, c->enh_dogfights);
     fprintf(f, "\n; enhanced: the STAR WARS logo yellow (0: blue, as the arcade machine)\n"
                "logo_yellow = %d\n", c->logo_yellow);
+    fprintf(f, "\n; enhanced: play sounds/NAME.wav in place of the sound NAME where there is such a file\n"
+               "sound_replace = %d\n", c->sound_replace);
     fclose(f);
     return 0;
 }

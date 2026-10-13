@@ -111,7 +111,9 @@ Soundplatine, die Zeit des Vektorgenerators.
   Testmenü und in der Einstellungsdatei, Standard an):
   * `enh_surface`: der Boden als Plattenmuster des Todessterns, Linien in
     Perspektive bis zum Horizont, manche Platten unterteilt oder mit Luke.
-  * `enh_stars`: Sterne am Himmel.
+  * `enh_stars`: Sterne am Himmel; auch über dem Graben, im Streifen
+    zwischen den Oberkanten der Wände (ein Stern zeigt sich, wenn die
+    Sichtlinie den Graben durch die offene Oberseite verlässt).
   * `enh_towers`: Türme und Bunker in echter Perspektive statt zum Fuß hin
     geschrumpft (am Automaten wachsen sie deshalb beim Näherkommen aus dem
     Boden), aus doppelter Entfernung sichtbar und eingeblendet, mit Stufen,
@@ -140,7 +142,8 @@ Soundplatine, die Zeit des Vektorgenerators.
 * **Eigenes Testmenü** (`src/platform/menu.c`, 2026-10-13): Der
   Selbsttest-Knopf (`p1_button6`) öffnet es, das Spiel steht solange. Zeilen:
   Enhanced Settings (Occlusion, Surface Plating, Surface Stars, Detailed
-  Towers, Distant Dogfights, Yellow Logo, Yoke Auto Center, Smooth Motion, Frame Pace, Stroke Sorting),
+  Towers, Distant Dogfights, Yellow Logo, Replaced Sounds, Yoke Auto
+  Center, Smooth Motion, Frame Pace, Stroke Sorting),
   Sound Test (alle 59 Anforderungen aus `docs/SOUNDS.md` mit Nummer und
   Name), Screen Calibration, Arcade Operator Screens (die Statistik- und
   Optionsseiten des Automatenprogramms; der Knopf führt von dort zurück),
@@ -169,8 +172,19 @@ Soundplatine, die Zeit des Vektorgenerators.
   Die Ruhelage des Jochs gilt als Mitte. Sie wird beim Start aus der
   ersten Messung gelernt und nachgeführt, wenn das Joch im Attract-Modus
   rund zwei Sekunden still liegt; die Endanschläge bleiben, wo sie sind.
-  Im Testmenü schaltbar (YOKE AUTO CENTER). Am Automaten ungeprüft: Ob
+  Die gelernte Ruhelage wird sofort in der Einstellungsdatei abgelegt
+  (`yoke_center_x`, `yoke_center_y`) und gilt ab dem nächsten Start vom
+  ersten Bild an. Im Testmenü schaltbar (YOKE AUTO CENTER). Am Automaten ungeprüft: Ob
   sein Joch still genug liegt (Schwelle 1,5 % des Wegs), ist offen.
+* **Sound-Austausch** (`src/sound/samples.c`, 2026-10-13, Enhanced,
+  `sound_replace = 1`): Liegt in `sounds/` (oder `save/sounds/`) eine
+  WAV-Datei mit dem Namen einer Anforderung (`AUDXL.wav`, `PMTH5.wav`,
+  `SPKRED.wav` ...), wird sie statt des Chip-Sounds gespielt; alle anderen
+  klingen wie bisher. Regeln und Format in `docs/SOUNDS.md`. Geprüft:
+  `tests/test_samples.c` und ein Spiel mit zwei Testtönen (der Ton für
+  `AUDXL` bei jedem Schuss, der für `PMTH5` beim Spielstart, gemessen im
+  Spektrum). Es gibt noch **keine echten Ersatz-Sounds**: der Ordner ist
+  leer.
 * **Schriftzug gelb** (`logo_yellow = 1`, Standard, Enhanced): das STAR-WARS-
   Logo im Attract-Modus in Gelb statt im Blau des Automaten (`enhance.c`
   färbt die Linien um). Im Testmenü schaltbar (YELLOW LOGO).

@@ -3,6 +3,8 @@
  *   swvideo [--roms DIR] [--seconds N] [--attract N] [--fps N] [--size WxH] [--aim XX,YY]
  *           [--wire] [--every N] --wav FILE > frames.rgb
  *
+ * --sounds DIR: recordings in place of sounds (DIR/NAME.wav, docs/SOUNDS.md).
+ * --immortal: the shields never run out.
  * --wire: wire frames as the arcade machine drew them (no occlusion).
  * --plain: without what the port adds over the surface (render/enhance.h).
  * --aim 80,4c: the first game starts on the Death Star in the middle (wave
@@ -201,6 +203,7 @@ int main(int argc, char **argv)
     unsigned aim_x = 0x08, aim_y = 0xb6;
     if (arg(argc, argv, "--aim")) sscanf(arg(argc, argv, "--aim"), "%x,%x", &aim_x, &aim_y);
     W &= ~3; H &= ~3;
+    int immortal = arg_flag(argc, argv, "--immortal");
     long every = arg(argc, argv, "--every") ? atol(arg(argc, argv, "--every")) : 1;
     if (every < 1) every = 1;
     FILE *wav = arg(argc, argv, "--wav") ? fopen(arg(argc, argv, "--wav"), "wb") : NULL;
@@ -223,6 +226,13 @@ int main(int argc, char **argv)
     m.steady = 1;
     sw_sndboard_init(&snd, &m);
     snd.native = 1;
+    static sw_samples replaced_sounds;
+    if (arg(argc, argv, "--sounds")) {
+        int replaced = sw_samples_load(&replaced_sounds, arg(argc, argv, "--sounds"), SW_SOUND_RATE);
+        fprintf(stderr, "swvideo: %d sound(s) replaced by recordings\n", replaced);
+        replaced_sounds.enabled = 1;
+        snd.samples = &replaced_sounds;
+    }
     sw_sndboard_reset(&snd);
     sw_reset(&m);
     m.sound_board = 1;
@@ -273,6 +283,8 @@ int main(int argc, char **argv)
             m.in.in0 = in0;
             irqs++;
             sw_picture_irq_begin(&pic, (double)irqs / SW_IRQ_HZ);
+            /* --immortal: the shields never run out (to film what comes late in a game) */
+            if (immortal && m.ram[SW_S_GAS - 0x4800] < 6) m.ram[SW_S_GAS - 0x4800] = 6;
             sw_irq(&m);
             sw_main_poll(&m);
             for (; seen < m.snd_w; seen++) resets += m.snd_q[seen % sizeof m.snd_q] == 0;
