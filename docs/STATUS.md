@@ -358,6 +358,8 @@ sobald das Menü neu startet (nach dem Verlassen des Spiels). Nicht geprüft
 am Gerät, auch nicht, ob der längere Titel des Testmenüs (jetzt Größe 90
 statt 110) in die Breite passt.
 
+Marquee erneuert (zweites Artwork des Besitzers, ohne die Streifen unten; 1636 von 1920 breit, Rest schwarz), Version 0.2.1. **Noch nicht auf dem Automaten**, der war aus: beim nächsten Mal `sh tools/deploy.sh` und `dist/swenhanced-0.2.1.vpk` nach `/persistent/games/packages/` (dort liegt noch 0.2.0).
+
 Paketdatei: `sh tools/pack.sh` (in WSL, nach dem Pi-Build) schreibt
 `dist/swenhanced-<version>.vpk` mit dem `vp-pack` des SDK (dessen Skript und
 das Manifest werden dabei von CR LF befreit, die ein Windows-Checkout
