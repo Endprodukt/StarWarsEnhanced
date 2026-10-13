@@ -146,10 +146,10 @@ Soundplatine, die Zeit des Vektorgenerators.
   (gemessen). Mit Occlusion verdecken die neuen Türme, was dahinter liegt.
   Geprüft an Standbildern; mit allen vier aus stimmen die Aufnahmen weiter.
 * **Eigenes Testmenü** (`src/platform/menu.c`, 2026-10-13): Der
-  Selbsttest-Knopf (`p1_button6`) öffnet es, das Spiel steht solange. Zeilen:
+  Selbsttest-Knopf (`p1_button6`), am Gerät die Tab-Taste, öffnet es, das Spiel steht solange. Zeilen:
   Enhanced Settings (Occlusion, Surface Plating, Surface Stars, Detailed
-  Towers, Distant Dogfights, Yellow Logo, Replaced Sounds, Yoke Auto
-  Center, Smooth Motion, Frame Pace, Stroke Sorting),
+  Towers, Distant Dogfights, Trench Clipping, Yellow Logo, Replaced Sounds,
+  Yoke Auto Center, Smooth Motion, Frame Pace, Stroke Sorting),
   Sound Test (alle 59 Anforderungen aus `docs/SOUNDS.md` mit Nummer und
   Name), Screen Calibration, Arcade Operator Screens (die Statistik- und
   Optionsseiten des Automatenprogramms; der Knopf führt von dort zurück),
@@ -210,6 +210,35 @@ Attract-Modus davor. Ungeprüft am Gerät, also nur gerechnet und gemessen:
   (Sprache beim Münzeinwurf und Start, Musik ab der Welle), aber niemand
   hat ihn gehört. POKEY ohne Hochpassfilter, TMS5220 vereinfacht.
 * `--calibrate`, die Bildrate der Platine im Spiel.
+
+## Am Automaten gesehen (Besitzer, 2026-10-13)
+
+Erster Lauf des C-Spiels mit den Erweiterungen am Gerät. Befund und was
+daraus wurde:
+
+* **Sortierte Striche wackeln** auf der Röhre (die Reihenfolge, und damit
+  woher der Strahl kommt, wechselt von Bild zu Bild). `sort_strokes` ist
+  jetzt ab Werk 0. Preis, am Gerät gemessen: Die Highscore-Seite läuft
+  unsortiert mit 37 statt 50 Bildern pro Sekunde (Leerweg 172000 statt
+  60000 Einheiten). Offen: eine Sortierung, die von Bild zu Bild gleich
+  bleibt.
+* **Oberfläche war zu voll**: Sterne dort entfernt, Türme nur noch so weit
+  wie am Automaten (3C00h) und nur die, die das Spiel eingerichtet hat,
+  Bunker ohne Nähte. Am Ende der Oberfläche fliegt man damit wieder ins
+  Dunkle wie im Original (vorher standen noch Türme da).
+* **Graben, Hindernisse verändern ihre Form**: Der Automat kann eine Linie
+  nicht am Bildrand abschneiden; bei nahen Objekten schiebt er die Punkte
+  knapp hinter den Rand (BJBCLP), das verbiegt sie. Neu `enh_clip = 1`
+  (TRENCH CLIPPING): Die Zeichenroutinen notieren die Punkte der
+  Wandobjekte im Raum, `enhance.c` zeichnet ihre Linien daraus neu und
+  schneidet richtig; die Flächen für die Occlusion werden ebenso im Raum
+  beschnitten. Gemessen: Wo das Spiel nichts verschoben hat, liegen die neu
+  gezeichneten Linien im Mittel 0,13 Einheiten neben denen des Spiels. Am
+  Gerät noch nicht gesehen.
+* **Testmenü**: kein Selbsttest-Knopf am Gerät belegt (alle Tasten des
+  Jochs sind Feuer); die Tab-Taste öffnet und schließt es jetzt.
+* Leistung im Spiel laut Besitzer in Ordnung. Die Zahl `frame` im Log ist
+  die Zeit, die die Platine für ein Bild braucht, nicht Rechenzeit des Pi.
 
 ## Bekannte Grenzen
 

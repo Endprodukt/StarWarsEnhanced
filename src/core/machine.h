@@ -139,6 +139,8 @@ typedef struct sw_machine {
     sw_vgnote  vgnote[0x1800];
     sw_vgnote  note;             /* what is noted for the words written now */
     uint16_t   pt_w[64];         /* 1/X of the points of the object projected last */
+    int16_t    pt_v[64][3];      /* and, if pt_d3, where they are as the player sees them in space */
+    uint8_t    pt_d3;
     uint16_t   inst_n;           /* objects drawn so far */
     uint8_t    star_gen[64];     /* how often star n was replaced */
     uint8_t    star_of[64];      /* the star of the nth queued entry */

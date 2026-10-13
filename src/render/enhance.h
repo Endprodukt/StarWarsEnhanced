@@ -16,6 +16,12 @@
  *              ships or three
  * In the trench:
  *   stars      stars in the strip of sky between the tops of its walls
+ *   clip       what stands on its walls and across it (panels, guns,
+ *              catwalks, the exhaust port) keeps its shape as it comes
+ *              near. The arcade machine cannot cut a line where it leaves
+ *              the screen: it pushes the points of a near object to just
+ *              beyond the edge, which bends the object. Here its lines are
+ *              drawn anew from its points in space and cut.
  * And in the attract mode:
  *   logo       the STAR WARS logo is yellow, as in the films (the arcade
  *              machine has it blue)
@@ -38,6 +44,7 @@
 typedef struct sw_enhance {
     int surface, stars, towers, dogfights;      /* the settings */
     int logo;                                   /* 1: the STAR WARS logo yellow */
+    int clip;                                   /* 1: what stands in the trench is cut at the edge of the screen */
 
     sw_line *out;
     int      n, cap;

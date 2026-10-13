@@ -59,9 +59,10 @@ int sw_avg_run_tagged(const uint8_t *space, uint16_t start, const uint16_t *tags
 int sw_avg_run_noted(const uint8_t *space, uint16_t start, const uint16_t *tags, const uint8_t *starts,
                      const sw_avg_note *notes, sw_avg_list *out, int max_instructions)
 {
-    static const sw_avg_note NO_NOTE = { 0, 0, 0, 0 };
+    static const sw_avg_note NO_NOTE = { 0, 0, 0, 0, 0, 0, { 0, 0, 0 } };
     sw_avg_note note = NO_NOTE;     /* of the instruction of the list itself being run */
     unsigned beam_w = 0, beam_pt = 0;   /* of the point the beam stands at */
+    sw_avg_note beam = NO_NOTE;
     int depth = 0;                  /* calls deep: 0 is the list itself */
     unsigned run_tag = 0xffffffffu, unit = 0, routine = 0, nline = 0;
     unsigned pc = start;
@@ -158,6 +159,8 @@ int sw_avg_run_noted(const uint8_t *space, uint16_t start, const uint16_t *tags,
                 ln.w0 = (uint16_t)beam_w; ln.w1 = note.w;
                 ln.inst = note.inst; ln.model = note.model;
                 ln.p0 = (uint8_t)beam_pt; ln.p1 = depth ? 0 : note.pt;
+                ln.d3 = (uint8_t)(!depth && note.d3 && beam.d3);
+                for (int k = 0; k < 3; k++) { ln.v0[k] = beam.v[k]; ln.v1[k] = note.v[k]; }
                 ln.id = tags ? ((uint64_t)(run_tag & 0xffff) << 48) | ((uint64_t)(routine ? 0 : unit & 0xffff) << 32) |
                                ((uint64_t)routine << 16) | (nline & 0xffff) : 0;
                 nline++;
@@ -167,6 +170,8 @@ int sw_avg_run_noted(const uint8_t *space, uint16_t start, const uint16_t *tags,
             y = ny;
             beam_w = note.w;
             beam_pt = depth ? 0 : note.pt;
+            beam = note;
+            if (depth) beam.d3 = 0;
         }
     }
 }

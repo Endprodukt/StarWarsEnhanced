@@ -72,6 +72,10 @@ typedef struct sw_display_cfg {
      * in true perspective, with more to them, seen from farther and fading
      * in; far off, TIE fighters chasing an X-wing. */
     int enh_surface, enh_stars, enh_towers, enh_dogfights;
+    /* Enhanced, in the trench: 1: what stands in it keeps its shape as it
+     * comes near, its lines cut at the edge of the screen. 0: as the arcade
+     * machine, which pushes the points of a near object to the edge. */
+    int enh_clip;
     /* Enhanced: 1: the STAR WARS logo of the attract mode is yellow, as in
      * the films. 0: blue, as the arcade machine has it. */
     int logo_yellow;

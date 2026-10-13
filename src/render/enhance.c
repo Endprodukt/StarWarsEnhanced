@@ -3,6 +3,7 @@
 
 #include "game/game.h"
 #include "game/m6809.h"
+#include "render/view.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -535,9 +536,11 @@ int sw_enhance_run(sw_enhance *e, const sw_machine *m, double now, const sw_line
     uint8_t phase = ram8(m, SW_PHASE);
     int ground = (phase == SW_PHSGD + 1 || phase == SW_PHSG0D + 1) &&
                  (e->surface || e->towers || e->dogfights);
-    int trench = (phase == SW_PHSBS + 1 || phase == SW_PHSB0D + 1) && e->stars;
+    int in_trench = phase == SW_PHSBS + 1 || phase == SW_PHSB0D + 1;
+    int trench = in_trench && e->stars;
+    int clip = in_trench && e->clip;
     int logo = e->logo && phase >= SW_PHSBNR && phase <= SW_PHSHIS + 1;     /* (the attract mode) */
-    if (!ground && !logo && !trench) {
+    if (!ground && !logo && !trench && !clip) {
         *out = in;
         return n;
     }
@@ -555,6 +558,15 @@ int sw_enhance_run(sw_enhance *e, const sw_machine *m, double now, const sw_line
         if (ground && e->towers && SW_TAG_SECTION(tag) == SW_TAG_OBJECT && (tag & 0x3ff) >= 16) continue;
         e->out[e->n] = in[i];
         if (logo && SW_TAG_SECTION(tag) == SW_TAG_BANNER) e->out[e->n].color = YLW;
+        if (clip && in[i].d3) {
+            /* from its ends in space, cut where it leaves the player's sight */
+            sw_line *l = &e->out[e->n];
+            double a[3] = { l->v0[0], l->v0[1], l->v0[2] }, b[3] = { l->v1[0], l->v1[1], l->v1[2] };
+            float w0, w1;
+            if (!sw_view_line(a, b, &l->x0, &l->y0, &w0, &l->x1, &l->y1, &w1)) continue;
+            l->w0 = (uint16_t)w0;
+            l->w1 = (uint16_t)w1;
+        }
         e->n++;
     }
     if (trench) stars(e, 1);

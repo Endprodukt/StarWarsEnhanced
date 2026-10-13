@@ -140,7 +140,7 @@ speichert und kehrt ins Spiel zurück.
 
 | Zeile | |
 |---|---|
-| Occlusion, Surface Plating, Stars, Detailed Towers, Distant Dogfights, Yellow Logo, Replaced Sounds, Yoke Auto Center, Smooth Motion, Frame Pace, Stroke Sorting | die Enhanced Settings, jede abschaltbar (wie `occlusion`, `enh_*`, `smooth`, `steady_frames`, `sort_strokes` unten) |
+| Occlusion, Surface Plating, Stars, Detailed Towers, Distant Dogfights, Trench Clipping, Yellow Logo, Replaced Sounds, Yoke Auto Center, Smooth Motion, Frame Pace, Stroke Sorting | die Enhanced Settings, jede abschaltbar (wie `occlusion`, `enh_*`, `smooth`, `steady_frames`, `sort_strokes` unten) |
 | Sound Test | Joch links/rechts wählt eine der 59 Anforderungen ([docs/SOUNDS.md](docs/SOUNDS.md)), Feuer spielt sie |
 | Screen Calibration | das Testbild von `--calibrate`; Feuer wechselt Größe, Lage, Gamma, Helligkeit, das Joch stellt ein |
 | Arcade Operator Screens | Statistik und Optionen des Automatenprogramms (Aux-Münze blättert); der Selbsttest-Knopf führt zurück ins Spiel |
@@ -161,10 +161,11 @@ speichert und kehrt ins Spiel zurück.
 | `logo_yellow` | Enhanced. `1` (Standard): der STAR-WARS-Schriftzug im Attract-Modus ist gelb. `0`: blau wie am Automaten |
 | `occlusion` | Enhanced. `1` (Standard): Dinge sind massiv, was hinter einem Schiff, einem Turm, dem Schriftzug oder den eigenen Kanonen liegt, wird nicht gezeichnet. `0`: durchsichtige Drahtmodelle wie am Automaten |
 | `enh_surface` | Enhanced, über der Oberfläche. `1` (Standard): der Boden wird als Plattenmuster des Todessterns gezeichnet |
-| `enh_stars` | Enhanced. `1` (Standard): Sterne am Himmel über der Oberfläche und über dem Graben |
-| `enh_towers` | Enhanced. `1` (Standard): Türme und Bunker in echter Perspektive, detaillierter, aus doppelter Entfernung sichtbar und eingeblendet; der Laser trifft sie so, wie sie gezeichnet sind. `0`: die Türme des Automaten, die beim Näherkommen aus dem Boden wachsen |
+| `enh_stars` | Enhanced. `1` (Standard): Sterne über dem Graben, im Streifen zwischen den Oberkanten der Wände |
+| `enh_towers` | Enhanced. `1` (Standard): Türme und Bunker in echter Perspektive und detaillierter, so weit sichtbar wie am Automaten, fern dunkel und zur Nähe hin heller; der Laser trifft sie so, wie sie gezeichnet sind. `0`: die Türme des Automaten, die beim Näherkommen aus dem Boden wachsen |
 | `enh_dogfights` | Enhanced. `1` (Standard): in der Ferne jagen TIE Fighter einen X-Wing über den Himmel |
-| `sort_strokes` | `1`: Striche in einer Reihenfolge zeichnen, die dem Strahl Leerweg spart (mehr Bilder pro Sekunde auf der Platine) |
+| `enh_clip` | Enhanced, im Graben. `1` (Standard): Nahe Hindernisse behalten ihre Form, ihre Linien werden am Bildrand abgeschnitten. `0`: wie am Automaten, der die Punkte naher Objekte an den Rand schiebt |
+| `sort_strokes` | `0` (Standard): Striche in der Reihenfolge des Spiels. `1`: in einer Reihenfolge, die dem Strahl Leerweg spart (mehr Bilder pro Sekunde auf der Platine, aber das Bild wackelt auf der Röhre) |
 | `avg_*`, `margin_*`, `flip_*` | Lage und Größe des Bildes, mit `--calibrate` einzustellen |
 | `gamma`, `floor`, `brightness`, `color_*`, `defocus_mode` | Helligkeit und Farben |
 

@@ -52,6 +52,11 @@ typedef struct sw_line {
     uint16_t w0, w1;
     uint16_t inst;
     uint8_t  model, p0, p1;
+    /* d3: both ends are also known as the player sees them in space (v0,
+     * v1: ahead, across, up; render/view.h), from which the line can be
+     * drawn anew, cut where it leaves his sight. */
+    uint8_t  d3;
+    int16_t  v0[3], v1[3];
 } sw_line;
 
 /* A note next to a word of VG RAM (the same as sw_vgnote, core/machine.h). */
@@ -60,6 +65,9 @@ typedef struct sw_avg_note {
     uint16_t inst;
     uint8_t  pt;
     uint8_t  model;
+    uint8_t  d3;        /* v is known: the point as the player sees it in space */
+    uint8_t  unused;
+    int16_t  v[3];
 } sw_avg_note;
 
 enum sw_avg_status {

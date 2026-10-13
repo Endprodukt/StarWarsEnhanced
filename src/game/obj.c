@@ -100,6 +100,7 @@ void sw_objbpnt(sw_machine *m, uint8_t b)
 
 void sw_objpnt(sw_machine *m)
 {
+    m->pt_d3 = 0;
     uint8_t b = R8(SW_BJ_ID);
     W8(SW_L_TMPCNT, O8(SW_TDRWNM + b));     /* # OF POINTS */
     uint8_t a = R8(SW_BJBIC + b);
@@ -131,13 +132,24 @@ static void note_point(sw_machine *m, unsigned n)
 {
     m->note.pt = (uint8_t)(n + 1);
     m->note.w = m->pt_w[n & 63];
+    m->note.d3 = m->pt_d3;
+    for (int k = 0; k < 3; k++) m->note.v[k] = m->pt_v[n & 63][k];
 }
 
 static void note_end(sw_machine *m)
 {
     m->note.inst = 0;
     m->note.model = m->note.pt = 0;
+    m->note.d3 = 0;
 }
+
+/* A word of the math box RAM, as it is (not a read of the game's). */
+static int16_t mb_peek(const sw_machine *m, uint16_t a)
+{
+    return (int16_t)((m->mbox.ram[(a - 0x5000) & 0xfff] << 8) | m->mbox.ram[(a - 0x5000 + 1) & 0xfff]);
+}
+
+static int16_t clamp16(int32_t v) { return (int16_t)(v > 32767 ? 32767 : v < -32768 ? -32768 : v); }
 
 /* OBJDRW: the object's lines between the projected points. A line code is
  * the point's offset; bit 0: move without drawing; bit 1: the end, or the
@@ -221,6 +233,19 @@ static void project_ground(sw_machine *m, int clip)
     W16(SW_M_YP, 0 - R16(SW_M_YP));
     W16(SW_M_ZP, 0 - R16(SW_M_ZP));
 
+    /* For the renderer: every point as the player sees it in space, its
+     * turned shape (M.GD blocks) at the object's place (-XP, -YP, -ZP now). */
+    {
+        int np = O8(SW_TDRWNM + m->ram[SW_BJ_ID - 0x4800]);
+        int32_t cx = -mb_peek(m, SW_M_XP), cy = -mb_peek(m, SW_M_YP), cz = -mb_peek(m, SW_M_ZP);
+        for (int k = 0; k < np && k < 64; k++) {
+            uint16_t blk = (uint16_t)(SW_M_GDFE + k * GD_BLOCK);
+            m->pt_v[k][0] = clamp16(mb_peek(m, blk + SW_MSGDXR) + cx);
+            m->pt_v[k][1] = clamp16(mb_peek(m, blk + SW_MSGDYR) + cy);
+            m->pt_v[k][2] = clamp16(mb_peek(m, blk + SW_MSGDZR) + cz);
+        }
+        m->pt_d3 = 1;
+    }
     W16(SW_M_BIC, SW_MSGDBC);               /* SET BIC TO Xr+1 */
     /* USING FRONT END INITIALIZOR, TRANSLATE Xr: Xr-(-Xp)=Xr+Xp. START THE DIVIDER */
     W16(SW_M_DVD, R16(SW_M_GDFE + SW_MSGDXR) - R16(SW_M_XP));

@@ -15,7 +15,7 @@ const char *sw_menu_sound_name(int n)
 }
 
 enum {
-    I_OCCLUSION, I_SURFACE, I_STARS, I_TOWERS, I_DOGFIGHTS, I_LOGO, I_SAMPLES, I_YOKE, I_SMOOTH, I_STEADY, I_SORT,
+    I_OCCLUSION, I_SURFACE, I_STARS, I_TOWERS, I_DOGFIGHTS, I_CLIP, I_LOGO, I_SAMPLES, I_YOKE, I_SMOOTH, I_STEADY, I_SORT,
     I_SOUND, I_CALIBRATE, I_OPERATOR, I_EXIT,
     N_ITEMS
 };
@@ -81,6 +81,9 @@ int sw_menu_update(sw_menu *u, sw_display_cfg *cfg, vp_input *in, double now)
     case I_STEADY:
         if (d) { cfg->steady_frames = step(cfg->steady_frames, d, 0, 2); return SW_MENU_CHANGED; }
         break;
+    case I_CLIP:
+        if (d) { cfg->enh_clip = !cfg->enh_clip; return SW_MENU_CHANGED; }
+        break;
     case I_LOGO:
         if (d) { cfg->logo_yellow = !cfg->logo_yellow; return SW_MENU_CHANGED; }
         break;
@@ -124,6 +127,7 @@ void sw_menu_draw(const sw_menu *u, const sw_display_cfg *cfg, vp_dvg *d)
     label[I_STARS] = "TRENCH STARS";        snprintf(value[I_STARS], 40, "%s", on_off(cfg->enh_stars));
     label[I_TOWERS] = "DETAILED TOWERS";    snprintf(value[I_TOWERS], 40, "%s", on_off(cfg->enh_towers));
     label[I_DOGFIGHTS] = "DISTANT DOGFIGHTS"; snprintf(value[I_DOGFIGHTS], 40, "%s", on_off(cfg->enh_dogfights));
+    label[I_CLIP] = "TRENCH CLIPPING";      snprintf(value[I_CLIP], 40, "%s", on_off(cfg->enh_clip));
     label[I_LOGO] = "YELLOW LOGO";          snprintf(value[I_LOGO], 40, "%s", on_off(cfg->logo_yellow));
     label[I_SAMPLES] = "REPLACED SOUNDS";   snprintf(value[I_SAMPLES], 40, "%s", on_off(cfg->sound_replace));
     label[I_YOKE] = "YOKE AUTO CENTER";     snprintf(value[I_YOKE], 40, "%s", on_off(cfg->yoke_autocenter));
@@ -140,10 +144,10 @@ void sw_menu_draw(const sw_menu *u, const sw_display_cfg *cfg, vp_dvg *d)
     vp_text(d, "STAR WARS VP  TEST MENU", 2048, 3750, 110, VP_TEXT_CENTER);
     vp_color(d, 60, 160, 200);
     vp_text(d, "ENHANCED SETTINGS", 600, 3450, 70, VP_TEXT_LEFT);
-    vp_text(d, "TESTS", 600, 3450 - (I_SOUND + 1) * 158 - 45, 70, VP_TEXT_LEFT);
+    vp_text(d, "TESTS", 600, 3450 - (I_SOUND + 1) * 150 - 40, 70, VP_TEXT_LEFT);
 
     for (int i = 0; i < N_ITEMS; i++) {
-        float y = 3450.0f - 158.0f * (float)(i + 1) - (i >= I_SOUND ? 220.0f : 0.0f);
+        float y = 3450.0f - 150.0f * (float)(i + 1) - (i >= I_SOUND ? 200.0f : 0.0f);
         if (i == u->item) vp_color(d, 255, 255, 255);
         else vp_color(d, 120, 120, 120);
         if (i == u->item) {             /* an arrow before the line chosen */

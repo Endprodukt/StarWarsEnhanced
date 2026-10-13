@@ -2,6 +2,7 @@
 #include "render/solid.h"
 
 #include "game/game.h"
+#include "render/view.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -216,11 +217,19 @@ static void picture_face(sw_solid *s, const float *x, const float *y, const floa
 static void object_faces(sw_solid *s, const sw_line *lines, int n)
 {
     float px[MAX_PTS] = { 0 }, py[MAX_PTS] = { 0 }, pw[MAX_PTS] = { 0 };
-    uint64_t known = 0;
+    static int16_t pv[MAX_PTS][3];
+    uint64_t known = 0, known3 = 0;
     unsigned model = lines[0].model - 1u;
     if (model >= SW_SOLID_MODELS) return;
     for (int i = 0; i < n; i++) {
         const sw_line *l = &lines[i];
+        if (l->d3 && l->p0 && l->p1 && l->p0 <= MAX_PTS && l->p1 <= MAX_PTS) {
+            /* its points in space: the line itself may have been cut */
+            memcpy(pv[l->p0 - 1], l->v0, sizeof pv[0]);
+            memcpy(pv[l->p1 - 1], l->v1, sizeof pv[0]);
+            known3 |= (1ull << (l->p0 - 1)) | (1ull << (l->p1 - 1));
+            continue;
+        }
         if (l->p0 && l->p0 <= MAX_PTS) {
             px[l->p0 - 1] = l->x0; py[l->p0 - 1] = l->y0; pw[l->p0 - 1] = (float)l->w0;
             known |= 1ull << (l->p0 - 1);
@@ -238,6 +247,22 @@ static void object_faces(sw_solid *s, const sw_line *lines, int n)
             int a = f->pt[i];
             mask |= 1ull << a;
             fx[i] = px[a]; fy[i] = py[a]; fw[i] = pw[a];
+        }
+        if ((mask & known3) == mask) {
+            /* in space: what of the face is nearer than the nearest seen is cut off */
+            float cx[SW_SOLID_FACE_MAX * 2], cy[SW_SOLID_FACE_MAX * 2], cw[SW_SOLID_FACE_MAX * 2];
+            int nc = 0;
+            for (int i = 0; i < f->n; i++) {
+                const int16_t *a = pv[f->pt[i]], *b = pv[f->pt[(i + 1) % f->n]];
+                if (a[0] >= SW_VIEW_NEAR) { sw_view_project(a[0], a[1], a[2], &cx[nc], &cy[nc], &cw[nc]); nc++; }
+                if ((a[0] >= SW_VIEW_NEAR) != (b[0] >= SW_VIEW_NEAR)) {
+                    double q = (SW_VIEW_NEAR - a[0]) / (double)(b[0] - a[0]);
+                    sw_view_project(SW_VIEW_NEAR, a[1] + (b[1] - a[1]) * q, a[2] + (b[2] - a[2]) * q, &cx[nc], &cy[nc], &cw[nc]);
+                    nc++;
+                }
+            }
+            if (nc >= 3) picture_face(s, cx, cy, cw, nc, lines[0].inst, mask);
+            continue;
         }
         if ((mask & known) != mask) continue;       /* (not all of it drawn: a damaged ship) */
         picture_face(s, fx, fy, fw, f->n, lines[0].inst, mask);
