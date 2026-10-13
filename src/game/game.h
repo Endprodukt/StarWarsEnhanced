@@ -130,6 +130,7 @@ void sw_vwgas(sw_machine *m);
 /* WSMAIN.MAC, the ships and the far Death Star in view (game/shipview.c) */
 void sw_snvw(sw_machine *m);
 void sw_vwdtha(sw_machine *m);
+void sw_vwdthb(sw_machine *m);
 
 /* WSMAIN.MAC, MOVE THE PLAYER (game/player.c) */
 void sw_stwsp1(sw_machine *m);

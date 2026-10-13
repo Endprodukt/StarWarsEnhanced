@@ -930,6 +930,119 @@ static void phisp2(sw_machine *m)
     phesp2(m);
 }
 
+/* --- from space to the Death Star ---------------------------------------------------- */
+
+/* S1MVHP: MOVE DURING HYPER */
+static void s1mvhp(sw_machine *m)
+{
+    W16(SW_ST_UX, R16(SW_FRAME) << 8);      /* STARS RELATIVE MOVEMENT */
+}
+
+/* ?FIRST TIME THRU? ?AND SELECTED SPACE WAVE FIVE? */
+static int first_wave_five(sw_machine *m)
+{
+    return R8(SW_SC_FWV) == 0 && R8(SW_SP_WAV) == 5 - 1;
+}
+
+/* VEWHPA: VIEW HYPER INTO SMALL DETH STAR */
+static void vewhpa(sw_machine *m)
+{
+    ivgen1(m);
+    is1uv(m, SW_MSS1BC);                    /* MATH BOX, PRIMARY INIT */
+    sw_residu(m);
+    vwmes(m);
+    sw_vwgas(m);
+    sw_vwsite(m);
+    sw_vwstar(m);
+    sw_vwdtha(m);                           /* VIEW DETH STAR, MINIATURE */
+    sw_vwxpld(m);                           /* PLACE AFTER TIE NO LONGER SHOWN */
+
+    sw_tstlaz(m);                           /* PREPARE FOR LAZAR HITS */
+    sw_snvw(m);
+    sw_vwgun(m);
+    sw_clslz(m);                            /* PROCESS COLLISIONS */
+    sw_vwlaz(m);                            /* AND SEE RESULT */
+
+    sw_vwglw(m);
+    vgdone(m);
+}
+
+/* VEWHPB: VIEW HYPER INTO LARGE DETH STAR */
+static void vewhpb(sw_machine *m)
+{
+    ivgen1(m);
+    is1uv(m, SW_MSS1BC);                    /* MATH BOX, PRIMARY INIT */
+    sw_residu(m);
+    vwmes(m);
+    sw_vwgas(m);
+    sw_vwsite(m);
+    sw_vwstar(m);
+    sw_vwdthb(m);                           /* VIEW DETH STAR, ENLARGING */
+    sw_vwglw(m);
+    vgdone(m);
+}
+
+static void phis0g(sw_machine *m)
+{
+    W16(SW_DT_SCL, SW_VGSCAL + 0x500 + 0x80);   /* START WITH MATCHING SIZE DETH STARS */
+    W16(SW_DT_STP, 0x0100);                 /* STEP SIZE FOR SCALING THE DETH STAR */
+    if (!first_wave_five(m)) {              /* (THEN SPECIAL PROCESSING: SAY ONLY THE PREVIOUS) */
+        sw_doxmt(m, SW_IDSTHI);             /* THIS IS RED FIVE, I'M GOING IN */
+        sw_doxmt(m, SW_IDARY);
+    }
+    W8(SW_PHASE, R8(SW_PHASE) + 1);
+}
+
+static void phes0g(sw_machine *m)
+{
+    vewhpa(m);
+
+    sw_doxpld(m);
+    sw_do1glw(m);
+    sw_do1gas(m);
+
+    sw_stwsp1(m);                           /* TURN TOWARDS DETH STAR */
+    s1mvhp(m);
+
+    if ((int16_t)R16(SW_M_S1 + M_AX) >= 0x3f00) /* ?AIMING TOWARDS DETH STAR YET? */
+        W8(SW_PHASE, SW_PHSS1G);            /* READY TO DO HYPER INTO DETH STAR */
+}
+
+static void phis1g(sw_machine *m)
+{
+    if (first_wave_five(m))
+        sw_doxmt(m, SW_IDSSIZ);             /* LOOK AT THE SIZE OF THAT THING */
+    sw_doxmt(m, SW_IDATH);                  /* THRUST TOWARDS DETH STAR */
+    W8(SW_PHASE, R8(SW_PHASE) + 1);         /* GO AHEAD AND EXECUTE GROWING DETH STAR */
+}
+
+static void phes1g(sw_machine *m)
+{
+    vewhpb(m);                              /* VIEW THE GROWING DETH STAR */
+
+    sw_donglw(m);
+    sw_do1glw(m);
+    sw_do1gas(m);
+
+    sw_stwsp1(m);
+    s1mvhp(m);
+
+    uint16_t d = (uint16_t)((int8_t)(uint8_t)(0 - R8(SW_DT_STP)) + R16(SW_DT_SCL));
+    d &= 0xff7f;
+    W16(SW_DT_SCL, d);
+    if (d <= SW_VGSCAL + 0x100 + 0x10) {    /* ?OBJECT BIG ENOUGH? */
+        if (R8(SW_SP_WAV) == 0)             /* ?FIRST SPACE WAVE? */
+            W8(SW_PHASE, SW_PHSS0B);        /* THEN SKIP AHEAD TO TRENCH */
+        else                                /* ELSE ALLOW GROUND */
+            W8(SW_PHASE, SW_PHSGD);         /* DO GROUND FLYING */
+    }
+    W16(SW_DT_STP, R16(SW_DT_STP) + 0x0060);    /* CHANGE STEP SIZE */
+
+    uint8_t a = R8(SW_ST_BRT);              /* DIM OUT THE STARS */
+    a = a <= 2 ? 0 : (uint8_t)(a - 2);
+    W8(SW_ST_BRT, a);
+}
+
 /* --- the main line ------------------------------------------------------------------ */
 
 /* MAIN: EXECUTE PHASE (TPHASE) */
@@ -961,6 +1074,10 @@ static void run_phase(sw_machine *m)
     case SW_PHSSP1 + 1: if (!m->original_call) goto unported; phesp1(m); break;
     case SW_PHSSP2:     if (!m->original_call) goto unported; phisp2(m); break;
     case SW_PHSSP2 + 1: if (!m->original_call) goto unported; phesp2(m); break;
+    case SW_PHSS0G:     phis0g(m); break;
+    case SW_PHSS0G + 1: if (!m->original_call) goto unported; phes0g(m); break;
+    case SW_PHSS1G:     phis1g(m); break;
+    case SW_PHSS1G + 1: if (!m->original_call) goto unported; phes1g(m); break;
     case SW_PHSS0D:     phis0d(m); break;
     case SW_PHSS0D + 1: if (!m->original_call) goto unported; phes0d(m); break;
     case SW_PHSEGM:     phiegm(m); break;

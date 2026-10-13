@@ -36,12 +36,6 @@ static uint16_t asrd3(uint16_t d)
     return (uint16_t)((int16_t)d >> 3);
 }
 
-/* NEGD when minus */
-static uint16_t absd(uint16_t d)
-{
-    return (d & 0x8000) ? (uint16_t)(0 - d) : d;
-}
-
 /* FRAGUN: FIRE ALIENS GUN. X-->ALIEN PARM, U-->GUN PARM */
 void sw_fragun(sw_machine *m, uint16_t x, uint16_t u)
 {
@@ -271,10 +265,10 @@ static void vw1gun(sw_machine *m, uint16_t x)
         W16(SW_M_XT, xp);
         uint16_t d = R16(SW_M_YP);
         W16(SW_M_YT, d);
-        if (absd(d) < R16(SW_M_XP)) {
+        if (sw_absd(d) < R16(SW_M_XP)) {
             d = R16(SW_M_ZP);
             W16(SW_M_ZT, d);
-            if (absd(d) < R16(SW_M_XP)) visible = 1;
+            if (sw_absd(d) < R16(SW_M_XP)) visible = 1;
         }
     }
     if (!visible) {                         /* SHOT NOT VISIBLE */
@@ -294,10 +288,10 @@ static void vw1gun(sw_machine *m, uint16_t x)
         W16(TMPSIZ, R16(SW_M_YP) + 10);     /* SIZE OF CURSOR */
         int16_t siz = (int16_t)R16(TMPSIZ);
         /* OBJECT CENTER - LAZAR CENTER */
-        uint16_t d = absd((uint16_t)(R16(SW_BJ_CX) - R16(SW_LZ_CX)));
+        uint16_t d = sw_absd((uint16_t)(R16(SW_BJ_CX) - R16(SW_LZ_CX)));
         W16(TMPOCT, d);                     /* PREPARE FOR OCTAGON COLLISION DETECT */
         if ((int16_t)d <= siz) {            /* LE FOR LIBERALITY */
-            d = absd((uint16_t)(R16(SW_BJ_CY) - R16(SW_LZ_CY)));    /* NOW CHECKING Y COORDS */
+            d = sw_absd((uint16_t)(R16(SW_BJ_CY) - R16(SW_LZ_CY)));    /* NOW CHECKING Y COORDS */
             if ((int16_t)d <= siz) {        /* ?WITHIN Y ALSO? */
                 d = (uint16_t)(d + R16(TMPOCT));    /* THEN ADD TO OCTAGON TEST */
                 W16(TMPOCT, d);

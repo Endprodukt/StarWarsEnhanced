@@ -162,3 +162,73 @@ void sw_vwdtha(sw_machine *m)
     VG(SW_VJBMIN);                          /* GET JSRL TO MINNY BASE OF DETH STAR */
     VG(SW_VGSCAL);                          /* RESTORE BASE */
 }
+
+#define TMPSCL 0x4801       /* TEMP SCL,2,VX,2,VY,2 (DTHVW) */
+#define TMPVX  0x4803
+#define TMPVY  0x4805
+
+/* 100$, 104$ of DTHVW: DRAW TO CENTER, SCALE, THEN DO STAMP. U:=STAMP */
+static void dth_stamp(sw_machine *m, uint16_t u, int center)
+{
+    if (center) {
+        VG(R16(TMPVY));                     /* CENTER OF PLANET ON SCREEN */
+        VG(R16(TMPVX));
+    }
+    VG(R16(TMPSCL));                        /* SCALE THE STAMP */
+    VG(u);                                  /* VIEW THE STAMP */
+}
+
+/* DTHVW: the Death Star at the scale DT.SCL */
+static void dthvw(sw_machine *m)
+{
+    sw_objcen(m);                           /* THEN PROCESS THE CENTER POINT */
+    W16(TMPVY, R16(m->y - 4));              /* SAVE CENTER POINT LOCATION */
+    W16(TMPVX, R16(m->y - 2));
+    W16(TMPSCL, R16(SW_DT_SCL));
+
+    dth_stamp(m, SW_VJBCIR, 0);             /* CIRCLE */
+    dth_stamp(m, SW_VJBTRN, 1);             /* TRENCH */
+    dth_stamp(m, SW_VJBDSH, 1);             /* DISH */
+    dth_stamp(m, SW_VJBNSD, 1);             /* INSIDE */
+    dth_stamp(m, SW_VJBFRM, 1);             /* FARM */
+
+    uint16_t d = (uint16_t)(R16(SW_DT_SCL) - 0x0300);   /* SCALE UP THE SIZE OF THE CITY BLOCKS */
+    if (d < SW_VGSCAL - 0x200)              /* NO LONGER A SCALE INSTRUCTION */
+        d = SW_VGSCAL - 0x200;              /* MAX SIZE */
+    W16(TMPSCL, d);
+    if ((d >> 8) == (SW_VGSCAL - 0x200) >> 8)   /* BINARY SCALE = 00? */
+        VG((((VGCYLW << 8) + SW_VGCOLR) & 0xff00) | 0x60);  /* BRIGHTER FOR BINARY=0 */
+    else
+        VG((((VGCYLW << 8) + SW_VGCOLR) & 0xff00) | 0x30);  /* CITY LIGHTS */
+
+    if ((R8(SW_SP_WAV) & 0x01) == 0) {
+        dth_stamp(m, SW_VJUB1, 1);
+    } else {
+        dth_stamp(m, SW_VJUB2, 1);          /* CITIES 2,3, AND 4 GO TOGETHER */
+        dth_stamp(m, SW_VJUB3, 1);
+        dth_stamp(m, SW_VJUB4, 1);
+    }
+    if ((R8(SW_SP_WAV) & 0x01) == 0) {
+        dth_stamp(m, SW_VJLB1, 1);
+    } else {
+        dth_stamp(m, SW_VJLB2, 1);
+        dth_stamp(m, SW_VJLB3, 1);
+        dth_stamp(m, SW_VJLB4, 1);
+    }
+}
+
+/* VWDTHB: VIEW DEATH STAR, VERSION B (WITH SCALING) */
+void sw_vwdthb(sw_machine *m)
+{
+    uint16_t ax = R16(SW_M_U1 + M_AX);      /* X POSITION AT FAR(4000,0,0) DISTANCE */
+    if ((int16_t)ax <= 0) return;           /* ?IN FRONT OF PLAYER? */
+    W16(SW_M_DVD, ax);                      /* PREPARE DIVIDER,PERSPECTIVE */
+    uint16_t d = R16(SW_M_U1 + M_AY);
+    W16(SW_M_YP, d);
+    if ((int16_t)sw_absd(d) >= (int16_t)ax) return;     /* ?Y WITHIN X FIELD OF VIEW? */
+    d = R16(SW_M_U1 + M_AZ);
+    W16(SW_M_ZP, d);                        /* ASSUME OK, THEN TEST */
+    if ((int16_t)sw_absd(d) >= (int16_t)ax) return;     /* ?Z WITHIN X FIELD OF VIEW? */
+    TAG(SW_TAG_DSTAR, 3);
+    dthvw(m);
+}
