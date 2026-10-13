@@ -28,7 +28,9 @@ enum {
     SW_TAG_COUNT,       /* a countdown */
     SW_TAG_OBJECT,      /* a 3-D object; key: the slot of the thing drawn */
     SW_TAG_LASER,       /* a laser beam; key: which gun */
-    SW_TAG_CODE,        /* written by the original program (core/emu.h); key: from where */
+    SW_TAG_SHOT,        /* an enemy's shot; key: its gun record */
+    SW_TAG_XPLD,        /* a piece of an explosion; key: its place in the queue */
+    SW_TAG_CODE,       /* written by the original program (core/emu.h); key: from where */
     SW_TAG_SECTIONS
 };
 

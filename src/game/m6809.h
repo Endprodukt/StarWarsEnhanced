@@ -124,6 +124,14 @@ static inline uint8_t sw_bcd_adc(uint8_t a, uint8_t b, int *carry)
 #define M_VY (-0x02)
 #define M_VZ 0x06
 
+/* GUN block (G$xx): a shot */
+#define G_UVP  0      /* POINTER TO ITS POSITION IN THE MATH BOX */
+#define G_BIC  2
+#define G_TYP  3
+#define G_MOV  4
+#define G_TMR  5
+#define G_IZE  6
+
 /* RHEOSTAT block (RH$xx) */
 #define RH_LO  0
 #define RH_LT  1

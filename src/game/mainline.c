@@ -756,16 +756,97 @@ static void view(sw_machine *m)
     sw_vwdtha(m);                           /* VIEW DETH STAR, MINIATURE */
     sw_vwsite(m);
     sw_vwstar(m);
-    ORIG(SW_VWXPLD);                        /* CAN SEE PARTS ONCE ORIGINAL IS GONE FROM VIEW */
+    sw_vwxpld(m);                          /* CAN SEE PARTS ONCE ORIGINAL IS GONE FROM VIEW */
 
     sw_tstlaz(m);                           /* PREPARE FOR LAZAR HITS */
     sw_snvw(m);
-    ORIG(SW_L_VWGUN);
+    sw_vwgun(m);
     sw_clslz(m);                            /* PROCESS COLLISIONS */
     sw_vwlaz(m);                            /* AND SEE RESULT */
 
     sw_vwglw(m);
     vgdone(m);
+}
+
+/* VWMOVR: VIEW GROWING GAME OVER MESSAGE */
+static void vwmovr(sw_machine *m)
+{
+    uint8_t a = R8(SW_PH_TIM + 1);
+    if (a > 32) a = 32;                     /* STOP GROWING */
+    uint8_t b = (uint8_t)(0xc0 - (uint8_t)(a * 6));     /* EXPAND AT 6 PER FRAME: SMALL IS 0C0, LARGE IS 000 */
+    VG((SW_VGSCAL & 0xf000) | b);           /* FRONT PART OF SCALE INSTRUCTION */
+    sw_domess(m, SW_MS_GO1);                /* "GAME OVER" IN CENTER OF SCREEN */
+}
+
+/* VEWS0D: the picture while the player dies in space */
+static void vews0d(sw_machine *m)
+{
+    ivgen1(m);
+    is1uv(m, SW_MSS1BC);                    /* MATH BOX, PRIMARY INIT */
+    sw_residu(m);
+
+    vwmes(m);
+    sw_vwgas(m);
+    sw_vwstar(m);
+    sw_vwxpld(m);                           /* SHOW PARTS AFTER TIE GONE FROM DISPLAY */
+    sw_snvw(m);
+    sw_vwgun(m);
+    vwmovr(m);                              /* VIEW EXPANDING GAME OVER MESSAGE */
+
+    sw_vwglw(m);
+    vgdone(m);
+}
+
+/* PHIS0D: SPACE TO ENDGAME TRANSITION */
+static void phis0d(sw_machine *m)
+{
+    sw_doxmt(m, SW_IDSSKP);                 /* SKIP ANY OTHER VOICES */
+    W8(SW_PHASE, SW_PHSS0D + 1);            /* EXECUTE THIS PHASE */
+    W16(SW_PH_TIM, 0);                      /* NEW PHASE TIMER JUST STARTED */
+}
+
+static void phes0d(sw_machine *m)
+{
+    vews0d(m);
+
+    sw_mvgun(m);
+    sw_kpglow(m);
+    sw_donglw(m);
+    sw_doxpld(m);
+
+    W16(SW_M_SIN, (uint16_t)-0x04ff);       /* FLIP DIRECTION OF ROLL CUZ WE ARE DIEING */
+    W16(SW_M_COS, 0x3fce);
+    sw_s1rl(m);
+
+    uint16_t d = (uint16_t)(R16(SW_PH_TIM) + 1);
+    W16(SW_PH_TIM, d);
+    if (d >= 2 * 20) W8(SW_PHASE, SW_PHSEGM);   /* 2 SECONDS */
+}
+
+/* PHIEGM: INIT END OF GAME. PREVIOUS PHASE HAS ALREADY SKIPPED OLD SPEECH */
+static void phiegm(sw_machine *m)
+{
+    sw_doxmt(m, SW_IDSREM);                 /* SAY "REMEMBER..." */
+    sw_doxmt(m, SW_IDSFOA);                 /* SAY FORCE WILL BE WITH YOU ALWAYS */
+    W8(SW_PHASE, R8(SW_PHASE) + 1);         /* TRANSFER TO END OF GAME */
+}
+
+/* PHEEGM: END OF GAME */
+static void pheegm(sw_machine *m)
+{
+    imath(m);
+    iparm(m);
+    istar(m);
+    sw_unitv(m, SW_M_U1);
+
+    ORIG(SW_EEACCT);                        /* UPDATE GAME TIME, GAMES PLAYED AND HISTORY */
+    sw_update(m);                           /* CHECK FOR NEW HI SCORE */
+    if (!(R8(SW_UPDFLG) & 0x80)) {          /* ?NEW HI SCORE? */
+        W8(SW_PHASE, SW_PHSENT);            /* THEN ENTER INITIALS */
+    } else {                                /* ELSE NO LUCK */
+        sw_doxmt(m, SW_IDPBEN);             /* BEN'S THEME WHEN LOSE GAME WITH NO HIGH SCORE */
+        W8(SW_PHASE, SW_PHSBNR);
+    }
 }
 
 /* What the two space phases do alike before the ships and the player
@@ -774,12 +855,12 @@ static int space_frame(sw_machine *m)
 {
     view(m);
     if (R8(SW_S_GAS) & 0x80) {              /* EXIT WHEN PLAYER DIES */
-        ORIG(SW_L_PHIS0D);
+        phis0d(m);
         return 0;
     }
-    ORIG(SW_MVGUN);                         /* MOVE GUN SHOTS */
+    sw_mvgun(m);                           /* MOVE GUN SHOTS */
     sw_donglw(m);
-    ORIG(SW_DOXPLD);
+    sw_doxpld(m);
     sw_do1glw(m);
     sw_do1gas(m);
     return 1;
@@ -817,7 +898,7 @@ static void phesp1(sw_machine *m)
 static void phisp1(sw_machine *m)
 {
     ipgen(m);                               /* JUST GENERAL PARMS, NOT PLAYER OR STARS */
-    ORIG(SW_IXPLD);
+    sw_ixpld(m);
     W16(SW_PH_TIM, 0);
     W8(SW_Q_RTHV, 0);                       /* DARTH IN VIEW, FIRST TIME -- SOUNDOFF */
     W8(SW_Q_SHK, 9);                        /* # OF SHOTS BEFORE 'I CANT SHAKE HIM' */
@@ -880,6 +961,10 @@ static void run_phase(sw_machine *m)
     case SW_PHSSP1 + 1: if (!m->original_call) goto unported; phesp1(m); break;
     case SW_PHSSP2:     if (!m->original_call) goto unported; phisp2(m); break;
     case SW_PHSSP2 + 1: if (!m->original_call) goto unported; phesp2(m); break;
+    case SW_PHSS0D:     phis0d(m); break;
+    case SW_PHSS0D + 1: if (!m->original_call) goto unported; phes0d(m); break;
+    case SW_PHSEGM:     phiegm(m); break;
+    case SW_PHSEGM + 1: if (!m->original_call) goto unported; pheegm(m); break;
     default:
     unported:
         /* A phase that is not ported yet: the original's code for it, if

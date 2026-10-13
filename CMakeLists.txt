@@ -69,6 +69,8 @@ add_library(swcore STATIC
     src/game/shipview.c
     src/game/glow.c
     src/game/laser.c
+    src/game/guns.c
+    src/game/xpld.c
     src/game/gas.c
     src/render/smooth.c
     src/cpu/m6809.c

@@ -62,6 +62,7 @@ static int ported(uint8_t phase)
         SW_PHSSCR, SW_PHSSCR + 1, SW_PHSHIS, SW_PHSHIS + 1, SW_PHSSDS, SW_PHSSDS + 1,
         SW_PHSENT, SW_PHSENT + 1, SW_PHSSG1, SW_PHSSG1 + 1, SW_PHSSG2, SW_PHSSG2 + 1,
         SW_PHSBGN, SW_PHSBGN + 1, SW_PHSSP1, SW_PHSSP1 + 1, SW_PHSSP2, SW_PHSSP2 + 1,
+        SW_PHSS0D, SW_PHSS0D + 1, SW_PHSEGM, SW_PHSEGM + 1,
     };
     for (unsigned i = 0; i < sizeof p; i++)
         if (p[i] == phase) return 1;
@@ -237,6 +238,8 @@ int main(int argc, char **argv)
     int have_prev = 0, have_nv = 0, tick_buffer = -1;
     char tag[4], name[32];
     long frames = 0, checked = 0, bad = 0, unported = 0, shown = 0;
+    uint16_t pokes[8][2];
+    int npokes = 0;
     long bad_by_phase[256] = { 0 }, n_by_phase[256] = { 0 }, replay_off = 0;
     double times[3] = { 0, 0, 0 };
     FILE *csv = arg(argc, argv, "--csv") ? fopen(arg(argc, argv, "--csv"), "w") : NULL;
@@ -254,6 +257,14 @@ int main(int argc, char **argv)
         } else if (!memcmp(tag, "NVRM", 4) && len == sizeof nv) {
             memcpy(nv, payload, sizeof nv);
             have_nv = 1;
+        } else if (!memcmp(tag, "POKE", 4) && len == 3) {
+            /* The recording's script wrote into the machine between the
+             * frames: so does the frame checked against it. */
+            if (npokes < 8) {
+                pokes[npokes][0] = (uint16_t)(payload[0] | (payload[1] << 8));
+                pokes[npokes][1] = payload[2];
+                npokes++;
+            }
         } else if (!memcmp(tag, "TIME", 4) && len == 24) {
             memcpy(times, payload, sizeof times);   /* little-endian doubles, as this machine's */
         } else if (!memcmp(tag, "TICK", 4) && len == SWCAP_TICK_SIZE) {
@@ -317,6 +328,10 @@ int main(int argc, char **argv)
                         if (rf.bad) replay_off++;
                     }
 
+                    for (int i = 0; i < npokes; i++)
+                        if (pokes[i][0] >= 0x4800 && pokes[i][0] < 0x5000)
+                            m.ram[pokes[i][0] - 0x4800] = (uint8_t)pokes[i][1];
+
                     int nd = 0;
                     int detail = shown < show;
                     #define DIFF(fmt, ...) do { \
@@ -370,6 +385,7 @@ int main(int argc, char **argv)
             }
             prev = cur;
             have_prev = 1;
+            npokes = 0;
             tick_buffer = -1;
         }
     }

@@ -22,6 +22,8 @@
  *         the interrupt keeps (4809-4840, 4851-4852, 4866-4878, 4AF4,
  *         4B04-4B07): 3 bytes per read, address (little-endian) and
  *         value, in order; before each FRAM
+ *   POKE  uint16 address, uint8 value: the recording's script wrote this
+ *         into the machine just before the FRAM that follows
  *   TIME  three doubles (seconds of emulated time), before each TICK: when
  *         the frame started, when the interrupt handed it its VG buffer,
  *         when it finished the list: how long the 6809 took over it

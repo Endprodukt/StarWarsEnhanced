@@ -22,8 +22,8 @@
 #define C_T9 0x40           /* twirl flag: AIM IN FRONT OF PLAYER */
 #define C_T0 0x80           /* twirl flag: AIM AT PLAYER */
 
-#define G_TYP 3
-#define G_IZE 6
+
+
 
 /* TGPROB: GUN SHOOTING PROB by the wave's difficulty: TIMER MASK (0F=1
  * SECOND), PROB COMPARE (C0=25%), HOW MANY GUNS ALLOWED TO SHOOT */
@@ -199,9 +199,7 @@ static void cpual(sw_machine *m, uint16_t x)
                 if (R8(u + G_TYP) != 0) continue;           /* GUN FREE TO START? */
                 x = R16(SW_S1_PRM);
                 W16(x + A_CHST, R16(x + A_CHST) | C_AG);    /* TELL ALIEN HE FIRED A GUN */
-                m->rx = x;
-                m->ru = u;
-                ORIG(SW_FRAGUN);
+                sw_fragun(m, x, u);
                 break;
             }
         }
@@ -298,8 +296,7 @@ static void xpsa(sw_machine *m)
     sw_doxmt(m, SW_IDASX);                  /* SMALL EXPLOSION */
     if (R8(x + A_BIC) == R8(SW_Q_PBB))      /* ?SAME GUY DOING CURRENT PASSBY? */
         sw_doxmt(m, SW_IDAPBZ);             /* THEN KILL ANY PASSBY SOUND */
-    m->rx = x;
-    ORIG(SW_BGAXPL);
+    sw_bgaxpld(m, x);
     sw_scrtie(m);                           /* ADD SCORE FOR KILLING TIE FIGHTER */
 }
 

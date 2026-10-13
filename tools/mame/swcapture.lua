@@ -84,6 +84,9 @@ end
 --                                         last object the game drew (a ship, if
 --                                         one is in view) and the trigger is
 --                                         pulled every N frames
+--   poke ADDR VAL                         write a byte (hex) into the machine,
+--                                         to get at what play does not reach
+--                                         (4860 00: no shields left)
 local play = {}
 for entry in (os.getenv("SWCAP_PLAY") or ""):gmatch("[^;]+") do
     local w = {}
@@ -129,6 +132,11 @@ function play_frame()
             elseif e.what == "aim" then
                 aim = tonumber(e.a or "6")
                 weave = 0
+            elseif e.what == "poke" then
+                quiet = true
+                space:write_u8(tonumber(e.a, 16), tonumber(e.b, 16))
+                f:write("POKE", string.pack("<I4I2B", 3, tonumber(e.a, 16), tonumber(e.b, 16)))
+                quiet = false
             end
         end
     end

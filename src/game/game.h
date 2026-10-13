@@ -94,6 +94,16 @@ void sw_vwlaz(sw_machine *m);
 void sw_clslz(sw_machine *m);
 void sw_clglz(sw_machine *m);
 void sw_cphtsa(sw_machine *m);      /* game/aliencpu.c */
+/* WSGUNS.MAC (game/guns.c): the enemies shots. */
+void sw_fragun(sw_machine *m, uint16_t x, uint16_t u);
+void sw_mvgun(sw_machine *m);
+void sw_vwgun(sw_machine *m);
+void sw_gnhtsg(sw_machine *m);
+/* WSXPLD.MAC (game/xpld.c): the explosions of the others. */
+void sw_bgaxpld(sw_machine *m, uint16_t x);
+void sw_ixpld(sw_machine *m);
+void sw_doxpld(sw_machine *m);
+void sw_vwxpld(sw_machine *m);
 
 /* the score (game/gas.c) */
 void sw_aduscr(sw_machine *m, uint16_t u);

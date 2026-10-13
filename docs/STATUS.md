@@ -17,13 +17,15 @@ Das ganze Spiel, unverändert, in drei Arten (`starwarsvp`):
   Original-ROM aus: ganze Phasen (`original_frame`) oder einzelne
   Unterroutinen einer sonst portierten Phase (`ORIG(adresse)`), auf demselben
   Speicher. Portiert sind Interrupt, Münzen, Attract, Spielstart,
-  Wellenaufbau, Choreografie und von der Weltraumwelle: Ablauf, Bildaufbau
-  (`VIEW`), Spielerbewegung und Zielen, Darstellung der Schiffe und des
-  fernen Todessterns, Gegner-KI (`CPU`, `CPURET`), Glühen, Schildanzeige.
-  Über `ORIG` laufen dort noch: Laser (TSTLAZ, CLSLZ, VWLAZ), Schüsse
-  (MVGUN, VWGUN, FRAGUN), Explosionen (IXPLD, DOXPLD, VWXPLD) und der
-  Übergang beim Tod (PHIS0D).
-  Boden, Graben und Explosion laufen noch ganz über den Kern.
+  Wellenaufbau, Choreografie, die ganze Weltraumwelle (Ablauf, Bildaufbau,
+  Spielerbewegung und Zielen, Schiffe, ferner Todesstern, Gegner-KI, Laser,
+  Schüsse der Gegner, Explosionen, Glühen, Schildanzeige, Punkte), der Tod
+  im Weltraum (S0D) und das Spielende (EGM).
+  Über `ORIG` laufen noch: die Buchhaltung am Spielende (EEACCT), die
+  Bewegung der Schüsse von Bunkern, Türmen und Wänden und der Treffer auf
+  einen Bunker (GDHTGB); die letzten beiden kommen erst in Phasen vor, die
+  noch ganz über den Kern laufen: Boden, Graben und Explosion des
+  Todessterns.
 * `--original`: das ganze Originalprogramm auf dem 6809-Kern.
 * `--native`: nur C, ohne Kern (eine fehlende Phase führt zum Banner).
 
@@ -32,10 +34,11 @@ die Zeit des Vektorgenerators, die Bildausgabe und die Zwischenbilder. Der
 Ton kommt noch von der nachgebildeten Soundplatine (zweiter 6809-Kern mit
 dem Sound-Programm): auch das ist noch Emulation.
 
-* **Geprüft gegen MAME**, Frame für Frame (RAM, Math-Box-RAM, Displayliste):
-  3006 von 3006 Frames der Attract-Aufnahme, 2623 von 2623 Frames einer
-  gespielten Aufnahme (Start, Todesstern-Wahl, Weltraumwelle, Übergang,
-  Graben, Tod, Game Over).
+* **Geprüft gegen MAME**, Frame für Frame (RAM, Math-Box-RAM, Displayliste),
+  vier Aufnahmen: Attract (3006 Frames) und drei gespielte (Start,
+  Todesstern-Wahl, Weltraumwelle, Graben, Tod, Game Over; eine mit Tod im
+  Weltraum). Das ganze Original auf dem Kern stimmt in allen 9349 Frames;
+  von den C-Routinen sind es alle 7034 Frames der portierten Phasen.
 * **Tempo** aus den gezählten CPU-Zyklen, wie das Original: Interrupts pro
   Frame Original/hier 12,2/12,4 (Banner), 18,6/18,6 (Anleitung), 12,1/12,2
   (Punktetabelle), 18,0/17,9 (Highscores).
@@ -80,17 +83,21 @@ Attract-Modus davor. Ungeprüft am Gerät, also nur gerechnet und gemessen:
 
 ## Als Nächstes
 
-0. Weiter portieren, in dieser Reihenfolge, jede Routine einzeln gegen die
-   Aufnahmen geprüft (`sh tools/checkall.sh ORDNER ROMDIR`): die restlichen
-   `ORIG`-Aufrufe der Weltraumwelle ersetzen (`grep -rn "ORIG(" src/game`:
-   WSLAZR, WSGUNS, WSXPLD, PHIS0D 6C76), dann die Phasen S0G bis EGM.
-   Die Aufnahme `play1` deckt nicht alles ab: Treffer am Spieler und
-   Schildverlust in der Weltraumwelle, Darth Vader und höhere Wellen kommen
-   kaum vor. Dafür weitere Aufnahmen mit anderem `SWCAP_PLAY` machen.
-   Ein Frame (Münzeinwurf während der Highscore-Seite) weicht im Vergleich
-   ab, weil die Wiedergabe der vom Interrupt gelesenen Werte dort aus dem
-   Tritt kommt; noch nicht untersucht. Lokale Adressen findet
-   `python3 -I tools/dis6809.py ROMZIP ADRESSE` (Phasentabelle bei 6044).
+0. Weiter portieren, jede Routine einzeln gegen die Aufnahmen geprüft
+   (`sh tools/checkall.sh ORDNER ROMDIR`). Offen (`grep -rn "ORIG(" src/game`):
+   EEACCT (TCEROM.MAC), dann die Phasen S0G bis NXT: Übergänge S0G, S1G,
+   S0B, Boden GD (WSGRND, dazu MOVWx/MOVBx in `guns.c`, BGBKXP/BGTWXP in
+   `xpld.c`, GDHTGB), Graben BS (WSBASE, CLBLZ, LZCPNW, MOVPx, Protonen-
+   torpedo), die Tode G0D und B0D, die Explosion DX1 bis DX3 (BGXPLN,
+   VWXPLN), dazu STS und OPT (Selbsttest, Optionen).
+   In `xpld.c` sind die Bunker- und Turmteile (MVBKn, VWBKn, VWTWn) schon
+   portiert, aber noch von keiner Aufnahme geprüft.
+   Was das Spiel von selbst nicht erreicht, holt `poke ADRESSE WERT` im
+   Aufnahmeskript (z. B. `420 poke 4860 00`: keine Schilde mehr); der
+   Vergleich macht den Eingriff mit. Darth Vader und höhere Wellen kommen
+   in den Aufnahmen noch kaum vor.
+   Lokale Adressen findet `python3 -I tools/dis6809.py ROMZIP ADRESSE`
+   (Phasentabelle bei 6044).
    Danach den Ton: SNDAUD, SNDPM, SNDSPK.
    Parallel der Renderer aus dem Spielzustand: Schiffe und Sterne aus ihren
    Matrizen und Positionen im Math-Box-RAM 50-mal pro Sekunde neu rechnen,

@@ -147,7 +147,7 @@ void sw_vwlaz(sw_machine *m)
 static void htsg(sw_machine *m)
 {
     W8(SW_LZ_HIT, 4);                       /* DISPLAY HIT FOR A WHILE */
-    ORIG(SW_GNHTSG);                        /* GUNS, HIT SPACE GUN */
+    sw_gnhtsg(m);                          /* GUNS, HIT SPACE GUN */
 }
 
 /* HTSA: SPACE LAZAR HIT ALIEN SHIP */
@@ -176,7 +176,7 @@ void sw_clglz(sw_machine *m)
     if (R8(SW_LZ_ON) == 0) return;
     if (!(R16(SW_CL_GDS) & 0x8000)) {       /* CHECK THE GUNS FIRST: ?GOT A GUN? */
         W8(SW_LZ_HIT, 4);
-        ORIG(SW_GNHTSG);                    /* ALWAYS HIT A GUN SINCE NO DISTANCE QUEUE */
+        sw_gnhtsg(m);                      /* ALWAYS HIT A GUN SINCE NO DISTANCE QUEUE */
     }
     /* CLGA: THEN CHECK FOR ALIENS NEXT */
     uint16_t d = R16(SW_CL_ADS);
