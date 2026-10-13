@@ -197,8 +197,16 @@ Soundplatine, die Zeit des Vektorgenerators.
   Spektrum). Es gibt noch **keine echten Ersatz-Sounds**. Als Ausgangspunkt
   schreibt `tools/swsound` jeden Sound der Platine als WAV (Musik bis der
   Musiktreiber fertig ist, Sprache bis der Sprachchip fertig ist, Effekte
-  bis zur Stille); die elf Musikstücke liegen am PC in `sounds/` (6,6 bis
-  28 s, nicht im Repo, nicht am Automaten).
+  bis zur Stille), jeden in den Ordner seiner Art: `sounds/voice/` (22
+  Sätze), `sounds/music/` (11 Stücke), `sounds/effects/` (18), `sounds/test/`
+  (4, der Selbsttest der Platine). Alle 55 liegen am PC (nicht im Repo,
+  nicht am Automaten); `SPKI`, `SPKSKP`, `AUDPBZ` und `AUDTCZ` machen keinen
+  Ton und bekommen keine Datei. Der Lader sucht eine Datei in `sounds/`
+  selbst und im Ordner ihrer Art. Folge am PC: Weil die Originale jetzt in
+  `sounds/` liegen, spielt die PC-Fassung sie als "Ersatz" ab (klingt
+  gleich; `sound_replace = 0` schaltet es ab). Offen: `AUDRS` (R2, kurzes
+  Ja) beginnt mit gut zwei Sekunden Stille, die in der Datei mit drin sind;
+  ob das die Platine so macht oder am Export liegt, ist nicht untersucht.
 * **Schriftzug gelb** (`logo_yellow = 1`, Standard, Enhanced): das STAR-WARS-
   Logo im Attract-Modus in Gelb statt im Blau des Automaten (`enhance.c`
   färbt die Linien um). Im Testmenü schaltbar (YELLOW LOGO).

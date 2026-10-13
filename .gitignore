@@ -4,3 +4,4 @@ dist/
 roms/
 video/
 sounds/*.wav
+sounds/*/*.wav

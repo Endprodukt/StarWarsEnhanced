@@ -6,9 +6,10 @@
  * sound and records what it plays until it is over: a piece of music
  * until the board's music driver is idle again, speech until the speech
  * chip has nothing left, an effect until the output has been quiet for a
- * while. Written as DIR/NAME.wav (44.1 kHz, 16 bit, mono), the files that
- * sounds/ takes in place of the board's own (docs/SOUNDS.md). Without
- * names: all eleven pieces of music.
+ * while. Written as DIR/<kind>/NAME.wav (44.1 kHz, 16 bit, mono; the kinds
+ * are voice, music, effects and test), the files that sounds/ takes in
+ * place of the board's own (docs/SOUNDS.md). Without names: every sound.
+ * A request that makes no sound (SPKSKP, AUDPBZ ...) gets no file.
  */
 #include "core/machine.h"
 #include "rom/romset.h"
@@ -20,6 +21,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef _WIN32
+#include <direct.h>
+static void make_dir(const char *p) { _mkdir(p); }
+#else
+#include <sys/stat.h>
+static void make_dir(const char *p) { mkdir(p, 0755); }
+#endif
 
 static sw_romset rom;
 static sw_machine m;
@@ -92,7 +100,12 @@ static int record(int n, const char *path, double max_seconds)
          * sounded for a while */
         if (was_busy && !now_busy && quiet > TAIL) break;
         if (!was_busy && started && quiet > QUIET && count > SW_SOUND_RATE / 4) break;
-        if (!was_busy && !started && count > 2 * SW_SOUND_RATE) break;  /* nothing at all */
+        if (!was_busy && !started && count > 6 * SW_SOUND_RATE) break;  /* nothing at all */
+    }
+    if (!started) {
+        printf("swsound: %s  no sound, no file\n", path);
+        free(out);
+        return 0;
     }
     /* cut the quiet tail to a quarter second */
     if (quiet > TAIL) count -= quiet - TAIL;
@@ -103,6 +116,18 @@ static int record(int n, const char *path, double max_seconds)
     fclose(f);
     printf("swsound: %s  %5.1f s%s\n", path, (double)count / SW_SOUND_RATE, count >= limit ? "  (cut at the limit)" : "");
     free(out);
+    return 0;
+}
+
+/* A sound into its kind's folder under dir. */
+static int export(int req, const char *dir, double max_seconds)
+{
+    char path[1024];
+    snprintf(path, sizeof path, "%s/%s", dir, sw_sound_folder(req));
+    make_dir(dir);
+    make_dir(path);
+    snprintf(path, sizeof path, "%s/%s/%s.wav", dir, sw_sound_folder(req), sw_sound_name(req));
+    if (record(req, path, max_seconds) != 0) { fprintf(stderr, "swsound: cannot write %s\n", path); return -1; }
     return 0;
 }
 
@@ -127,17 +152,11 @@ int main(int argc, char **argv)
         for (int k = 1; k < SW_SOUND_REQUESTS; k++)
             if (!strcmp(sw_sound_name(k), argv[i])) req = k;
         if (req < 0) { fprintf(stderr, "swsound: no sound named %s\n", argv[i]); fail = 1; continue; }
-        char path[1024];
-        snprintf(path, sizeof path, "%s/%s.wav", dir, argv[i]);
-        if (record(req, path, max_seconds) != 0) { fprintf(stderr, "swsound: cannot write %s\n", path); fail = 1; }
+        if (export(req, dir, max_seconds) != 0) fail = 1;
         done++;
     }
-    if (!done && !fail) {
-        for (int req = 0x1b; req <= 0x25; req++) {       /* the music */
-            char path[1024];
-            snprintf(path, sizeof path, "%s/%s.wav", dir, sw_sound_name(req));
-            if (record(req, path, max_seconds) != 0) { fprintf(stderr, "swsound: cannot write %s\n", path); fail = 1; }
-        }
-    }
+    if (!done && !fail)
+        for (int req = 1; req < SW_SOUND_REQUESTS; req++)
+            if (export(req, dir, max_seconds) != 0) fail = 1;
     return fail;
 }

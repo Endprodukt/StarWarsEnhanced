@@ -99,9 +99,12 @@ In attract mode the program plays the pieces through the table `TMUSIC`
 ## Replacing a sound
 
 Put a WAV file named after the request into the folder `sounds` (next to
-the program, or `save/sounds` on the cabinet, which is looked at first):
-`sounds/AUDXL.wav` replaces the X-wing's lasers, `sounds/PMTH5.wav` the main
-theme, `sounds/SPKRED.wav` "Red Five standing by". A request without a file
+the program, or `save/sounds` on the cabinet, which is looked at first),
+in the folder of its kind: `sounds/effects/AUDXL.wav` replaces the X-wing's
+lasers, `sounds/music/PMTH5.wav` the main theme, `sounds/voice/SPKRED.wav`
+"Red Five standing by". The kinds are `voice` (SPK...), `music` (PM...),
+`effects` (AUD...) and `test` (AUDTST, PMTST, AUDNAY, AUDYEA); a file
+directly in `sounds` is taken too, and goes first. A request without a file
 sounds as before, so sounds can be replaced one at a time.
 
 * Format: WAV, PCM, 8 or 16 bit, mono or stereo, any sample rate (converted
@@ -127,10 +130,12 @@ until the board's music driver is done, speech until the speech chip is,
 an effect until it has been quiet for half a second:
 
     swsound --roms starwars.zip --out sounds PMTH5 AUDXL
-    swsound --roms starwars.zip --out sounds        (all eleven pieces of music)
+    swsound --roms starwars.zip --out sounds        (every sound)
 
-The files are made from the ROMs and are not in the repository
-(`sounds/*.wav` is ignored).
+Each goes into the folder of its kind (`sounds/music/PMTH5.wav`,
+`sounds/effects/AUDXL.wav`). `SPKI`, `SPKSKP`, `AUDPBZ` and `AUDTCZ` make
+no sound and get no file. The files are made from the ROMs and are not in
+the repository (the WAV files under `sounds` are ignored).
 
 ## To keep in mind for replacements
 

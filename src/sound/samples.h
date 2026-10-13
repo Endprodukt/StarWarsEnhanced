@@ -46,8 +46,13 @@ typedef struct sw_samples {
 /* What request n asks for ("AUDXL"), "" if nothing. */
 const char *sw_sound_name(int n);
 
-/* Zero the struct first. Loads DIR/NAME.wav for every request that has
- * one, at `rate` samples a second. Returns how many were found. */
+/* The folder for that kind of sound: "voice", "music", "effects", or
+ * "test" (the sound board's own test). */
+const char *sw_sound_folder(int n);
+
+/* Zero the struct first. Loads DIR/NAME.wav, or DIR/<its folder>/NAME.wav,
+ * for every request that has one, at `rate` samples a second. Returns how
+ * many were found. */
 int  sw_samples_load(sw_samples *s, const char *dir, int rate);
 void sw_samples_free(sw_samples *s);
 

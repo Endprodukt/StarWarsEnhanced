@@ -19,12 +19,20 @@ static const char *const NAMES[SW_SOUND_REQUESTS] = {
 enum {
     FIRST_SPEECH = 3, SPKSKP = 20, LAST_SPEECH = 26,
     FIRST_MUSIC = 27, LAST_MUSIC = 37,
-    AUDPB = 42, AUDPBZ = 43, AUDTC = 54, AUDTCZ = 55,
+    AUDNAY = 41, AUDPB = 42, AUDPBZ = 43, AUDTC = 54, AUDTCZ = 55, AUDYEA = 59,
 };
 
 const char *sw_sound_name(int n)
 {
     return n > 0 && n < SW_SOUND_REQUESTS ? NAMES[n] : "";
+}
+
+const char *sw_sound_folder(int n)
+{
+    if (n >= FIRST_SPEECH && n <= LAST_SPEECH) return "voice";
+    if (n >= FIRST_MUSIC && n <= LAST_MUSIC) return "music";
+    if (n == 1 || n == 2 || n == AUDNAY || n == AUDYEA) return "test";
+    return n > LAST_MUSIC && n < SW_SOUND_REQUESTS ? "effects" : "";
 }
 
 /* --- WAV files ---------------------------------------------------------------------- */
@@ -102,8 +110,11 @@ int sw_samples_load(sw_samples *s, const char *dir, int rate)
     int found = 0;
     for (int i = 1; i < SW_SOUND_REQUESTS; i++) {
         char path[1024];
-        snprintf(path, sizeof path, "%s/%s.wav", dir, NAMES[i]);
         if (s->sound[i].pcm) continue;                  /* (already there, from a folder asked before) */
+        /* in the folder itself, or in its folder for that kind of sound */
+        snprintf(path, sizeof path, "%s/%s.wav", dir, NAMES[i]);
+        if (load_wav(path, rate, &s->sound[i].pcm, &s->sound[i].n) == 0) { found++; continue; }
+        snprintf(path, sizeof path, "%s/%s/%s.wav", dir, sw_sound_folder(i), NAMES[i]);
         if (load_wav(path, rate, &s->sound[i].pcm, &s->sound[i].n) == 0) found++;
     }
     return found;
