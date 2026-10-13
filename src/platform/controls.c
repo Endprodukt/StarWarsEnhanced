@@ -30,6 +30,9 @@ void sw_controls_read(sw_controls *c, vp_input *in)
     if (vp_input_held(in, "p1_button4") || vp_input_held(in, "start2")) in0 &= (uint8_t)~SW_IN0_RFIRE;
     if (vp_input_held(in, "p1_button2")) in1 &= (uint8_t)~SW_IN1_LTHUMB;
     if (vp_input_held(in, "p1_button3")) in1 &= (uint8_t)~SW_IN1_RTHUMB;
+    if (vp_input_held(in, "p1_button5")) in0 &= (uint8_t)~SW_IN0_COINA;
+    if (vp_input_pressed(in, "p1_button6")) c->self_test = !c->self_test;
+    if (c->self_test) in0 &= (uint8_t)~SW_IN0_TEST;
     c->in0 = in0;
     c->in1 = in1;
 

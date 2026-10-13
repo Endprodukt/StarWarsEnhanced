@@ -22,6 +22,16 @@ if(NOT EXISTS "${SWVP_SDK_DIR}/CMakeLists.txt")
     message(FATAL_ERROR "VectorPie SDK not found in ${SWVP_SDK_DIR}: "
                         "git submodule update --init")
 endif()
+if(SWVP_PI_BUILD)
+    # cmake/toolchain-pi-clang.cmake (the Pi build from Windows, without
+    # WSL): the cabinet's own SDL2, by its file.
+    add_library(SDL2::SDL2 SHARED IMPORTED GLOBAL)
+    set_target_properties(SDL2::SDL2 PROPERTIES
+        IMPORTED_LOCATION "${CMAKE_SYSROOT}/usr/lib/aarch64-linux-gnu/libSDL2-2.0.so.0"
+        IMPORTED_SONAME "libSDL2-2.0.so.0"
+        INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SYSROOT}/usr/include/SDL2")
+    set(THREADS_PREFER_PTHREAD_FLAG ON)
+endif()
 set(VP_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
 set(VP_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 add_subdirectory("${SWVP_SDK_DIR}" vectorpie EXCLUDE_FROM_ALL)
@@ -45,6 +55,21 @@ add_library(swcore STATIC
     src/game/irq.c
     src/game/coin.c
     src/game/splash.c
+    src/game/mainline.c
+    src/game/mess.c
+    src/game/hscore.c
+    src/game/eerom.c
+    src/game/star.c
+    src/game/gmath.c
+    src/game/pace.c
+    src/game/obj.c
+    src/game/alien.c
+    src/render/smooth.c
+    src/cpu/m6809.c
+    src/core/emu.c
+    src/sound/pokey.c
+    src/sound/tms5220.c
+    src/sound/sndboard.c
 )
 target_include_directories(swcore PUBLIC src)
 target_link_libraries(swcore PUBLIC miniz)
@@ -60,6 +85,7 @@ add_library(swout STATIC
     src/render/config.c
     src/platform/app.c
     src/platform/controls.c
+    src/platform/audio.c
 )
 target_link_libraries(swout PUBLIC swcore vectorpie)
 target_compile_options(swout PRIVATE -Wall -Wextra)
@@ -76,6 +102,11 @@ vp_program(starwarsvp)
 add_executable(avgreplay tools/avgreplay/main.c src/capture/capture.c)
 target_link_libraries(avgreplay PRIVATE swout)
 vp_program(avgreplay)
+
+# Checks the native game frame by frame against a MAME recording.
+add_executable(swcompare tools/swcompare/main.c src/capture/capture.c)
+target_link_libraries(swcompare PRIVATE swcore)
+target_compile_options(swcompare PRIVATE -Wall -Wextra)
 
 # --- tests --------------------------------------------------------------------
 
@@ -97,6 +128,11 @@ if(BUILD_TESTING)
     add_executable(test_irq tests/test_irq.c)
     target_link_libraries(test_irq PRIVATE swcore)
     add_test(NAME irq COMMAND test_irq)
+
+    # Passes without testing when no ROM set is found ($SWVP_ROMS, ./roms, ...).
+    add_executable(test_attract tests/test_attract.c)
+    target_link_libraries(test_attract PRIVATE swcore)
+    add_test(NAME attract COMMAND test_attract)
 
     add_executable(test_capture tests/test_capture.c src/capture/capture.c)
     target_link_libraries(test_capture PRIVATE swcore)

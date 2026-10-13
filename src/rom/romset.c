@@ -16,26 +16,45 @@ typedef struct rom_entry {
     uint32_t    size;
     enum dest   dest;
     uint32_t    offset;
+    uint32_t    crc_old;  /* the same ROM as older MAME sets have it, or 0 */
+    int         optional; /* not needed by the native game */
 } rom_entry;
 
-/* MAME "starwars1" (src/mame/atari/starwars.cpp). */
+/* MAME "starwars1" (src/mame/atari/starwars.cpp). Sets from older MAME
+ * and AdvanceMAME versions (as on a VectorPie cabinet: starwar1.zip) have
+ * the math box PROMs as dumps whose unused upper four bits are not zero,
+ * so with other CRCs, and no AVG state PROM; the vector generator is
+ * native here and does not use it. */
 static const rom_entry ROMS[] = {
-    { "136021-114.1f",  0xe75ff867, 0x4000, D_MAIN0, 0x6000 },
-    { "136021.102.1hj", 0xf725e344, 0x2000, D_MAIN,  0x8000 },
-    { "136021.203.1jk", 0xf6da0a00, 0x2000, D_MAIN,  0xa000 },
-    { "136021.104.1kl", 0x7e406703, 0x2000, D_MAIN,  0xc000 },
-    { "136021.206.1m",  0xc7e51237, 0x2000, D_MAIN,  0xe000 },
-    { "136021-105.1l",  0x538e7d2f, 0x1000, D_VROM,  0x0000 },
-    { "136021-107.1jk", 0xdbf3aea2, 0x2000, D_SOUND, 0x4000 },
-    { "136021-208.1h",  0xe38070a8, 0x2000, D_SOUND, 0x6000 },
-    { "136021-109.4b",  0x82fc3eb2, 0x0100, D_AVG,   0x0000 },
-    { "136021-110.7h",  0x810e040e, 0x0400, D_MBOX,  0x0000 },
-    { "136021-111.7j",  0xae69881c, 0x0400, D_MBOX,  0x0400 },
-    { "136021-112.7k",  0xecf22628, 0x0400, D_MBOX,  0x0800 },
-    { "136021-113.7l",  0x83febfde, 0x0400, D_MBOX,  0x0c00 },
+    { "136021-114.1f",  0xe75ff867, 0x4000, D_MAIN0, 0x6000, 0, 0 },
+    { "136021.102.1hj", 0xf725e344, 0x2000, D_MAIN,  0x8000, 0, 0 },
+    { "136021.203.1jk", 0xf6da0a00, 0x2000, D_MAIN,  0xa000, 0, 0 },
+    { "136021.104.1kl", 0x7e406703, 0x2000, D_MAIN,  0xc000, 0, 0 },
+    { "136021.206.1m",  0xc7e51237, 0x2000, D_MAIN,  0xe000, 0, 0 },
+    { "136021-105.1l",  0x538e7d2f, 0x1000, D_VROM,  0x0000, 0, 0 },
+    { "136021-107.1jk", 0xdbf3aea2, 0x2000, D_SOUND, 0x4000, 0, 0 },
+    { "136021-208.1h",  0xe38070a8, 0x2000, D_SOUND, 0x6000, 0, 0 },
+    { "136021-109.4b",  0x82fc3eb2, 0x0100, D_AVG,   0x0000, 0, 1 },
+    { "136021-110.7h",  0x810e040e, 0x0400, D_MBOX,  0x0000, 0x01061762, 0 },
+    { "136021-111.7j",  0xae69881c, 0x0400, D_MBOX,  0x0400, 0x2e619b70, 0 },
+    { "136021-112.7k",  0xecf22628, 0x0400, D_MBOX,  0x0800, 0x6cfa3544, 0 },
+    { "136021-113.7l",  0x83febfde, 0x0400, D_MBOX,  0x0c00, 0x03f6acb2, 0 },
 };
 #define NROMS ((int)(sizeof ROMS / sizeof ROMS[0]))
 #define ALL_FOUND ((1u << NROMS) - 1u)
+
+static int crc_is(const rom_entry *e, uint32_t crc)
+{
+    return e->crc == crc || (e->crc_old && e->crc_old == crc);
+}
+
+/* Every ROM the game needs is there. */
+static int complete(const sw_romset *rs)
+{
+    for (int i = 0; i < NROMS; i++)
+        if (!ROMS[i].optional && !(rs->found & (1u << i))) return 0;
+    return 1;
+}
 
 static void place(sw_romset *rs, int i, const uint8_t *data)
 {
@@ -71,7 +90,7 @@ static void offer(sw_romset *rs, const uint8_t *data, size_t size)
 {
     uint32_t crc = (uint32_t)mz_crc32(MZ_CRC32_INIT, data, size);
     for (int i = 0; i < NROMS; i++) {
-        if (ROMS[i].crc == crc && ROMS[i].size == size && !(rs->found & (1u << i)))
+        if (crc_is(&ROMS[i], crc) && ROMS[i].size == size && !(rs->found & (1u << i)))
             place(rs, i, data);
     }
 }
@@ -96,7 +115,7 @@ static void scan_zip(sw_romset *rs, const char *path)
         /* The zip's own CRC tells whether the file is worth extracting. */
         int match = 0;
         for (int k = 0; k < NROMS; k++)
-            if (ROMS[k].crc == st.m_crc32 && !(rs->found & (1u << k))) match = 1;
+            if (crc_is(&ROMS[k], st.m_crc32) && !(rs->found & (1u << k))) match = 1;
         if (!match) continue;
         size_t size = 0;
         void *data = mz_zip_reader_extract_to_heap(&zip, i, &size, 0);
@@ -153,7 +172,7 @@ int sw_romset_load(sw_romset *rs, const char *const *paths, int npaths)
         else if (ends_with_zip(paths[i])) scan_zip(rs, paths[i]);
         else scan_file(rs, paths[i]);
     }
-    return rs->found == ALL_FOUND ? 0 : -1;
+    return complete(rs) ? 0 : -1;
 }
 
 const char *sw_romset_missing(const sw_romset *rs, char *buf, int size)
@@ -161,7 +180,7 @@ const char *sw_romset_missing(const sw_romset *rs, char *buf, int size)
     int len = 0;
     buf[0] = '\0';
     for (int i = 0; i < NROMS; i++) {
-        if (rs->found & (1u << i)) continue;
+        if ((rs->found & (1u << i)) || ROMS[i].optional) continue;
         len += snprintf(buf + len, len < size ? (size_t)(size - len) : 0, "%s%s",
                         len ? ", " : "", ROMS[i].name);
         if (len >= size) break;
@@ -171,7 +190,7 @@ const char *sw_romset_missing(const sw_romset *rs, char *buf, int size)
 
 int sw_romset_default_paths(const char **out, int max)
 {
-    static char store[16][1024];
+    static char store[24][1024];
     int n = 0;
     const char *bases[8];
     int nb = 0;
@@ -195,9 +214,9 @@ int sw_romset_default_paths(const char **out, int max)
     }
     bases[nb++] = "/home/pi/.advance/rom";
 
-    static const char *const forms[] = { "%s/starwars1.zip", "%s/starwars.zip", "%s/starwars1", "%s" };
+    static const char *const forms[] = { "%s/starwars1.zip", "%s/starwar1.zip", "%s/starwars.zip", "%s/starwars1", "%s" };
     for (int b = 0; b < nb; b++) {
-        for (int f = 0; f < 4 && n < max && n < 16; f++) {
+        for (int f = 0; f < 5 && n < max && n < 24; f++) {
             snprintf(store[n], sizeof store[n], forms[f], bases[b]);
             out[n] = store[n];
             n++;

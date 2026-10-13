@@ -29,6 +29,7 @@ typedef struct sw_app {
     uint64_t    last_clock;
     double      next_frame;   /* seconds, on the app clock */
     double      clock;        /* seconds since open */
+    double      last_poll;    /* the clock at the last sw_app_poll */
     uint64_t    frame_t0;
     double      stat_since;
     int         stat_frames;

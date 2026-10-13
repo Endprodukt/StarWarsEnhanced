@@ -12,11 +12,12 @@ static const char *const COLOR_NAMES[8] = {
 void sw_display_cfg_defaults(sw_display_cfg *c)
 {
     memset(c, 0, sizeof *c);
-    /* The game's own screen edges (VGEDGL/R/B/T in WSROOT.MAP). */
-    c->avg_left = -510.0f;
-    c->avg_right = 510.0f;
-    c->avg_bottom = -612.0f;
-    c->avg_top = 600.0f;
+    /* The game's screen edges VGEDGL/R/B/T (-510..510, -612..600 in its
+     * vector words) at the scale it draws at, VGSCAL: a quarter. */
+    c->avg_left = -127.5f;
+    c->avg_right = 127.5f;
+    c->avg_bottom = -153.0f;
+    c->avg_top = 150.0f;
     c->margin_left = c->margin_right = c->margin_bottom = c->margin_top = 64;
     c->gamma = 1.0f;
     c->floor = 0.12f;
@@ -27,6 +28,9 @@ void sw_display_cfg_defaults(sw_display_cfg *c)
         c->palette[i][2] = (i & 1) ? 255 : 0;
     }
     c->defocus_mode = 1;
+    c->yoke_autocenter = 1;
+    c->smooth = 1;
+    c->sort_strokes = 1;
 }
 
 static char *trim(char *s)
@@ -49,6 +53,8 @@ static int set(sw_display_cfg *c, const char *key, const char *val)
         { "margin_bottom", &c->margin_bottom }, { "margin_top", &c->margin_top },
         { "flip_x", &c->flip_x }, { "flip_y", &c->flip_y },
         { "defocus_mode", &c->defocus_mode },
+        { "yoke_autocenter", &c->yoke_autocenter }, { "smooth", &c->smooth },
+        { "sort_strokes", &c->sort_strokes },
     };
     for (size_t i = 0; i < sizeof floats / sizeof floats[0]; i++)
         if (strcmp(key, floats[i].k) == 0) { *floats[i].f = (float)atof(val); return 0; }
@@ -109,6 +115,11 @@ int sw_display_cfg_save(const sw_display_cfg *c, const char *path)
         fprintf(f, "color_%s = %d %d %d\n", COLOR_NAMES[i],
                 c->palette[i][0], c->palette[i][1], c->palette[i][2]);
     fprintf(f, "\n; FUZZ glow: 0 ignore, 1 double-draw\ndefocus_mode = %d\n", c->defocus_mode);
+    fprintf(f, "\n; sight centered from the first frame (0: learns the yoke anew, as the arcade machine)\n"
+               "yoke_autocenter = %d\n", c->yoke_autocenter);
+    fprintf(f, "\n; motion between the game's frames: 0 off, 1 between the last two, 2 ahead of the last\n"
+               "smooth = %d\n", c->smooth);
+    fprintf(f, "\n; draw strokes in an order that saves the beam dark travel\nsort_strokes = %d\n", c->sort_strokes);
     fclose(f);
     return 0;
 }

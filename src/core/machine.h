@@ -6,9 +6,11 @@
  * compared byte for byte with MAME recordings, and the 1983 source reads
  * one to one against the C.
  *
- * The I/O registers keep their meaning (SW5.DOC / SWMAP.DOC), but nothing
- * here waits: the math box and the vector generator finish at once, which
- * the original code cannot tell apart from a fast board.
+ * The I/O registers keep their meaning (SW5.DOC / SWMAP.DOC). The math box
+ * finishes at once, which the original code cannot tell apart from a fast
+ * board. The vector generator takes its time over a picture, as on the
+ * board (avg/avg.h, sw_avg_cycles): the game waits for it, and that sets
+ * the speed of the game when the screen is full.
  */
 #ifndef SWVP_MACHINE_H
 #define SWVP_MACHINE_H
@@ -16,6 +18,7 @@
 #include <stdint.h>
 
 #include "core/sw_symbols.h"
+#include "core/tags.h"
 #include "mbox/mbox.h"
 #include "rom/romset.h"
 
@@ -51,7 +54,9 @@ typedef struct sw_machine {
     const sw_romset *rom;
     uint8_t   ram[0x800];        /* 4800-4FFF */
     uint8_t   vgram[0x3000];     /* 0000-2FFF */
-    uint8_t   nvram[0x100];      /* 4500-45FF, 4 bits each (X2212) */
+    uint8_t   nvram[0x100];      /* 4500-45FF, 4 bits each (X2212): its RAM */
+    uint8_t   nvstore[0x100];    /* the X2212's EEPROM: RECALL copies it to the RAM, STORE back */
+    uint32_t  nv_stores;         /* STOREs done: when it changes the EEPROM wants saving */
     sw_mbox   mbox;              /* 5000-5FFF and the matrix processor */
     sw_divider div;
     sw_inputs in;
@@ -63,11 +68,63 @@ typedef struct sw_machine {
     uint8_t   sound_in;          /* MAINREAD */
     uint8_t   sound_in_full;
     uint32_t  vg_starts;         /* VGGO writes: a new picture for the renderer */
+    uint32_t  vg_left;           /* master clock cycles until the VG halts; 0: halted */
 
     sw_prng_fn prng;
     void      *prng_user;
     uint32_t   lfsr;
+
+    /* The main line (game/mainline.c) */
+    uint16_t   y;                /* the 6809's Y: where the display list is being written */
+    uint8_t    main_state;       /* SW_MAIN_xxx */
+    uint8_t    in_irq;           /* inside sw_irq (who is reading the PRNG) */
+    uint8_t    yoke_exact;       /* option yoke_autocenter: the yoke passed through exactly */
+
+    /* The phases not ported yet: a way to run the original's code for one
+     * frame (core/emu.h, sw_emu_attach). It returns the time the 6809 took,
+     * in master clock cycles. original_suspended: the code stopped in a
+     * WAITFRAME of its own and goes on from there next frame. */
+    uint32_t (*original_frame)(void *user);
+    void      *original_user;
+    /* A routine of a phase that is ported except for it: the original's
+     * subroutine at addr is run to its RTS, with the registers below going
+     * in and coming back (Y is m->y). Its time is added to original_cycles.
+     * NULL without the ROM's code at hand (sw_emu_attach sets it). */
+    void     (*original_call)(void *user, uint16_t addr);
+    uint8_t    ra, rb, rcc;      /* A, B and the condition codes */
+    uint16_t   rx, ru;           /* X, U */
+    /* Checking against a recording: reads of RAM pass through here. */
+    uint8_t  (*ram_read_hook)(void *user, uint16_t addr, uint8_t value);
+    void      *ram_read_user;
+    uint32_t   original_cycles;
+    uint8_t    original_suspended;
+    uint8_t    sound_board;      /* a sound board takes the requests (else they are dropped) */
+    void     (*sound_wait)(void *user, int cycles);    /* let the sound board run that long */
+    void      *sound_user;
+    uint8_t    unported_phase;   /* the last phase asked for that is not ported yet */
+    uint32_t   frames;           /* game frames run */
+
+    /* For the renderer only (core/tags.h): what each word of VG RAM belongs
+     * to, the tag being written now, and which star each entry of the
+     * star queue is. */
+    uint16_t   vgtag[0x1800];
+    uint8_t    vgstart[0x1800];  /* 1: the word begins a new piece (a new call of the routine that writes it) */
+    uint16_t   tag;
+    uint8_t    star_gen[64];     /* how often star n was replaced */
+    uint8_t    star_of[64];      /* the star of the nth queued entry */
+    /* Work done, counted for the pace of the game (game/pace.c): characters,
+     * numerals and messages put out, math box runs, stars shown. */
+    uint32_t   n_chars, n_digits, n_mess, n_mbox, n_shown, n_renew;
+    uint32_t   busy;             /* master clock cycles the 6809 still works on the frame */
+    uint8_t    held_buffer;      /* VGSYNC while it does: the buffer it writes */
+    uint8_t    snd_q[64];        /* requests sent to the sound board, a ring */
+    uint32_t   snd_w;
 } sw_machine;
+
+enum { SW_MAIN_WAITFRAME, SW_MAIN_WAITVG, SW_MAIN_RUN, SW_MAIN_BUSY, SW_MAIN_BUSY_NOSYNC };
+
+/* Master clock cycles from one interrupt to the next (12.096 MHz / 246.09 Hz). */
+#define SW_IRQ_CYCLES 49152u
 
 void sw_machine_init(sw_machine *m, const sw_romset *rom);
 

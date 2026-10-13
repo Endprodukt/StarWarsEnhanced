@@ -33,7 +33,17 @@ static uint8_t bcd_add(uint8_t a, uint8_t b, int *carry)
     return (uint8_t)((hi << 4) | lo);
 }
 
+static void irq(sw_machine *m);
+
 void sw_irq(sw_machine *m)
+{
+    m->in_irq = 1;
+    m->vg_left = m->vg_left > SW_IRQ_CYCLES ? m->vg_left - SW_IRQ_CYCLES : 0;   /* the VG drew meanwhile */
+    irq(m);
+    m->in_irq = 0;
+}
+
+static void irq(sw_machine *m)
 {
     /* (PC validation, RAM trap $GARBG and the watchdog: hardware guards.) */
 
@@ -262,15 +272,19 @@ static uint8_t step_index(uint8_t b, uint8_t size)
     return b >= size ? 0 : b;
 }
 
-/* DOVG: HANDLE VG STUFF. The native VG is done at once, so it restarts on
- * every 6th IRQ, as the board does when a picture fits its time. */
+/* DOVG: HANDLE VG STUFF. The next picture starts on the 6th interrupt
+ * after the last start, or as soon after that as the VG has halted. */
 static void dovg(sw_machine *m)
 {
-    /* DEC VGTIMR: (?VGEN TIMED OUT? cannot happen) ?START NEXT VGEN FIELD? */
     uint8_t *vgtimr = sw_ram(m, SW_VGTIMR);
-    (*vgtimr)--;
-    if (!(*vgtimr & 0x80)) return;
-    /* ?VGEN HALTED (READY TO START)?: VGHALT reads done. */
+    uint8_t before = (*vgtimr)--;
+    if (before == 0x80) {               /* ?VGEN TIMED OUT? */
+        sw_wr8(m, SW_VGSTOP, 0);        /* THEN KILL IT */
+        sw_downvg(m);                   /* RELOAD PSUEDO ROM ( IE PROGRAM ROM TO VG RAM ) */
+        return;
+    }
+    if (!(*vgtimr & 0x80)) return;      /* ?START NEXT VGEN FIELD? */
+    if (!(sw_rd8(m, SW_VGHALT) & 0x40)) return;    /* ?VGEN HALTED (READY TO START)? */
 
     uint8_t *vgsync = sw_ram(m, SW_VGSYNC);
     if (*vgsync & 0x80) {               /* ?SWITCH FRAME BUFFERS? (MAIN LINE IS DONE) */
@@ -363,13 +377,19 @@ void sw_reset(sw_machine *m)
 
     /* (Self test when the switch is on: not ported yet.) */
 
+    /* SETUP FOR THE FIRST DEBOUNCE OF THE OPTION SWITCHES */
+    RAM8(m, SW_R_OPT2) = sw_rd8(m, SW_R_BYT2);
+    RAM8(m, SW_R_OPT1) = sw_rd8(m, SW_R_BYT3);
+
     /* SETUP VG WITH ALL HALT INSTRUCTIONS (JUST IN CASE ...) */
     for (uint16_t a = 0; a < SW_VGROM; a += 2) sw_vg_wr16(m, a, 0x2020);
     sw_vg_wr16(m, SW_VGRAM, (uint16_t)((SW_VGVARB / 2) + 0xe000));   /* JUMP TO DOUBLE BUFFER */
     RAM8(m, SW_VGSYNC) = 0xff;                 /* SWITCH BUFFERS IMMEDIATELY */
     RAM8(m, SW_SGARBG) = 0x3f;                 /* TRAP OUT FIRST BYTE RAM */
     RAM8(m, SW_PT_DLY) = 0x40;                 /* DELAY RHEOSTATS UNTIL FILTER IS STABLE */
-    /* (EEINIT: the EEROM areas, not ported yet; see sw_eeaccu.) */
+    sw_eeinit(m);                              /* INIT EEROM ( VERIFY/SET NOVRAM AREAS TO VALID STATES ) */
+    m->main_state = SW_MAIN_RUN;               /* JMP MAIN: START THE MAINLINE */
+    m->unported_phase = 0;
 }
 
 void sw_eeaccu(sw_machine *m)

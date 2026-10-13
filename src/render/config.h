@@ -11,7 +11,9 @@
 #include <stdint.h>
 
 typedef struct sw_display_cfg {
-    /* The AVG window, in AVG units, stretched to the board's 0..4095. */
+    /* The AVG window, in AVG units as sw_avg_run gives them (the game draws
+     * at a quarter scale: its +-510 are +-127.5 here), stretched to the
+     * board's 0..4095. */
     float avg_left, avg_right, avg_bottom, avg_top;
     /* Then a margin per side in board units (overscan / tube edge). */
     int margin_left, margin_right, margin_bottom, margin_top;
@@ -30,6 +32,19 @@ typedef struct sw_display_cfg {
     /* FUZZ (the cabinet defocuses the beam for glows): 0 ignore, 1 draw the
      * vector twice, slightly apart. */
     int defocus_mode;
+
+    /* 1: the sight is centered from the first frame (the yoke is passed
+     * through exactly; the cabinet's joystick calibration sets its rest
+     * position). 0: as the arcade machine, which learns the yoke's range
+     * anew after every power-on. */
+    int yoke_autocenter;
+    /* 1: the picture moves between the game's frames (render/smooth.h).
+     * 0: every game frame is shown as it is. */
+    int smooth;
+    /* 1: the strokes of a picture are drawn in an order that keeps the
+     * beam's dark travel short (the board then manages more pictures a
+     * second). 0: in the game's order. */
+    int sort_strokes;
 } sw_display_cfg;
 
 void sw_display_cfg_defaults(sw_display_cfg *c);

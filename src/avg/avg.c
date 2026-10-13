@@ -47,6 +47,14 @@ static unsigned word_at(const uint8_t *space, unsigned addr)
 
 int sw_avg_run(const uint8_t *space, uint16_t start, sw_avg_list *out, int max_instructions)
 {
+    return sw_avg_run_tagged(space, start, NULL, NULL, out, max_instructions);
+}
+
+int sw_avg_run_tagged(const uint8_t *space, uint16_t start, const uint16_t *tags, const uint8_t *starts,
+                      sw_avg_list *out, int max_instructions)
+{
+    int depth = 0;                  /* calls deep: 0 is the list itself */
+    unsigned run_tag = 0xffffffffu, unit = 0, routine = 0, nline = 0;
     unsigned pc = start;
     unsigned stack[4] = { 0, 0, 0, 0 };
     unsigned sp = 0;
@@ -65,6 +73,13 @@ int sw_avg_run(const uint8_t *space, uint16_t start, sw_avg_list *out, int max_i
         if (pc + 1 >= SW_AVG_SPACE_SIZE) return out->status = SW_AVG_BAD_ADDRESS;
         out->instructions++;
 
+        if (depth == 0) {           /* an instruction of the list itself */
+            unsigned tag = (tags && pc < 0x3000) ? tags[pc >> 1] : 0;
+            if (tag != run_tag || (starts && pc < 0x3000 && starts[pc >> 1])) { run_tag = tag; unit = 0; }
+            else unit++;
+            routine = 0;
+            nline = 0;
+        }
         unsigned w = word_at(space, pc);
         pc += 2;
         int dx = 0, dy = 0;
@@ -107,10 +122,13 @@ int sw_avg_run(const uint8_t *space, uint16_t start, sw_avg_list *out, int max_i
             stack[sp & 3] = pc;
             sp++;
             pc = (w & 0x1fff) << 1;
+            if (depth == 0) routine = w & 0x1fff;
+            depth++;
             break;
         case 6:  /* RTSL */
             sp--;
             pc = stack[sp & 3];
+            if (depth > 0) depth--;
             break;
         case 7:  /* JMPL */
             pc = (w & 0x1fff) << 1;
@@ -127,10 +145,88 @@ int sw_avg_run(const uint8_t *space, uint16_t start, sw_avg_list *out, int max_i
                 ln.zz = (uint8_t)zz;
                 ln.intensity = sw_avg_intensity(zz, lum);
                 ln.defocus = (uint8_t)defocus;
+                ln.id = tags ? ((uint64_t)(run_tag & 0xffff) << 48) | ((uint64_t)(routine ? 0 : unit & 0xffff) << 32) |
+                               ((uint64_t)routine << 16) | (nline & 0xffff) : 0;
+                nline++;
                 if (ln.intensity && push_line(out, &ln) != 0) return out->status = SW_AVG_LIMIT;
             }
             x = nx;
             y = ny;
         }
     }
+}
+
+/* --- how long the board takes over a list ---------------------------------- */
+
+/* The normalization the board does before a vector: both deltas are
+ * shifted up until one of them uses its top bit; every shift halves the
+ * time the vector timer runs. */
+static int norm_shifts(unsigned dvy, unsigned dvx)
+{
+    int i = 0;
+    while (((dvy ^ (dvy << 1)) & 0x1000) == 0 && ((dvx ^ (dvx << 1)) & 0x1000) == 0 && i < 16) {
+        i++;
+        dvy = (dvy & 0x1000) | ((dvy << 1) & 0x1fff);
+        dvx = (dvx & 0x1000) | ((dvx << 1) & 0x1fff);
+    }
+    return i;
+}
+
+static unsigned vg_word(const uint8_t *vgram, const uint8_t *vrom, unsigned a)
+{
+    if (a + 1u < 0x3000u) return ((unsigned)vgram[a] << 8) | vgram[a + 1];
+    if (vrom && a >= 0x3000u && a + 1u < 0x4000u) return ((unsigned)vrom[a - 0x3000] << 8) | vrom[a - 0x2fff];
+    return 0x2020u;     /* outside: HALT */
+}
+
+uint32_t sw_avg_cycles(const uint8_t *vgram, const uint8_t *vrom, uint16_t start)
+{
+    /* States the machine goes through per instruction, 8 clock cycles each
+     * (counted on the board's state PROM as MAME runs it; HALT's makes the
+     * total come out). */
+    static const uint8_t STATES[8] = { 8, 2, 6, 7, 5, 5, 4, 3 };
+    unsigned pc = start, sp = 0, bin_scale = 0;
+    unsigned stack[4] = { 0, 0, 0, 0 };
+    uint32_t cycles = 0;
+
+    for (int n = 0; n < DEFAULT_MAX_INSTRUCTIONS; n++) {
+        unsigned w = vg_word(vgram, vrom, pc), w2;
+        int k;
+        pc += 2;
+        cycles += 8u * STATES[w >> 13];
+        switch (w >> 13) {
+        case 0:  /* VCTR: the 15-bit timer, started further on per shift */
+            w2 = vg_word(vgram, vrom, pc);
+            pc += 2;
+            k = norm_shifts(w & 0x1fff, w2 & 0x1fff) + (int)bin_scale;
+            cycles += k < 15 ? 0x8000u >> k : 1u;
+            break;
+        case 1:  /* HALT */
+            return cycles;
+        case 2:  /* SVEC: the timer's low 8 bits only */
+            k = norm_shifts(w & 0x1f00, (w & 0x1f) << 8) + (int)bin_scale;
+            cycles += k < 8 ? 0x100u >> k : 1u;
+            break;
+        case 3:
+            if (w & 0x1000) bin_scale = (w >> 8) & 7;
+            break;
+        case 4:  /* CNTR: the beam's way back takes a timer run too */
+            k = norm_shifts(w & 0x1fff, 0);
+            cycles += k < 15 ? 0x8000u >> k : 1u;
+            break;
+        case 5:
+            stack[sp & 3] = pc;
+            sp++;
+            pc = (w & 0x1fff) << 1;
+            break;
+        case 6:
+            sp--;
+            pc = stack[sp & 3];
+            break;
+        case 7:
+            pc = (w & 0x1fff) << 1;
+            break;
+        }
+    }
+    return cycles;      /* a list that never halts: the game's interrupt times it out */
 }

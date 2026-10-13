@@ -1,5 +1,7 @@
 #include "core/machine.h"
 
+#include "avg/avg.h"
+
 #include <string.h>
 
 void sw_machine_init(sw_machine *m, const sw_romset *rom)
@@ -8,10 +10,11 @@ void sw_machine_init(sw_machine *m, const sw_romset *rom)
     m->rom = rom;
     m->in.in0 = 0xff;                 /* nothing pressed (active low) */
     m->in.in1 = 0xff;
-    m->in.opt0 = 0xff;
-    m->in.opt1 = 0xff;
+    m->in.opt0 = 0x98;                /* the option switches as MAME sets them: 6 shields, */
+    m->in.opt1 = 0x02;                /* moderate, 1 coin 1 play, music in the attract mode */
     m->in.adc[0] = m->in.adc[1] = 0x80;
     m->lfsr = 0x1234567;
+    memset(m->nvstore, 0x0f, sizeof m->nvstore);    /* a NOVRAM never written: no valid checksum */
 }
 
 static uint8_t lfsr_read(sw_machine *m)
@@ -39,7 +42,10 @@ uint8_t sw_rd8(sw_machine *m, uint16_t a)
 {
     if (a < 0x3000) return m->vgram[a];
     if (a < 0x4000) return m->rom ? m->rom->vrom[a - 0x3000] : 0;
-    if (a >= 0x4800 && a < 0x5000) return m->ram[a - 0x4800];
+    if (a >= 0x4800 && a < 0x5000) {
+        if (m->ram_read_hook) m->ram[a - 0x4800] = m->ram_read_hook(m->ram_read_user, a, m->ram[a - 0x4800]);
+        return m->ram[a - 0x4800];
+    }
     if (a >= 0x5000 && a < 0x6000) return m->mbox.ram[a - 0x5000];
     if (a >= 0x6000) {
         if (!m->rom) return 0;
@@ -50,8 +56,8 @@ uint8_t sw_rd8(sw_machine *m, uint16_t a)
     switch (a & 0xffe0) {
     case 0x4300: return m->in.in0;
     case 0x4320:
-        /* D7 math run: never busy. D6 VG halted: always done. */
-        return (uint8_t)((m->in.in1 & 0x3f) | 0x40);
+        /* D7 math run: never busy. D6 VG halted. */
+        return (uint8_t)((m->in.in1 & 0x3f) | (m->vg_left == 0 ? 0x40 : 0));
     case 0x4340: return m->in.opt0;
     case 0x4360: return m->in.opt1;
     case 0x4380: return m->in.adc[m->adc_channel & 3];
@@ -73,11 +79,20 @@ void sw_wr8(sw_machine *m, uint16_t a, uint8_t v)
     if (a >= 0x4800 && a < 0x5000) { m->ram[a - 0x4800] = v; return; }
     if (a >= 0x5000 && a < 0x6000) { m->mbox.ram[a - 0x5000] = v; return; }
     if (a >= 0x4500 && a < 0x4600) { m->nvram[a - 0x4500] = v & 0x0f; return; }
-    if (a >= 0x4680 && a < 0x4688) { m->latch[a - 0x4680] = v & 0x80; return; }
+    if (a >= 0x4680 && a < 0x4688) {
+        m->latch[a - 0x4680] = v & 0x80;
+        if (a == SW_NVRRCL && (v & 0x80)) memcpy(m->nvram, m->nvstore, sizeof m->nvram);   /* RECALL */
+        return;
+    }
+    if (a == SW_NSTORE) { memcpy(m->nvstore, m->nvram, sizeof m->nvstore); m->nv_stores++; return; }
     if (a >= 0x46c0 && a < 0x46c4) { m->adc_channel = (uint8_t)(a & 3); return; }
     switch (a) {
     case 0x4400: m->sound_out = v; m->sound_out_full = 1; return;
-    case 0x4600: m->vg_starts++; return;            /* VGGO */
+    case 0x4600:                                    /* VGGO */
+        m->vg_starts++;
+        m->vg_left = sw_avg_cycles(m->vgram, m->rom ? m->rom->vrom : 0, 0);
+        return;
+    case 0x4620: m->vg_left = 0; return;            /* VGSTOP */
     case 0x4700: sw_mbox_go(&m->mbox, v); return;    /* MW0: PC and go */
     case 0x4701: m->mbox.bic = (uint16_t)((m->mbox.bic & 0x0ff) | ((v & 1) << 8)); return;
     case 0x4702: m->mbox.bic = (uint16_t)((m->mbox.bic & 0x100) | v); return;

@@ -122,9 +122,11 @@ void sw_app_close(sw_app *a)
 
 int sw_app_poll(sw_app *a, double *dt)
 {
-    double before = a->clock;
+    /* All the time since the last poll, the frame's drawing and sending
+     * included (sw_app_end_frame reads the clock too). */
     double t = now_s(a);
-    *dt = t - before;
+    *dt = t - a->last_poll;
+    a->last_poll = t;
 
     vp_input_update(a->in);     /* pumps SDL's events */
     if (vp_dvg_window_closed(a->dvg) || g_signal) a->quit = 1;

@@ -66,6 +66,30 @@ int swcap_next(swcap_reader *r, swcap_tick *t)
     }
 }
 
+int swcap_next_chunk(swcap_reader *r, char tag[4], uint8_t *buf, uint32_t cap, uint32_t *len)
+{
+    uint8_t hdr[8];
+    size_t n = fread(hdr, 1, 8, r->f);
+    if (n == 0) return 0;
+    if (n != 8) return -1;
+    memcpy(tag, hdr, 4);
+    *len = rd32(hdr + 4);
+    uint32_t take = *len < cap ? *len : cap;
+    if (fread(buf, 1, take, r->f) != take) return -1;
+    if (*len > take && fseek(r->f, (long)(*len - take), SEEK_CUR) != 0) return -1;
+    return 1;
+}
+
+void swcap_parse_tick(const uint8_t *p, swcap_tick *t)
+{
+    t->frame = rd32(p);
+    t->irq_count = rd32(p + 4);
+    t->buffer = (uint16_t)(p[8] | (p[9] << 8));
+    memcpy(t->vgram, p + 12, SWCAP_VGRAM_SIZE);
+    memcpy(t->ram, p + 12 + SWCAP_VGRAM_SIZE, SWCAP_RAM_SIZE);
+    memcpy(t->mbram, p + 12 + SWCAP_VGRAM_SIZE + SWCAP_RAM_SIZE, SWCAP_MBRAM_SIZE);
+}
+
 void swcap_space(const swcap_reader *r, const swcap_tick *t, uint8_t space[0x4000])
 {
     memcpy(space, t->vgram, SWCAP_VGRAM_SIZE);

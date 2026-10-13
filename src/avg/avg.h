@@ -25,7 +25,9 @@
  *
  * Positions come out in AVG units with the center at 0,0, already
  * multiplied by the current scale. The game's screen edges in these units
- * are about +-510 in x and -612..+600 in y (VGEDGL/R/B/T).
+ * are about +-510 in x and -612..+600 in y (VGEDGL/R/B/T) in its vector
+ * words; it draws at a quarter scale (VGSCAL), so +-127.5 and -153..+150
+ * here.
  */
 #ifndef SWVP_AVG_H
 #define SWVP_AVG_H
@@ -41,6 +43,7 @@ typedef struct sw_line {
     uint8_t intensity;    /* 0..255, after the ZZ network */
     uint8_t zz;           /* the vector's own 0..7 */
     uint8_t defocus;      /* FUZZ: the beam was defocused */
+    uint64_t id;          /* what the line is, for finding it again in the next list (0: unknown) */
 } sw_line;
 
 enum sw_avg_status {
@@ -64,6 +67,27 @@ void sw_avg_list_free(sw_avg_list *l);
  * Lines are appended to out (cleared first). max_instructions <= 0 uses a
  * default. Returns out->status. */
 int sw_avg_run(const uint8_t *space, uint16_t start, sw_avg_list *out, int max_instructions);
+
+/* The same, with the tags of the words of VG RAM (core/tags.h; one per
+ * word, 0x1800 of them): every line gets an id made of the tag of the
+ * instruction of the list itself that drew it, that instruction's place
+ * among those with the same tag, the vector ROM routine it called, and the
+ * line's number within it. The same thing drawn in the next list has the
+ * same id. starts (may be NULL) marks words that begin a new piece although
+ * the tag stays: counting begins again there. Lines drawn by a vector ROM
+ * routine do not count their place: all the stars, or all the letters E of
+ * a text, share an id and are told apart by where they are
+ * (render/smooth.h). */
+int sw_avg_run_tagged(const uint8_t *space, uint16_t start, const uint16_t *tags, const uint8_t *starts,
+                      sw_avg_list *out, int max_instructions);
+
+/* How long the board takes to draw the list at byte address start, in
+ * cycles of the 12.096 MHz master clock, until HALT: the time the game
+ * waits before it can start the next picture, which is what slows the
+ * original down when the screen is full. vgram is 0000-2FFF, vrom
+ * 3000-3FFF (may be NULL). Follows MAME's avg state machine
+ * (src/devices/video/avgdvg.cpp, BSD-3-Clause, Mathis Rosenhauer). */
+uint32_t sw_avg_cycles(const uint8_t *vgram, const uint8_t *vrom, uint16_t start);
 
 /* The intensity the board gives a vector of brightness zz under a COLOR
  * intensity lum (both as in the display list). */

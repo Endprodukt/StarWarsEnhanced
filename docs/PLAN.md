@@ -63,6 +63,40 @@ VG-RAM, RAM und Math-Box-RAM auf. Der native Kern muss Tick für Tick denselben
 Zustand liefern. Für Determinismus werden später auch die gelesenen
 Eingaben und Zufallszahlen (`PRNG`, 0x4703) mitgeschnitten und eingespeist.
 
+## Zwei Wege, ein Spiel (seit 2026-10-13)
+
+Das Spiel von Hand zu portieren heißt rund 20.000 Zeilen 6809-Assembler.
+Damit es vorher schon vollständig und unverändert läuft, gibt es zwei Wege
+nebeneinander:
+
+1. **Das Originalprogramm auf einem 6809-Kern** (`src/cpu/m6809.c`,
+   `src/core/emu.c`), der Standard von `starwarsvp`. Es läuft gegen die
+   native Maschine (`sw_machine`: RAM, Math Box, Dividierer, NOVRAM,
+   Schalter, Zeit des Vektorgenerators). Das Tempo ergibt sich aus den
+   gezählten Zyklen; Math Box und Vektorgenerator brauchen ihre Zeit wie in
+   MAME. Die Soundplatine läuft genauso mit (`src/sound`).
+2. **Die von Hand portierten Routinen** (`src/game`, `starwarsvp --native`).
+   Sie rechnen Frame für Frame dasselbe und werden mit `swcompare` gegen
+   dieselben MAME-Aufnahmen geprüft. Sie sind der Weg zum Remaster: Erst
+   wenn eine Phase nativ vorliegt, kann ihr Bild aus dem Spielzustand statt
+   aus der Displayliste gezeichnet werden.
+
+Die Darstellung ist für beide dieselbe: Displayliste, AVG-Interpreter,
+Zwischenbilder, Platine.
+
+### Zwischenbilder
+
+`src/render/smooth.c`. Jede Linie einer Displayliste bekommt eine Kennung
+(`sw_avg_run_tagged`): welche Routine das Wort geschrieben hat (beim
+Originalprogramm die Rücksprungadresse auf dem Stack, bei den portierten
+Routinen ein Tag aus `core/tags.h`), die wievielte Anweisung dieses Aufrufs
+es ist, welche Vektor-ROM-Routine die Linie zeichnet und die wievielte
+Linie darin. Linien mit gleicher Kennung in zwei aufeinanderfolgenden
+Frames sind dieselbe Linie; bei mehreren (alle Sterne, derselbe Buchstabe,
+dieselbe Kante zweier Schiffe) gilt die nächstliegende. Dazwischen wird
+linear bewegt. Das Fadenkreuz gehört nicht zum Frame: Der Interrupt bewegt
+es, gezeigt wird es dort, wo das Joch es jetzt hat.
+
 ## Fahrplan
 
 - [x] **1 Grundgerüst**: CMake gegen das unveränderte SDK (Presets linux/pc/pi),
@@ -87,9 +121,29 @@ Eingaben und Zufallszahlen (`PRNG`, 0x4703) mitgeschnitten und eingespeist.
       Speicherbild mit den Originaladressen (`src/core/machine.c`),
       Steuerung über `vp_input` (`src/platform/controls.c`), Live-Testbild
       für Joch, Knöpfe und Münzen
-- [ ] **4 Phasen**, jede gegen die MAME-Aufnahme geprüft: Attract/Banner/
-      Highscores → Weltraumwellen (SP1/SP2, `STWSP1`, `AIM`, `CPU`) →
-      Boden und Türme (WSGRND) → Graben (WSBASE) → Explosionen (WSXPLD)
+- [ ] **4 Phasen**, jede gegen die MAME-Aufnahme geprüft (`tools/swcompare`):
+  - [x] Hauptschleife (WAITFRAME, IFRAME, TPHASE), Attract: Banner mit
+        Lauftext, Fluganweisungen, Punktetabelle, Highscores; dazu
+        Spielstart bis zur Wahl des Todessterns und Initialen-Eingabe.
+        Meldungen (TCMES), Highscores (TCHSCR), Sterne (WSSTAR), EEROM für
+        Reset und Attract (TCEROM), Fadenkreuz (WSSITE). 3006 von 3006
+        Frames der Attract-Aufnahme stimmen bitgenau (RAM, Math-Box-RAM,
+        Displayliste, Zahl der gelesenen Zufallszahlen)
+  - [ ] Weltraumwellen (SP1/SP2). Erledigt: Welle aufbauen (`NWNSHP`),
+        Choreografie-Interpreter, Objekte (`INOBJ`, `ADBOBJ`, `OBJPNT`,
+        `OBJDRW`). Offen: `VIEW`, Spielerbewegung, `CPU`, `AIM`, WSLAZR,
+        WSGUNS, WSXPLD, WSPANL, WSGAS, WSGLOW (Reihenfolge in STATUS.md)
+  - [ ] Boden und Türme (WSGRND)
+  - [ ] Graben (WSBASE)
+  - [ ] Todesstern-Explosion (DX1–DX3), Spielende, nächste Welle
+  - [ ] Statistik- und Optionsseite (EEACC, EEOPT), Selbsttest (TCTEST)
+  Unabhängig vom Stand der Portierung läuft das ganze Spiel über den
+  6809-Kern (siehe oben), geprüft mit 2623 von 2623 Frames einer gespielten
+  Aufnahme.
+- [x] **5a Zwischenbilder aus der Displayliste** (`src/render/smooth.c`),
+      Strich-Sortierung, Fadenkreuz-Zentrierung
+- [x] **6a Ton über die Soundplatine**: zweiter 6809 mit dem Sound-Programm,
+      RIOT, POKEY, TMS5220 (`src/sound`). Am Automaten noch nicht gehört.
 - [ ] **5 Renderer „Original“** mit Interpolation (Slerp der Matrizen,
       Positionen modulo 2¹⁶, keine Interpolation bei Spawn/Despawn)
 - [ ] **6 Sound „Original“**: Sound-Treiber aus SNDAUD/SNDPM/SNDSPK nativ,
@@ -98,21 +152,64 @@ Eingaben und Zufallszahlen (`PRNG`, 0x4703) mitgeschnitten und eingespeist.
       Sample-Sound; umschaltbar
 - [ ] **8 Paket**: `.vpk`, Highscores über `vp_hiscore`, Marquee
 
+## Tempo des Originals
+
+Das Original läuft nicht mit festen 20,5 Hz. Ein Frame beginnt erst, wenn
+der 12. Interrupt da ist **und** der Interrupt den VG-Puffer des vorigen
+Bildes übergeben hat. Die Hauptschleife des 6809 braucht im Attract-Modus
+25 bis 50 ms pro Frame, der Vektorgenerator bis 40 ms pro Bild. Auf der
+Anleitungsseite ergibt das 18,6 statt 12 Interrupts pro Frame, also 13 statt
+20,5 Bilder pro Sekunde. Davon hängt die Geschwindigkeit von allem ab.
+
+Nativ ist beides sofort fertig, deshalb wird die Zeit nachgebildet:
+
+* **Vektorgenerator**: `sw_avg_cycles` (src/avg/avg.c) rechnet die Zeichenzeit
+  einer Displayliste nach MAMEs AVG-Zustandsmaschine (Zustände pro Befehl,
+  Vektortimer mit Normalisierung). Gegen das Zustands-PROM geprüft: exakt.
+  Der native Interrupt startet das nächste Bild erst, wenn diese Zeit um ist.
+* **6809**: `src/game/pace.c`. Die Routinen zählen ihre Arbeit (Zeichen,
+  Ziffern, Meldungen, Sterne), jede Art hat einen Preis. Die Preise sind an
+  MAME angepasst: `swcapture.lua` misst die Rechenzeit jedes Frames (TIME),
+  `swcompare --csv` schreibt sie neben die nativen Zähler. Fehler im
+  Attract-Modus: 1 ms (rms) bei 25 bis 50 ms.
+
+Ergebnis (Interrupts pro Frame, Original/nativ): Banner 12,2/13,5,
+Anleitung 18,6/18,3, Punktetabelle 12,1/12,0, Highscores 18,0/17,9. Jede
+neu portierte Phase braucht eigene Zähler und eine neue Anpassung.
+
 ## Offene Punkte
 
-* EEROM/NOVRAM (TCEROM.MAC: Optionen, Buchhaltung, Highscores) ist noch
-  nicht portiert. Bis dahin ist der Münzmodus fest „1 Spiel pro Münze“.
-* Laut Quellcode zählt die erste Münze nach dem Einschalten nicht (`$CNSTT`
-  startet bei 0 = „zu lange“, MOOLAH läuft erst bei Schalteraktivität).
-  Gegen eine MAME-Aufnahme zu prüfen.
-* Im Original läuft die Hauptschleife über mehrere IRQs hinweg und liest
-  dabei vom IRQ geänderte Werte (z. B. `VGTOSITE` unter SEI). Nativ läuft sie
-  in einem Stück. Beim Vergleich mit MAME-Aufnahmen müssen diese Werte
-  aufgezeichnet und eingespeist werden.
+Für das Originalprogramm auf dem 6809-Kern (der Standard):
 
-* Die AVG-Einheiten des Bildschirms (VGEDG*: ±510 × −612…+600) sind aus
-  WSROOT.MAP übernommen. Lage und Seitenverhältnis auf dem WG6100 müssen mit
-  `--calibrate` und `avgreplay` eingestellt werden.
+* Zwischenbilder und Ton sind am Automaten noch nicht gesehen und gehört
+  (docs/STATUS.md).
+* POKEY ohne Hochpassfilter, TMS5220 vereinfacht (Interpolation und
+  Anregung nach Datenblatt, nicht taktgenau wie MAME).
+* Menüeintrag und Paket fehlen.
+
+Für die von Hand portierten Routinen (`--native`, `src/game`):
+
+* Es fehlen alle Spielphasen ab der Weltraumwelle. Phasen, die fehlen,
+  führen zurück zum Banner.
+* Das Tempo kommt dort aus einem Modell (`src/game/pace.c`), das den Banner
+  nur auf 10 % trifft (13,5 statt 12,2 Interrupts pro Frame). Der 6809-Kern
+  braucht kein Modell.
+* Buchhaltung beim Münzeinwurf und Spielende (`EEACCU`, `EEACCT`),
+  Statistik- und Optionsseite fehlen.
+* Beim Vergleich der portierten Routinen werden die Werte, die die
+  Hauptschleife mitten im Frame vom Interrupt liest, nur für das Fadenkreuz
+  eingespeist. Der 6809-Weg bekommt sie vollständig aus der Aufnahme (IRDS).
+* Beim Vergleich fehlt der Dividend des Dividierers in der Aufnahme;
+  `swcompare` setzt ihn auf den Wert aus `IMATH`. WSGUNS und WSLAZR
+  schreiben andere Werte: dann mit aufnehmen.
+
+Allgemein:
+
+* Bildlage: Das Spiel zeichnet mit `VGSCAL` in Viertelgröße, der Bildrand
+  (VGEDG*: ±510 × −612…+600 in Vektorworten) liegt also bei ±127,5 ×
+  −153…+150 AVG-Einheiten. So steht es jetzt in `starwarsvp.ini`; am
+  Automaten füllt das Bild die Röhre. Feinabgleich mit `--calibrate` steht
+  aus.
 * Die Skalierung der AVG-Vektoren folgt MAME (lineare Skala `^0xFF`/256,
   binäre Skala 1/2ⁿ). Ob das exakt stimmt, zeigt der Vergleich der
   Aufnahmen mit MAMEs eigener Darstellung.

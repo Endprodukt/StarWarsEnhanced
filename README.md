@@ -1,17 +1,29 @@
 # Star Wars VP
 
-Star Wars (Atari, 1983) als nativer Port mit Remaster-Optionen für
+Star Wars (Atari, 1983) für
 [VectorPie](https://github.com/Goldfinch2/VectorPie): Raspberry Pi 5,
-USB-DVG, Vektormonitor (Wells-Gardner 6100).
+USB-DVG, Vektormonitor (Wells-Gardner 6100). Das Spiel unverändert, die
+Darstellung flüssig.
 
-* Spiellogik originalgetreu: im Originaltakt (20,51 Hz Spiel, 41 Hz VG,
-  246 Hz IRQ), Math Box in Festkomma, geprüft gegen MAME-Aufnahmen
-* Darstellung flüssig: Interpolation zwischen den Ticks, 50–60 Hz auf dem
-  Monitor
-* Remaster: verdeckte Linien, neue Modelle, Sound wahlweise original
-  (POKEY/TMS5220) oder neu
+* **Das Spiel ist das Original, Stück für Stück nativ**: Die Routinen des
+  Programms von 1983 werden von Hand nach C portiert und Frame für Frame
+  gegen MAME-Aufnahmen geprüft. Was noch nicht portiert ist, führt ein
+  6809-Kern aus den eigenen ROMs aus, auf demselben Speicher; so ist das
+  Spiel jederzeit vollständig, und der Kern wird mit jeder Routine kleiner.
+  Math Box, Dividierer, NOVRAM und die Zeit des Vektorgenerators sind nativ.
+* **Darstellung flüssig**: Zwischen zwei Spielframes (das Spiel rechnet 12
+  bis 20 pro Sekunde) wird jede Linie bewegt, das Bild kommt mit der Rate
+  der Platine. Das Fadenkreuz folgt dem Joch ohne Umweg und ist ab dem
+  ersten Bild zentriert.
+* **Ton**: Die Soundplatine läuft mit (Sound-Programm aus den ROMs, vier
+  POKEYs, TMS5220-Sprache).
+* **Weg zum Remaster**: Die Routinen des Spiels werden nach und nach von
+  Hand nach C portiert (`src/game`) und gegen das Original geprüft. Aus
+  ihrem Spielzustand lässt sich später das Bild neu zeichnen (verdeckte
+  Linien, neue Modelle).
 
-Stand: **Schritt 3 von 8** (Grundgerüst, Math Box, Interrupt und Steuerung). Plan und Hintergründe:
+Aktueller Stand, was am Automaten noch ungeprüft ist, und nächste Schritte:
+[docs/STATUS.md](docs/STATUS.md). Plan und Hintergründe:
 [docs/PLAN.md](docs/PLAN.md).
 
 ## ROMs
@@ -19,7 +31,9 @@ Stand: **Schritt 3 von 8** (Grundgerüst, Math Box, Interrupt und Steuerung). Pl
 Die Daten des Spiels (Vektor-ROM, Objekte, Sound-Programm, Sprache) werden
 zur Laufzeit aus dem eigenen MAME-ROM-Satz **`starwars1`** gelesen. Ins
 Repository oder Paket kommt nichts davon. Gebraucht werden `starwars1.zip`
-und `starwars.zip` (der Parent-Satz). Gesucht wird in:
+und `starwars.zip` (der Parent-Satz). Ältere Sätze gehen auch (`starwar1.zip`,
+Math-Box-PROMs mit anderem CRC, ohne AVG-PROM), so wie sie auf einem
+VectorPie-Automaten liegen. Gesucht wird in:
 
 1. `--roms PFAD`
 2. `dir_rom` aus der `advmame.rc` des Automaten
@@ -39,11 +53,50 @@ cmake --preset pc    && cmake --build --preset pc       # Windows .exe
 
 Das SDK liegt unverändert als Submodul unter `external/VectorPie`.
 
+Für den Automaten ohne WSL, von Windows aus (Git Bash, clang und lld im
+PATH, als Sysroot eine Kopie der Bibliotheken des Automaten, voreingestellt
+die des Tempest-2000-Ports):
+
+```sh
+export PATH="/c/Users/ocare/.local/share/retcomm/toolchains/cmake-clang-v1/latest/bin:$PATH"
+cmake --preset pi-clang && cmake --build --preset pi-clang
+sh tools/deploy.sh        # auf den Automaten kopieren und dort neu starten
+```
+
+`tools/deploy.sh` legt alles nach `/persistent/games/starwarsvp`, beendet ein
+laufendes Spiel und startet das neue über `run.sh` (hält das Menü an und holt
+es danach zurück). Ausgabe und Bildkosten stehen dort in `run.log`. Einen
+Menüeintrag gibt es noch nicht.
+
+## Prüfen gegen MAME
+
+```sh
+# Aufnahme (MAME 0.289):
+SWCAP_OUT=attract.swcap SWCAP_TICKS=3000 mame starwars1 -autoboot_script tools/mame/swcapture.lua -video none -sound none -nothrottle
+# mit gespieltem Skript: zwei Münzen, Start, dann Joch und Feuer
+SWCAP_PLAY="120 coin 1;160 coin 1;240 fire 3;560 weave 7" SWCAP_OUT=play.swcap SWCAP_TICKS=2600 mame starwars1 -autoboot_script tools/mame/swcapture.lua -video none -sound none -nothrottle
+# Bauen, Tests, Vergleich aller Aufnahmen eines Ordners (in WSL):
+sh tools/checkall.sh ORDNER /mnt/d/Mame/roms --emu 1    # das Originalprogramm auf dem 6809-Kern
+sh tools/checkall.sh ORDNER /mnt/d/Mame/roms            # die von Hand portierten Routinen
+```
+
+`swcompare` lädt für jeden Frame den Speicher des Originals, lässt den
+nativen Frame laufen und vergleicht RAM, Math-Box-RAM und Displayliste mit
+dem nächsten Frame des Originals. Am Ende steht das Tempo pro Phase
+(Interrupts pro Frame, Original und nativ). `--show N --max N --from F --to F
+--phase HH` grenzen die Ausgabe ein, `--csv DATEI` schreibt Rechenzeit und
+Arbeitszähler pro Frame für das Tempomodell (docs/PLAN.md).
+
 ## Programme
 
 | Programm | Zweck |
 |---|---|
-| `starwarsvp` | das Spiel; zurzeit ROM- und Math-Box-Prüfung und ein Testbild für die Steuerung: Fadenkreuz am Joch (mit dem originalen Nachziehen und der Joch-Kalibrierung), Feuer färbt es rot, Münzen zählen Credits |
+| `starwarsvp` | das Spiel: die nach C portierten Routinen; was noch nicht portiert ist, führt ein 6809-Kern aus dem Original-ROM aus |
+| `starwarsvp --original` | das ganze Originalprogramm auf dem 6809-Kern |
+| `starwarsvp --native` | nur die portierten Routinen, ohne Kern und ohne Ton: Attract-Modus und Spielstart bis zur Wahl des Todessterns |
+| `starwarsvp --nosound` | ohne Soundplatine |
+| `starwarsvp --controls` | Testbild für die Steuerung: Fadenkreuz am Joch (mit dem originalen Nachziehen und der Joch-Kalibrierung), Feuer färbt es rot, Münzen zählen Credits |
+| `swcompare AUFNAHME.swcap` | prüft den nativen Kern Frame für Frame gegen eine MAME-Aufnahme |
 | `starwarsvp --calibrate` | Kalibrierbild: Bildschirmrand, Clip-Grenzen, Kreis, alle Farben in 7 Helligkeiten. Joystick ändert, Knopf 1 wechselt den Modus (Größe, Lage, Gamma/Floor, Helligkeit), Knopf 2 speichert nach `save/starwarsvp.ini` |
 | `avgreplay AUFNAHME.swcap` | spielt in MAME aufgenommene Displaylisten im Originaltakt auf dem Monitor ab; `--lerp` zeigt die Interpolation, `--loop` wiederholt |
 
@@ -62,6 +115,26 @@ Belegung über die `advmame.rc` des Automaten, wie bei MAMEs Star Wars:
 | Feuer rechts | `p1_button4`, `start2` |
 | Daumen links / rechts | `p1_button2` / `p1_button3` |
 | Münze L / R | `coin1` / `coin2` |
+| Aux-Münze (Betreiber: nächste Seite im Selbsttest) | `p1_button5` |
+| Selbsttest-Schalter (jeder Druck schaltet um: Statistik, Optionen, Tests) | `p1_button6` |
+
+## Einstellungen
+
+`starwarsvp.ini` (Paketvorgabe neben dem Programm, eigene Werte in
+`save/starwarsvp.ini`):
+
+| Schlüssel | Bedeutung |
+|---|---|
+| `smooth` | Bewegung zwischen den Spielframes: `0` aus (jedes Spielbild wie im Original), `1` zwischen den letzten beiden Frames (exakt, die Welt einen Spielframe später), `2` dem letzten Frame voraus (ohne Verzögerung, Linien schießen bei Richtungswechseln kurz über) |
+| `yoke_autocenter` | `1`: Fadenkreuz ab dem ersten Bild zentriert, das Joch geht exakt durch (Ruhelage aus der Joystick-Kalibrierung des Automaten). `0`: wie der Automat von 1983, der den Bereich des Jochs nach jedem Einschalten neu lernt |
+| `sort_strokes` | `1`: Striche in einer Reihenfolge zeichnen, die dem Strahl Leerweg spart (mehr Bilder pro Sekunde auf der Platine) |
+| `avg_*`, `margin_*`, `flip_*` | Lage und Größe des Bildes, mit `--calibrate` einzustellen |
+| `gamma`, `floor`, `brightness`, `color_*`, `defocus_mode` | Helligkeit und Farben |
+
+Optionen des Spiels (Münzen, Schilde, Schwierigkeit, Musik im Attract-Modus)
+stellt man wie am Automaten auf dessen Optionsseite ein (Selbsttest-Schalter,
+dann Aux-Münze). Sie liegen mit Buchhaltung und den besten drei Scores in
+`save/nvram.bin`.
 
 ## Aufnahmen aus MAME
 
@@ -71,8 +144,9 @@ SWCAP_OUT=attract.swcap SWCAP_TICKS=2000 \
 build-linux/avgreplay attract.swcap --lerp --windowed
 ```
 
-Pro Spieltick werden VG-RAM, RAM und Math-Box-RAM gespeichert, Format in
-`src/capture/capture.h`. Die Aufnahmen dienen zum Kalibrieren und als
+Pro Spieltick werden VG-RAM, RAM und Math-Box-RAM gespeichert, dazu am
+Anfang jedes Frames derselbe Speicher, das NOVRAM, die gelesenen
+Zufallszahlen und die Rechenzeit des 6809. Format in `src/capture/capture.h`. Die Aufnahmen dienen zum Kalibrieren und als
 Referenz für den nativen Kern.
 
 ## Math Box
@@ -101,3 +175,7 @@ generierter C-Code und als Testdatei (`tests/mbox_prom.h`). Er ist aus dem
 veröffentlichten Quelltext (SWMP.MAC) erzeugt und entspricht inhaltlich den
 PROMs. Das Projekt ist für den privaten Einsatz am eigenen Automaten
 gedacht.
+
+Die Zeitrechnung des Vektorgenerators folgt MAMEs `avgdvg.cpp`, die
+Tabellen des TMS5220 stammen aus MAMEs `tms5110r.hxx` (beide BSD-3-Clause,
+Nachweise im Quelltext).

@@ -9,7 +9,9 @@
  * 203, 104, 206) that the historical source and its load map
  * (WSROOT.MAP) describe. MAME keeps the shared ROMs in the parent
  * "starwars.zip" and only 136021-114 in "starwars1.zip": give both.
- * Files are matched by CRC32, so names and zip layout do not matter.
+ * Files are matched by CRC32, so names and zip layout do not matter. Older
+ * sets work too (starwar1.zip, math box PROMs dumped with other upper
+ * bits, no AVG state PROM).
  */
 #ifndef SWVP_ROMSET_H
 #define SWVP_ROMSET_H

@@ -1,13 +1,19 @@
 {
   "version": 3,
-  "cmakeMinimumRequired": { "major": 3, "minor": 21, "patch": 0 },
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 21,
+    "patch": 0
+  },
   "configurePresets": [
     {
       "name": "linux",
       "displayName": "Linux (native, development)",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build-linux",
-      "cacheVariables": { "CMAKE_BUILD_TYPE": "RelWithDebInfo" }
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
     },
     {
       "name": "pc",
@@ -31,14 +37,45 @@
         "CMAKE_BUILD_TYPE": "Release",
         "BUILD_TESTING": "OFF"
       }
+    },
+    {
+      "name": "pi-clang",
+      "displayName": "Pi: Linux arm64 from Windows (clang + lld, sysroot copy of the cabinet)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build-pi",
+      "toolchainFile": "${sourceDir}/cmake/toolchain-pi-clang.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "BUILD_TESTING": "OFF",
+        "SWVP_PI_SYSROOT": "F:/Tempest 2000 Port/build/pi-sysroot"
+      }
     }
   ],
   "buildPresets": [
-    { "name": "linux", "configurePreset": "linux" },
-    { "name": "pc", "configurePreset": "pc" },
-    { "name": "pi", "configurePreset": "pi" }
+    {
+      "name": "linux",
+      "configurePreset": "linux"
+    },
+    {
+      "name": "pc",
+      "configurePreset": "pc"
+    },
+    {
+      "name": "pi",
+      "configurePreset": "pi"
+    },
+    {
+      "name": "pi-clang",
+      "configurePreset": "pi-clang"
+    }
   ],
   "testPresets": [
-    { "name": "linux", "configurePreset": "linux", "output": { "outputOnFailure": true } }
+    {
+      "name": "linux",
+      "configurePreset": "linux",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
   ]
 }
