@@ -272,7 +272,8 @@ static vec spun(const sw_enhance *e, double x, double y, double z)
  * at its foot, the ring at its top, seams across its sides. */
 enum { B_FOOT = 1, B_TOP = 2, B_SEAMS = 4, B_PLATES = 8 };
 
-static void block(sw_enhance *e, vec c, double h0, double z0, double h1, double z1, unsigned color, float lum, unsigned what)
+static void block(sw_enhance *e, vec c, double h0, double z0, double h1, double z1, unsigned color, float lum,
+                  unsigned what, float ring, float seam)
 {
     static const int sx[4] = { -1, 0, 1, 0 }, sy[4] = { 0, -1, 0, 1 };
     vec lo[4], hi[4];
@@ -284,21 +285,21 @@ static void block(sw_enhance *e, vec c, double h0, double z0, double h1, double 
         int j = (i + 1) & 3;
         line(e, lo[i], hi[i], color, lum, SW_TAG_OBJECT);
         if (what & B_FOOT) line(e, lo[i], lo[j], color, lum, SW_TAG_OBJECT);
-        if (what & B_TOP) line(e, hi[i], hi[j], color, lum, SW_TAG_OBJECT);
+        if (what & B_TOP) line(e, hi[i], hi[j], color, lum * ring, SW_TAG_OBJECT);
         vec side[4] = { lo[i], lo[j], hi[j], hi[i] };
         face(e, side);
-        if (what & B_SEAMS) {
+        if ((what & B_SEAMS) && seam > 0.0f) {
             /* a seam across, and one upright that stops at it */
             double k = 0.45 + 0.1 * (i & 1);
             vec a = add(c, turn(e, vec3(sx[i] * (h0 + (h1 - h0) * k), sy[i] * (h0 + (h1 - h0) * k), z0 + (z1 - z0) * k)));
             vec b = add(c, turn(e, vec3(sx[j] * (h0 + (h1 - h0) * k), sy[j] * (h0 + (h1 - h0) * k), z0 + (z1 - z0) * k)));
-            line(e, a, b, color, lum * 0.55f, SW_TAG_OBJECT);
+            line(e, a, b, color, lum * 0.55f * seam, SW_TAG_OBJECT);
             if (what & B_PLATES) {
                 double u = 0.35 + 0.3 * ((i >> 1) & 1);
                 vec m0 = vec3(a.x + (b.x - a.x) * u, a.y + (b.y - a.y) * u, a.z + (b.z - a.z) * u);
                 vec m1 = (i & 1) ? vec3(lo[i].x + (lo[j].x - lo[i].x) * u, lo[i].y + (lo[j].y - lo[i].y) * u, lo[i].z + (lo[j].z - lo[i].z) * u)
                                  : vec3(hi[i].x + (hi[j].x - hi[i].x) * u, hi[i].y + (hi[j].y - hi[i].y) * u, hi[i].z + (hi[j].z - hi[i].z) * u);
-                line(e, m0, m1, color, lum * 0.55f, SW_TAG_OBJECT);
+                line(e, m0, m1, color, lum * 0.55f * seam, SW_TAG_OBJECT);
             }
         }
     }
@@ -306,23 +307,28 @@ static void block(sw_enhance *e, vec c, double h0, double z0, double h1, double 
     face(e, top);
 }
 
-/* The turret on a tower: a box at the height z with two barrels, turned
- * by yaw about its upright axis (0: the guns towards where the player
- * comes from). */
-static void turret(sw_enhance *e, vec c, double z, double h, unsigned color, float lum, int detail, double yaw)
+/* The turret on a tower: a box at the height z with two barrels (as
+ * bright as `detail` says, 0 to 1), turned by yaw about its upright axis
+ * (0: the guns towards where the player comes from). */
+static void turret(sw_enhance *e, vec c, double z, double h, unsigned color, float lum, float detail, double yaw)
 {
     e->spin_c = cos(yaw);
     e->spin_s = sin(yaw);
-    block(e, c, h, z, h, z + 720.0, color, lum, B_FOOT | B_TOP);
-    if (detail) {
-        for (int s = -1; s <= 1; s += 2) {
-            vec a = add(c, turn(e, spun(e, -h * 0.6, s * h * 0.4, z + 420.0)));
-            vec b = add(c, turn(e, spun(e, -h * 0.6 - 420.0, s * h * 0.4, z + 480.0)));
-            line(e, a, b, color, lum, SW_TAG_OBJECT);
-        }
+    block(e, c, h, z, h, z + 720.0, color, lum, B_FOOT | B_TOP, 1.0f, 0.0f);
+    for (int s = -1; s <= 1; s += 2) {
+        vec a = add(c, turn(e, spun(e, -h * 0.6, s * h * 0.4, z + 420.0)));
+        vec b = add(c, turn(e, spun(e, -h * 0.6 - 420.0, s * h * 0.4, z + 480.0)));
+        line(e, a, b, color, lum * detail, SW_TAG_OBJECT);
     }
     e->spin_c = 1.0;
     e->spin_s = 0.0;
+}
+
+/* From 0 where v is `from` to 1 where it is `to`. */
+static float ramp(double v, double from, double to)
+{
+    double k = (v - from) / (to - from);
+    return (float)(k < 0.0 ? 0.0 : k > 1.0 ? 1.0 : k);
 }
 
 static void towers(sw_enhance *e, const sw_machine *m, double now)
@@ -330,12 +336,16 @@ static void towers(sw_enhance *e, const sw_machine *m, double now)
     const double FAR = 28000.0;                 /* in V: the arcade machine shows them from 3C00h */
     const double BRIGHT = 2500.0;               /* from here on a building is as bright as it gets */
     const double LOCK = 9000.0;                 /* from here on a turret has found the player */
+    const double APPEAR = 1.6;                  /* seconds a building takes to come up, wherever it does */
     unsigned mz = TGDPTR + (unsigned)((uint8_t)(ram8(m, SW_GD_WAV) << 2));
     if (mz >= ZGDPTR) mz = ZGDPTR - 4;
-    unsigned x = sw_rom16(m, (uint16_t)mz), end = sw_rom16(m, (uint16_t)(mz + 2));
+    unsigned first = sw_rom16(m, (uint16_t)mz), end = sw_rom16(m, (uint16_t)(mz + 2));
     int seq = (int8_t)ram8(m, SW_GD_SEQ);
-    if (end <= x || end - x > 64 * TGD_IZ) return;
-    for (; x < end; x += TGD_IZ) {
+    if (end <= first || end - first > 64 * TGD_IZ) return;
+    double step = now - e->towers_at;           /* since the picture before */
+    step = step < 0.0 ? 0.0 : step > 0.1 ? 0.1 : step;
+    e->towers_at = now;
+    for (unsigned x = first; x < end; x += TGD_IZ) {
         unsigned bx = sw_rom16(m, (uint16_t)(x + TGD_X));
         int by = (int16_t)sw_rom16(m, (uint16_t)(x + TGD_Y));
         unsigned pc = sw_rom16(m, (uint16_t)(x + TGD_PC)) >> 8;
@@ -355,39 +365,45 @@ static void towers(sw_enhance *e, const sw_machine *m, double now)
             /* The farthest are dark, and each gets brighter in a straight
              * line as it comes nearer: what is behind does not crowd what
              * is before it. */
-            float k = (float)((FAR - c.x) / (FAR - BRIGHT));
-            float lum = 10.0f + 235.0f * (k > 1.0f ? 1.0f : k);
-            int close = c.x < 9000.0, mid = c.x < 17000.0;
+            float lum = 10.0f + 235.0f * ramp(c.x, FAR, BRIGHT);
+            /* Nothing comes up at once: a building that was not in the
+             * picture before (a new pass has begun, the game has set it
+             * up, it has come in from the side) takes its time. Which
+             * round of the map it belongs to tells it from itself a round
+             * later. */
+            unsigned key = ((x - first) / TGD_IZ * 2 + ((unsigned)(((double)(uint16_t)e->t[0] + ahead) / 32768.0) & 1)) % SW_ENHANCE_BUILDINGS;
+            if (now - e->seen_at[key] > 0.3 || e->seen_at[key] > now) e->shown[key] = 0.0f;
+            e->seen_at[key] = now;
+            e->shown[key] += (float)(step / APPEAR);
+            if (e->shown[key] > 1.0f) e->shown[key] = 1.0f;
+            lum *= e->shown[key];
+            /* Nor do the details: what is too small to see from afar comes
+             * up with nearness, the steps first, then the seams. */
+            float steps = ramp(c.x, 21000.0, 13000.0), seams = ramp(c.x, 12000.0, 6000.0);
             if (++e->inst == 0) e->inst = 0x8000;
             /* The sizes are the arcade machine's, to the unit (the player
              * flies between and over them): a bunker 960 at its foot, 720
              * at its top, 720 high; a tower 960, 720, 600 and 480 at the
              * heights of its points, its hat 480 and 720 high. */
             if (pc == PC_BNK) {
-                block(e, c, 960.0, -3840.0, 720.0, -3120.0, RED, lum, B_FOOT | B_TOP | (close ? B_SEAMS | B_PLATES : 0));
-                if (mid) block(e, c, 430.0, -3120.0, 430.0, -3120.0, RED, lum * 0.7f, B_TOP);     /* a hatch on its roof */
+                block(e, c, 960.0, -3840.0, 720.0, -3120.0, RED, lum, B_FOOT | B_TOP | B_SEAMS | B_PLATES, 1.0f, seams);
+                block(e, c, 430.0, -3120.0, 430.0, -3120.0, RED, lum * 0.7f, B_TOP, steps, 0.0f);     /* a hatch on its roof */
                 continue;
             }
             int hat = !(state & TYP_DM) && (state & TYP_BK);
-            if (!mid) {
-                /* far off: its outline */
-                block(e, c, 960.0, -3840.0, 480.0, 6000.0, YLW, lum, B_FOOT | B_TOP);
-            } else {
-                /* three steps, each set in a little from the one below */
-                block(e, c, 960.0, -3840.0, 720.0, -3120.0, YLW, lum, B_FOOT | B_TOP | (close ? B_SEAMS : 0));
-                block(e, c, 670.0, -3120.0, 600.0, -1440.0, YLW, lum, B_TOP | (close ? B_SEAMS | B_PLATES : 0));
-                block(e, c, 550.0, -1440.0, 480.0, 6000.0, YLW, lum, B_TOP | (close ? B_SEAMS | B_PLATES : 0));
-            }
+            /* three steps, each set in a little from the one below */
+            block(e, c, 960.0, -3840.0, 720.0, -3120.0, YLW, lum, B_FOOT | B_TOP | B_SEAMS, steps, seams);
+            block(e, c, 670.0, -3120.0, 600.0, -1440.0, YLW, lum, B_TOP | B_SEAMS | B_PLATES, steps, seams);
+            block(e, c, 550.0, -1440.0, 480.0, 6000.0, YLW, lum, B_TOP | B_SEAMS | B_PLATES, 1.0f, seams);
             if (hat) {
                 /* The turret turns to and fro, looking for the player; as
                  * he comes into its range it finds him and follows him. */
                 double side = (double)(int16_t)(by - (int)e->t[1]);
                 double seek = 1.1 * sin(now * 0.9 + (double)(x & 31));
                 double aim = atan2(side, ahead);
-                double found = (LOCK + 3000.0 - c.x) / 3000.0;
-                found = found < 0.0 ? 0.0 : found > 1.0 ? 1.0 : found;
+                double found = ramp(c.x, LOCK + 3000.0, LOCK);
                 float tl = lum * 1.15f;
-                turret(e, c, 6000.0, 480.0, WHT, tl > 255.0f ? 255.0f : tl, mid, seek + (aim - seek) * found);
+                turret(e, c, 6000.0, 480.0, WHT, tl > 255.0f ? 255.0f : tl, steps, seek + (aim - seek) * found);
             }
         }
     }
