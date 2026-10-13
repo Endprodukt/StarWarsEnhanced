@@ -312,6 +312,23 @@ Am Gerät ungeprüft.
   nicht nachgesehen; der Wert ist eine Annahme und am Gerät nachzustellen
   (Testmenü, Screen Calibration, vierter Modus, Joch).
 
+## Türme von weiter her, eingeblendet (2026-10-13)
+
+Mit der Größe des Automaten wollte der Besitzer noch einmal weiter nach
+hinten sehen und die Türme sauber einblenden. Jetzt: Die Türme werden ab
+6000h voraus gezeichnet (der Automat ab 3C00h), dunkel und klein. Die Größe
+folgt der Formel des Automaten (1 - XP/4000h), nach unten auf 8 % begrenzt
+(die Formel endet bei 4000h bei 0); die Helligkeit steigt linear von 0 bei
+6000h auf voll bei 2500. Damit kommt nichts schlagartig: ein Turm erscheint
+als dunkler kleiner Strich am Horizont und wächst und hellt sich auf.
+Innerhalb der Reichweite des Automaten gilt dessen Regel (nur eingerichtete
+Gebäude); jenseits werden alle Gebäude des Durchgangs gezeichnet, und die
+des nächsten Durchgangs nur, wenn sie bei seinem Beginn noch jenseits der
+Reichweite liegen (sonst kämen sie auf halber Strecke hoch). Die Karte
+wiederholt sich alle 8000h, jedes Gebäude wird auf dieser und der nächsten
+Runde betrachtet. Standbilder: am Start der Oberfläche nichts neben dem
+Spieler, am Horizont die kleinen dunklen Türme.
+
 ## Free Play (2026-10-13)
 
 Der Besitzer wünschte sich ein Spiel ohne Münzen. Das hat das Original
