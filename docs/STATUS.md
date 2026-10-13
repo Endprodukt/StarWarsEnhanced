@@ -121,12 +121,13 @@ Soundplatine, die Zeit des Vektorgenerators.
     Maße sind auf die Einheit die des Automaten (Vorgabe des Besitzers: man
     muss weiter zwischen ihnen durchpassen): Turm 960, 720, 600, 480 an den
     Höhen seiner ROM-Punkte, Hut 480 und 720 hoch, Bunker 960 auf 720 und
-    720 hoch; von vorn gesehen genau so breit. Nichts taucht schlagartig
-    auf (Vorgabe des Besitzers): Ein Gebäude, das neu ins Bild kommt (neuer
-    Durchgang, vom Spiel freigeschaltet, von der Seite), blendet über 1,6 s
-    ein, und die Details kommen mit der Nähe (Stufen ab 21000, Nähte ab
-    12000 Einheiten, je über eine Strecke); gemessen: kein Sprung der
-    Turmhelligkeit von Bild zu Bild über 10 %. Die fernsten sind dunkel und
+    720 hoch; von vorn gesehen genau so breit. Jeder Turm hat in jeder
+    Entfernung alle Details (Vorgabe des Besitzers: nichts baut sich in
+    Stücken auf, kein zeitliches Einblenden); nur die Helligkeit ändert
+    sich. Damit kein Turm auf halber Strecke auftaucht, werden jenseits der
+    Reichweite des Spiels (3C00h) alle Gebäude des Durchgangs gezeichnet,
+    auch die, die das Spiel noch nicht eingerichtet hat; innerhalb gilt die
+    Regel des Spiels. Die fernsten sind dunkel und
     werden linear mit der Nähe heller (Vorgabe des Besitzers, damit die
     hinteren die vorderen nicht überdecken). Der Geschützturm dreht sich
     suchend hin und her und richtet sich auf den Spieler, sobald der in

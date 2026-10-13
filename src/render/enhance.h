@@ -35,8 +35,6 @@
  * (where only a strip of sky shows) all. */
 #define SW_ENHANCE_STARS 420
 
-#define SW_ENHANCE_BUILDINGS 128    /* the buildings of a maze, each on two rounds of the map */
-
 typedef struct sw_enhance {
     int surface, stars, towers, dogfights;      /* the settings */
     int logo;                                   /* 1: the STAR WARS logo yellow */
@@ -50,11 +48,6 @@ typedef struct sw_enhance {
 
     /* the view: where the player is, how he is turned */
     double   r[3][3], t[3];
-    /* how far each building has come up (0 to 1), and when it was last in
-     * the picture: nothing appears at once */
-    float    shown[SW_ENHANCE_BUILDINGS];
-    double   seen_at[SW_ENHANCE_BUILDINGS];
-    double   towers_at;                         /* when the towers were last drawn */
     double   spin_c, spin_s;                    /* a block being drawn is turned so about its upright axis (cos, sin) */
 
     float    star[SW_ENHANCE_STARS][3];         /* directions */

@@ -336,15 +336,12 @@ static void towers(sw_enhance *e, const sw_machine *m, double now)
     const double FAR = 28000.0;                 /* in V: the arcade machine shows them from 3C00h */
     const double BRIGHT = 2500.0;               /* from here on a building is as bright as it gets */
     const double LOCK = 9000.0;                 /* from here on a turret has found the player */
-    const double APPEAR = 1.6;                  /* seconds a building takes to come up, wherever it does */
+    const double RANGE = 15360.0;               /* 3C00h: nearer than this the game has a building, or not yet */
     unsigned mz = TGDPTR + (unsigned)((uint8_t)(ram8(m, SW_GD_WAV) << 2));
     if (mz >= ZGDPTR) mz = ZGDPTR - 4;
     unsigned first = sw_rom16(m, (uint16_t)mz), end = sw_rom16(m, (uint16_t)(mz + 2));
     int seq = (int8_t)ram8(m, SW_GD_SEQ);
     if (end <= first || end - first > 64 * TGD_IZ) return;
-    double step = now - e->towers_at;           /* since the picture before */
-    step = step < 0.0 ? 0.0 : step > 0.1 ? 0.1 : step;
-    e->towers_at = now;
     for (unsigned x = first; x < end; x += TGD_IZ) {
         unsigned bx = sw_rom16(m, (uint16_t)(x + TGD_X));
         int by = (int16_t)sw_rom16(m, (uint16_t)(x + TGD_Y));
@@ -352,34 +349,36 @@ static void towers(sw_enhance *e, const sw_machine *m, double now)
         int sq = (int8_t)(sw_rom16(m, (uint16_t)(x + TGD_SQ)) >> 8);
         int rm = (int8_t)(sw_rom16(m, (uint16_t)(x + TGD_RM)) >> 8);
         uint8_t state = ram8(m, (unsigned)(SW_GDRAM + rm));
-        if (!(state & TYP_VW)) continue;        /* (not set up, or a bunker shot away) */
+        if (pc == PC_BNK && (state & TYP_DM)) continue;     /* (a bunker shot away) */
         /* the map comes round every 8000h: the building as it is ahead
          * now, and as it is the next time round */
         double ahead = (double)((bx - (unsigned)e->t[0]) & 0x7fff);
         for (int lap = 0; lap < 2; lap++, ahead += 32768.0) {
             /* (the next pass starts when the player's place wraps) */
-            int pass = seq + ((double)(int16_t)(uint16_t)e->t[0] + ahead > 32767.0 ? 1 : 0);
+            double beyond = (double)(int16_t)(uint16_t)e->t[0] + ahead - 32768.0;  /* past where the next pass starts */
+            int pass = seq + (beyond >= 0.0 ? 1 : 0);
             if (pass < sq) continue;
+            /* A building the next pass brings is drawn ahead of time only
+             * if it will be out of the game's range when that pass starts:
+             * one within it the game does not show until the round after,
+             * and it would go out before the player's eyes. */
+            if (seq < sq && beyond / 2.0 < RANGE) continue;
             vec c = turn(e, vec3(ahead / 2.0, (double)(int16_t)(by - (int)e->t[1]) / 2.0, (GD_CENTER - e->t[2]) / 2.0));
             if (c.x < 40.0 || c.x > FAR || fabs(c.y) > c.x * 1.25 + 1500.0) continue;
+            /* Within its range the game shows a building only once it has
+             * set it up, which it does while the building is out of sight:
+             * so none comes up before the player's eyes. Beyond that range
+             * every building of the pass is drawn, set up or not, or it
+             * would come up at once, half way, when the game gets to it. */
+            if (c.x < RANGE && !(state & TYP_VW)) continue;
             /* The farthest are dark, and each gets brighter in a straight
              * line as it comes nearer: what is behind does not crowd what
              * is before it. */
             float lum = 10.0f + 235.0f * ramp(c.x, FAR, BRIGHT);
-            /* Nothing comes up at once: a building that was not in the
-             * picture before (a new pass has begun, the game has set it
-             * up, it has come in from the side) takes its time. Which
-             * round of the map it belongs to tells it from itself a round
-             * later. */
-            unsigned key = ((x - first) / TGD_IZ * 2 + ((unsigned)(((double)(uint16_t)e->t[0] + ahead) / 32768.0) & 1)) % SW_ENHANCE_BUILDINGS;
-            if (now - e->seen_at[key] > 0.3 || e->seen_at[key] > now) e->shown[key] = 0.0f;
-            e->seen_at[key] = now;
-            e->shown[key] += (float)(step / APPEAR);
-            if (e->shown[key] > 1.0f) e->shown[key] = 1.0f;
-            lum *= e->shown[key];
-            /* Nor do the details: what is too small to see from afar comes
-             * up with nearness, the steps first, then the seams. */
-            float steps = ramp(c.x, 21000.0, 13000.0), seams = ramp(c.x, 12000.0, 6000.0);
+            /* A building has all there is to it at every distance: nothing
+             * of it is added as it comes nearer. (Only where it is so dark
+             * that its seams could not be seen anyway are they left out.) */
+            float steps = 1.0f, seams = lum >= 30.0f ? 1.0f : 0.0f;
             if (++e->inst == 0) e->inst = 0x8000;
             /* The sizes are the arcade machine's, to the unit (the player
              * flies between and over them): a bunker 960 at its foot, 720
@@ -390,7 +389,8 @@ static void towers(sw_enhance *e, const sw_machine *m, double now)
                 block(e, c, 430.0, -3120.0, 430.0, -3120.0, RED, lum * 0.7f, B_TOP, steps, 0.0f);     /* a hatch on its roof */
                 continue;
             }
-            int hat = !(state & TYP_DM) && (state & TYP_BK);
+            /* (one the game has not set up yet will have its hat) */
+            int hat = !(state & TYP_DM) && ((state & TYP_BK) || !(state & TYP_VW));
             /* three steps, each set in a little from the one below */
             block(e, c, 960.0, -3840.0, 720.0, -3120.0, YLW, lum, B_FOOT | B_TOP | B_SEAMS, steps, seams);
             block(e, c, 670.0, -3120.0, 600.0, -1440.0, YLW, lum, B_TOP | B_SEAMS | B_PLATES, steps, seams);
