@@ -4,9 +4,11 @@ Stand: 2026-10-13. Architektur und Hintergründe: [PLAN.md](PLAN.md).
 
 ## Ziel (Wunsch des Besitzers, 2026-10-13)
 
-So weit weg von Emulation wie möglich, und das Bild so flüssig wie möglich.
-Der 6809-Kern ist deshalb nur Lückenfüller und wird mit jeder portierten
-Routine kleiner; am Ende soll er nicht mehr gebraucht werden.
+Hundertprozentig C, auch der Ton; keine Emulation. Eine feste Bildrate ohne
+die Einbrüche des Automaten ("steady frames per second"), und echte, nicht
+vorgetäuschte Flüssigkeit. Der 6809-Kern dient nur noch dem Vergleich
+(`--original`, die Tests) und als Einspringer für Selbsttest und
+Optionsseite (`--hybrid`), bis auch die portiert sind.
 
 ## Was läuft
 
