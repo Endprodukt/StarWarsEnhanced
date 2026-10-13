@@ -6,8 +6,8 @@
  * polynomial counters). The high-pass filters, pots, keyboard, serial port
  * and timer interrupts are not.
  */
-#ifndef SWVP_POKEY_H
-#define SWVP_POKEY_H
+#ifndef SWE_POKEY_H
+#define SWE_POKEY_H
 
 #include <stdint.h>
 

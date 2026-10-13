@@ -22,7 +22,7 @@ Originalprogramm mehr (`grep -rn "ORIG(" src/game` ist leer).
 Ebenso das Programm der Soundplatine (`src/sound/sndprog.c`: Hauptschleife,
 Effekte SNDAUD, Musik SNDPM, Sprache SNDSPK).
 
-`starwarsvp` kennt zwei Arten:
+`swenhanced` kennt zwei Arten:
 
 * **Standard**: alles in C, kein 6809.
 * `--original`: Spiel- und Sound-Programm ganz auf 6809-Kernen (zum Vergleich).
@@ -98,7 +98,7 @@ Soundplatine, die Zeit des Vektorgenerators.
 * **Film vom Port** (`tools/swvideo`): lässt das Spiel ohne Automat laufen
   (Attract, zwei Münzen, Start, Joch pendelt und feuert), zeichnet jedes
   Bild wie ein Vektormonitor und schreibt den Ton mit; `mux.py` macht daraus
-  ein MP4 (braucht PyAV). Ergebnis: `video/starwarsvp.mp4` (nicht im Repo;
+  ein MP4 (braucht PyAV). Ergebnis: `video/swenhanced.mp4` (nicht im Repo;
   es liegt immer nur das neueste Video dort, alte werden gelöscht). Behoben
   am 2026-10-13: Das Werkzeug ließ das Soundboard nicht zwischen zwei
   Anforderungen eines Frames laufen, das Spiel setzte es deshalb 129-mal
@@ -159,7 +159,7 @@ Soundplatine, die Zeit des Vektorgenerators.
   Name), Screen Calibration, Arcade Operator Screens (die Statistik- und
   Optionsseiten des Automatenprogramms; der Knopf führt von dort zurück),
   Save and Exit. Joch wählt und ändert, Feuer löst aus, der Selbsttest-Knopf
-  speichert in `save/starwarsvp.ini` und schließt. Kompiliert für PC und Pi,
+  speichert in `save/swenhanced.ini` und schließt. Kompiliert für PC und Pi,
   aber **noch nie gesehen oder bedient** (kein Automat, kein Bildschirmfoto).
 * **Occlusion** (`occlusion = 1`, Standard; erste "Enhanced"-Funktion,
   abschaltbar, Wunsch des Besitzers vom 2026-10-13): Dinge sind nicht mehr
@@ -331,20 +331,29 @@ Spieler, am Horizont die kleinen dunklen Türme.
 
 ## Menüeintrag und Marquee (2026-10-13)
 
-Das Menü des Automaten zeigte "Star Wars VP" und kein Marquee. Beides
-kommt aus `package/game.ini`, das `deploy.sh` nach
-`/persistent/games/starwarsvp/` legt (die Paketdateien liegen dort richtig,
-wie bei Tempest 2000 daneben): `name = Star Wars Enhanced`, `marquee =
-marquee.png` (der Schlüssel fehlte; Tempest 2000 hat ihn), Version 0.2.0,
+Das Spiel hieß bis hierher nach der Plattform des Automaten (VectorPie)
+mit dem Kürzel VP; der Besitzer will es Star Wars Enhanced genannt haben.
+Umbenannt ist alles, was man sieht oder tippt: der Menüeintrag (`name` in
+`package/game.ini`), die Texte im Programm (Testmenü, Controls Test,
+ROM-Fehlermeldung, Fenstertitel), das Programm selbst und die Paket-Id
+(`swenhanced`; kurz, weil `pkill -x` nur 15 Zeichen eines Namens kennt),
+die Einstellungsdatei (`swenhanced.ini`), die Umgebungsvariable für die
+ROMs (`SWE_ROMS`), die Doku. Auf dem Automaten ist der Ordner mit seinem
+`save/` (NOVRAM, Einstellungen) nach `/persistent/games/swenhanced/`
+umgezogen. Nicht umbenannt: das GitHub-Repo `Endprodukt/StarWarsVP` und
+der lokale Ordner.
+
+Das Menü zeigte außerdem kein Marquee: in `game.ini` fehlte `marquee =
+marquee.png` (Tempest 2000 daneben hat den Schlüssel). Version 0.2.0,
 Marquee das Artwork des Besitzers ("STAR WARS ENHANCED"). Im Menü zu sehen,
 sobald das Menü neu startet (nach dem Verlassen des Spiels). Nicht geprüft
-am Gerät. Im Programm selbst heißt es noch "STAR WARS VP" (Testmenü,
-Controls Test, ROM-Fehlermeldung).
+am Gerät, auch nicht, ob der längere Titel des Testmenüs (jetzt Größe 90
+statt 110) in die Breite passt.
 
 Paketdatei: `sh tools/pack.sh` (in WSL, nach dem Pi-Build) schreibt
-`dist/starwarsvp-<version>.vpk` mit dem `vp-pack` des SDK (dessen Skript und
+`dist/swenhanced-<version>.vpk` mit dem `vp-pack` des SDK (dessen Skript und
 das Manifest werden dabei von CR LF befreit, die ein Windows-Checkout
-mitbringt). `starwarsvp-0.2.0.vpk` liegt auf dem Automaten in
+mitbringt). `swenhanced-0.2.0.vpk` liegt auf dem Automaten in
 `/persistent/games/packages/`; dorthin sind auch `bzoneii-1.0.0.vpk`,
 `gltron-0.1.1.vpk` und `neverball-0.1.0.vpk` verschoben, die eine Ebene zu
 hoch lagen. Installiert wird über das Menü (INSTALL GAMES), nicht von

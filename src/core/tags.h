@@ -7,8 +7,8 @@
  * thing) and a key (which one). The tags are no part of the original's
  * memory and change nothing the game computes.
  */
-#ifndef SWVP_TAGS_H
-#define SWVP_TAGS_H
+#ifndef SWE_TAGS_H
+#define SWE_TAGS_H
 
 enum {
     SW_TAG_NONE = 0,

@@ -12,8 +12,8 @@
  * board (avg/avg.h, sw_avg_cycles): the game waits for it, and that sets
  * the speed of the game when the screen is full.
  */
-#ifndef SWVP_MACHINE_H
-#define SWVP_MACHINE_H
+#ifndef SWE_MACHINE_H
+#define SWE_MACHINE_H
 
 #include <stdint.h>
 

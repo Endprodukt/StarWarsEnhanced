@@ -12,8 +12,8 @@
  * At the frame's own time (t = 0) the picture is the frame's display list,
  * word for word; at t = 1 it is the one the game draws next.
  */
-#ifndef SWVP_SUBFRAME_H
-#define SWVP_SUBFRAME_H
+#ifndef SWE_SUBFRAME_H
+#define SWE_SUBFRAME_H
 
 #include "core/machine.h"
 

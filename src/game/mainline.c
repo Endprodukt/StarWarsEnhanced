@@ -1941,7 +1941,7 @@ static void run_phase(sw_machine *m)
         /* Else back to the banner. */
         if (m->unported_phase != R8(SW_PHASE)) {
             m->unported_phase = R8(SW_PHASE);
-            fprintf(stderr, "starwarsvp: phase %02X is not ported yet, back to the banner\n", m->unported_phase);
+            fprintf(stderr, "swenhanced: phase %02X is not ported yet, back to the banner\n", m->unported_phase);
         }
         W8(SW_PHASE, SW_PHSBNR);
         break;

@@ -29,8 +29,8 @@
  * words; it draws at a quarter scale (VGSCAL), so +-127.5 and -153..+150
  * here.
  */
-#ifndef SWVP_AVG_H
-#define SWVP_AVG_H
+#ifndef SWE_AVG_H
+#define SWE_AVG_H
 
 #include <stddef.h>
 #include <stdint.h>

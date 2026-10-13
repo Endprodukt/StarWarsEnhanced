@@ -1,4 +1,4 @@
--- swcapture.lua - record Star Wars game ticks from MAME for StarWarsVP.
+-- swcapture.lua - record Star Wars game ticks from MAME for Star Wars Enhanced.
 --
 --   SWCAP_OUT=attract.swcap mame starwars1 -autoboot_script tools/mame/swcapture.lua
 --

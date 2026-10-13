@@ -1,12 +1,12 @@
 /* avgreplay - draw display lists recorded from MAME on the vector board.
  *
- *   avgreplay attract.swcap [--lerp] [--loop] [--hz 60] [--config starwarsvp.ini]
+ *   avgreplay attract.swcap [--lerp] [--loop] [--hz 60] [--config swenhanced.ini]
  *            [--dvg [PORT] | --window | --windowed]
  *
  * Ticks play at the original 20.51 Hz. Each recorded list runs through the
  * AVG interpreter and the display settings, so this shows the real game's
  * pictures exactly as the native renderer will map them: the place to tune
- * starwarsvp.ini on the WG6100 before any game code exists.
+ * swenhanced.ini on the WG6100 before any game code exists.
  *
  * --lerp blends consecutive lists whose lines match one for one (same count
  * and colors): a first look at what interpolation does on the tube. Lists
@@ -138,7 +138,7 @@ int main(int argc, char **argv)
     sw_display_cfg_defaults(&cfg);
     const char *cfg_path = sw_arg(argc, argv, "--config");
     char buf[1024];
-    if (!cfg_path) cfg_path = vp_asset_path("starwarsvp.ini", buf, sizeof buf);
+    if (!cfg_path) cfg_path = vp_asset_path("swenhanced.ini", buf, sizeof buf);
     if (sw_display_cfg_load(&cfg, cfg_path) == 0) printf("avgreplay: settings from %s\n", cfg_path);
 
     sw_app app;

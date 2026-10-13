@@ -26,7 +26,7 @@ static void SDLCALL fill(void *user, Uint8 *stream, int len)
 int sw_audio_open(sw_sndboard *snd)
 {
     if (SDL_InitSubSystem(SDL_INIT_AUDIO) != 0) {
-        fprintf(stderr, "starwarsvp: no sound: %s\n", SDL_GetError());
+        fprintf(stderr, "swenhanced: no sound: %s\n", SDL_GetError());
         return -1;
     }
     SDL_AudioSpec want, have;
@@ -39,7 +39,7 @@ int sw_audio_open(sw_sndboard *snd)
     want.userdata = snd;
     g_dev = SDL_OpenAudioDevice(NULL, 0, &want, &have, 0);
     if (!g_dev) {
-        fprintf(stderr, "starwarsvp: no sound device: %s\n", SDL_GetError());
+        fprintf(stderr, "swenhanced: no sound device: %s\n", SDL_GetError());
         return -1;
     }
     SDL_PauseAudioDevice(g_dev, 0);

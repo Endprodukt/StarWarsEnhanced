@@ -9,8 +9,8 @@
  * the divider gives it is 800000h / V.x. The list is drawn at VGSCAL and
  * VGOFFY above the middle.
  */
-#ifndef SWVP_VIEW_H
-#define SWVP_VIEW_H
+#ifndef SWE_VIEW_H
+#define SWE_VIEW_H
 
 #define SW_VIEW_PERSPECTIVE 512.0
 #define SW_VIEW_W_UNIT      8388608.0

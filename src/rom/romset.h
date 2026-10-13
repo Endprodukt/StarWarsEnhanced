@@ -13,8 +13,8 @@
  * sets work too (starwar1.zip, math box PROMs dumped with other upper
  * bits, no AVG state PROM).
  */
-#ifndef SWVP_ROMSET_H
-#define SWVP_ROMSET_H
+#ifndef SWE_ROMSET_H
+#define SWE_ROMSET_H
 
 #include <stdint.h>
 
@@ -35,7 +35,7 @@ int sw_romset_load(sw_romset *rs, const char *const *paths, int npaths);
 /* The ROMs not found, as a comma-separated list (empty when complete). */
 const char *sw_romset_missing(const sw_romset *rs, char *buf, int size);
 
-/* The default search list: $SWVP_ROMS (a ':'-separated list), then
+/* The default search list: $SWE_ROMS (a ':'-separated list), then
  * ./roms and the usual AdvanceMAME/MAME rom folders, each tried as
  * starwars1.zip, starwars.zip and a directory. Fills up to max entries
  * with pointers into an internal buffer; returns the count. */

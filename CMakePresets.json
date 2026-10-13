@@ -47,7 +47,7 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "BUILD_TESTING": "OFF",
-        "SWVP_PI_SYSROOT": "F:/Tempest 2000 Port/build/pi-sysroot"
+        "SWE_PI_SYSROOT": "F:/Tempest 2000 Port/build/pi-sysroot"
       }
     }
   ],

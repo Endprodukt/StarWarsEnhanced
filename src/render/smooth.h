@@ -20,8 +20,8 @@
  * The sight is not part of the frames: the interrupt moves it, and it is
  * shown where the yoke has it now.
  */
-#ifndef SWVP_SMOOTH_H
-#define SWVP_SMOOTH_H
+#ifndef SWE_SMOOTH_H
+#define SWE_SMOOTH_H
 
 #include "avg/avg.h"
 

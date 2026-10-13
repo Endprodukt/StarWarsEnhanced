@@ -114,7 +114,7 @@ int sw_display_cfg_save(const sw_display_cfg *c, const char *path)
 {
     FILE *f = fopen(path, "w");
     if (!f) return -1;
-    fprintf(f, "; Star Wars VP display settings (starwarsvp --calibrate to tune)\n\n");
+    fprintf(f, "; Star Wars Enhanced display settings (swenhanced --calibrate to tune)\n\n");
     fprintf(f, "; AVG window (AVG units) stretched to the board's 0..4095\n");
     fprintf(f, "avg_left = %g\navg_right = %g\navg_bottom = %g\navg_top = %g\n",
             c->avg_left, c->avg_right, c->avg_bottom, c->avg_top);

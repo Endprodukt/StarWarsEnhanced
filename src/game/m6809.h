@@ -3,8 +3,8 @@
  * The ports keep the original's memory accesses one for one, through the
  * bus (RAM, math box, VG RAM, ROM tables and I/O alike), so each line of C
  * stands next to its line of the 1983 source. Private to src/game. */
-#ifndef SWVP_M6809_H
-#define SWVP_M6809_H
+#ifndef SWE_M6809_H
+#define SWE_M6809_H
 
 #include "core/machine.h"
 

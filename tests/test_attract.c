@@ -2,7 +2,7 @@
  * coming, the vector generator keeps being restarted and every display
  * list halts, with the yoke at rest and held in each corner.
  *
- * Needs the ROM set (the game's tables are in it): looks in $SWVP_ROMS and
+ * Needs the ROM set (the game's tables are in it): looks in $SWE_ROMS and
  * the usual folders, and passes without testing when there is none. */
 #include "avg/avg.h"
 #include "core/emu.h"
@@ -88,7 +88,7 @@ static int run_game(int irqs, int stand_in)
     memset(&list, 0, sizeof list);
     sw_machine_init(&m, &rom);
     memset(&emu, 0, sizeof emu);
-    /* The sound board with it; $SWVP_WAV names a file for what it plays. */
+    /* The sound board with it; $SWE_WAV names a file for what it plays. */
     static sw_sndboard snd;
     sw_sndboard_init(&snd, &m);
     snd.native = stand_in >= 2;     /* the sound board's program in C with the steady frames */
@@ -106,7 +106,7 @@ static int run_game(int irqs, int stand_in)
         emu.snd = &snd;
         emu.yoke_exact = 1;
     }
-    FILE *wav = getenv("SWVP_WAV") ? fopen(getenv("SWVP_WAV"), "wb") : NULL;
+    FILE *wav = getenv("SWE_WAV") ? fopen(getenv("SWE_WAV"), "wb") : NULL;
     static int16_t pcm[4096];
     long samples = 0, loud = 0, requests = 0;
     uint32_t snd_seen = 0;

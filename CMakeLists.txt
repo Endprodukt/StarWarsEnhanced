@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(starwarsvp VERSION 0.1.0 LANGUAGES C CXX)
+project(swenhanced VERSION 0.1.0 LANGUAGES C CXX)
 
 # Builds (see README.md):
 #   cmake --preset linux && cmake --build --preset linux   # development, native Linux
@@ -16,13 +16,13 @@ endif()
 
 # --- the VectorPie SDK, unmodified, as a submodule --------------------------
 
-set(SWVP_SDK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/VectorPie/sdk"
+set(SWE_SDK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/external/VectorPie/sdk"
     CACHE PATH "VectorPie SDK source directory")
-if(NOT EXISTS "${SWVP_SDK_DIR}/CMakeLists.txt")
-    message(FATAL_ERROR "VectorPie SDK not found in ${SWVP_SDK_DIR}: "
+if(NOT EXISTS "${SWE_SDK_DIR}/CMakeLists.txt")
+    message(FATAL_ERROR "VectorPie SDK not found in ${SWE_SDK_DIR}: "
                         "git submodule update --init")
 endif()
-if(SWVP_PI_BUILD)
+if(SWE_PI_BUILD)
     # cmake/toolchain-pi-clang.cmake (the Pi build from Windows, without
     # WSL): the cabinet's own SDL2, by its file.
     add_library(SDL2::SDL2 SHARED IMPORTED GLOBAL)
@@ -34,7 +34,7 @@ if(SWVP_PI_BUILD)
 endif()
 set(VP_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
 set(VP_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-add_subdirectory("${SWVP_SDK_DIR}" vectorpie EXCLUDE_FROM_ALL)
+add_subdirectory("${SWE_SDK_DIR}" vectorpie EXCLUDE_FROM_ALL)
 
 # --- third party ------------------------------------------------------------
 
@@ -110,9 +110,9 @@ target_compile_options(swout PRIVATE -Wall -Wextra)
 
 # --- programs -----------------------------------------------------------------
 
-add_executable(starwarsvp src/main.c)
-target_link_libraries(starwarsvp PRIVATE swout)
-vp_program(starwarsvp)
+add_executable(swenhanced src/main.c)
+target_link_libraries(swenhanced PRIVATE swout)
+vp_program(swenhanced)
 
 # Plays back display lists recorded from MAME (tools/mame/swcapture.lua)
 # on the board or in a window: checks the AVG interpreter and the monitor
@@ -155,7 +155,7 @@ if(BUILD_TESTING)
     target_link_libraries(test_irq PRIVATE swcore)
     add_test(NAME irq COMMAND test_irq)
 
-    # Passes without testing when no ROM set is found ($SWVP_ROMS, ./roms, ...).
+    # Passes without testing when no ROM set is found ($SWE_ROMS, ./roms, ...).
     add_executable(test_attract tests/test_attract.c)
     target_link_libraries(test_attract PRIVATE swcore)
     add_test(NAME attract COMMAND test_attract)
@@ -191,6 +191,6 @@ endif()
 
 # --- package files next to the programs (vp_asset_path looks there) ---------
 
-configure_file(package/starwarsvp.ini ${CMAKE_CURRENT_BINARY_DIR}/starwarsvp.ini COPYONLY)
+configure_file(package/swenhanced.ini ${CMAKE_CURRENT_BINARY_DIR}/swenhanced.ini COPYONLY)
 configure_file(package/marquee.png ${CMAKE_CURRENT_BINARY_DIR}/marquee.png COPYONLY)
 configure_file(package/game.ini ${CMAKE_CURRENT_BINARY_DIR}/game.ini COPYONLY)

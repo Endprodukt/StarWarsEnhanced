@@ -15,7 +15,7 @@
  * 3, which has the surface).
  * --every N: only every Nth picture is written (stills to look at).
  *
- * Runs the game as starwarsvp does (the programs in C, steady frames, the
+ * Runs the game as swenhanced does (the programs in C, steady frames, the
  * pictures in between computed), played by a script: N seconds of the
  * attract mode, then two coins, start, and the yoke weaving with the
  * trigger pulled. Every picture is drawn as a vector monitor shows it
@@ -230,7 +230,7 @@ int main(int argc, char **argv)
     tmp = (float *)calloc((size_t)(W / 4) * (H / 4) * 3, sizeof *tmp);
     rgb = (uint8_t *)malloc((size_t)W * H * 3);
 
-    /* the machine, as starwarsvp sets it up */
+    /* the machine, as swenhanced sets it up */
     sw_machine_init(&m, &rom);
     m.yoke_exact = 1;
     m.steady = 1;

@@ -21,8 +21,8 @@
  * Fixed point: unit vectors and sines are Q2.14 (4000h = 1.0); positions
  * are 16-bit and wrap.
  */
-#ifndef SWVP_MBOX_H
-#define SWVP_MBOX_H
+#ifndef SWE_MBOX_H
+#define SWE_MBOX_H
 
 #include <stdint.h>
 
@@ -149,7 +149,7 @@ void sw_mbox_join_proms(const uint8_t proms[0x1000], uint16_t out[1024]);
 /* Run every program both ways (generated code and the interpreter on the
  * given PROM words) from `trials` pseudo-random states each. Returns the
  * number of programs that disagree: 0 means the native math box is the
- * board's. starwarsvp runs this against the cabinet's own PROMs. */
+ * board's. swenhanced runs this against the cabinet's own PROMs. */
 int sw_mbox_selftest(const uint16_t prom[1024], int trials);
 
 /* --- the divider (4704-4707 write, 4700/4701 read) ------------------------ */
