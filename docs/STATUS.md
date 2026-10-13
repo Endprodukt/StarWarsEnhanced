@@ -356,8 +356,12 @@ Der Besitzer wünschte sich ein Spiel ohne Münzen. Das hat das Original
 schon: die Option COIN VALUE auf FREE PLAY (im Testmenü unter Game Options
 oder auf der Optionsseite des Automaten). Dann hält der Attract-Modus immer
 einen Credit, "INSERT COINS" erscheint nicht mehr, es steht "PRESS FIRE TO
-START" und "1 CREDIT", und Feuer startet das Spiel (`tests/test_options.c`
-prüft es: Credit da, Feuer startet).
+START", und Feuer startet das Spiel. Die Zeile "1 CREDIT" darunter, die das
+Original im Free Play zeigt, ist auf Wunsch des Besitzers weg (vwcoin in
+`src/game/mainline.c` bricht bei COIN VALUE 0 nach der ersten Zeile ab; die
+Aufnahmen laufen mit 1 COIN 1 PLAY und sind unberührt). `tests/test_options.c`
+prüft: Credit da, "PRESS FIRE TO START" gezeichnet, keine Credit-Zeile,
+Feuer startet.
 
 ## Marquee (2026-10-13)
 

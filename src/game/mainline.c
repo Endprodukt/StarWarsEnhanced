@@ -294,6 +294,9 @@ static void vwcoin(sw_machine *m)
         sw_domess(m, (R8(SW_OPTS0 + 1) & 0x03) + SW_MS_FRE);    /* 0=FREE,1=2 PLAYS/COIN,2=1PLAY/COIN,3=2COINS/PLAY */
         return;
     }
+    /* (free play, not in the original: the credit given is nobody's money,
+     * so no "1 CREDIT" under PRESS FIRE TO START) */
+    if ((R8(SW_OPTS0 + 1) & 0x03) == 0) return;
     /* GAME OVER GOES WITH # OF CREDITS: SHOW HOW MANY "CREDITS" THEY HAVE */
     if ((uint8_t)(R8(SW_SSCRDT) + R8(SW_SCNCT)) == 1) sw_domess(m, SW_MS_CRD + 1);    /* SINGULAR CREDIT */
     else sw_domess(m, SW_MS_CRD);

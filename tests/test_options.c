@@ -82,8 +82,18 @@ int main(void)
     /* free play (coin value 0): the attract mode keeps a credit, and the
      * fire button alone starts a game */
     sw_option_set(&m, 0, 0);
-    run(600);
+    run(300);
+    memset(m.vgtag, 0, sizeof m.vgtag);     /* only what the free-play attract mode draws from here */
+    run(300);
     if (sw_rd8(&m, SW_SSCRDT) != 1) { printf("free play: credits %d, 1 expected\n", sw_rd8(&m, SW_SSCRDT)); fail = 1; }
+    /* it says PRESS FIRE TO START, but not how many credits (none were paid) */
+    int start = 0, credit = 0;
+    for (size_t i = 0; i < sizeof m.vgtag / sizeof m.vgtag[0]; i++) {
+        if (m.vgtag[i] == SW_TAG(SW_TAG_MESS, SW_MS_STR)) start = 1;
+        if (m.vgtag[i] == SW_TAG(SW_TAG_MESS, SW_MS_CRD) || m.vgtag[i] == SW_TAG(SW_TAG_MESS, SW_MS_CRD + 1)) credit = 1;
+    }
+    if (!start) { printf("free play: no PRESS FIRE TO START\n"); fail = 1; }
+    if (credit) { printf("free play: a credit line is drawn\n"); fail = 1; }
     for (int i = 0; i < 40; i++) {
         m.in.in0 = i < 30 ? (uint8_t)~SW_IN0_LFIRE : 0xff;
         m.in.in1 = 0xff;
