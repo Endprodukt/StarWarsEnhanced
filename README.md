@@ -25,7 +25,8 @@ Darstellung flüssig.
 
 Aktueller Stand, was am Automaten noch ungeprüft ist, und nächste Schritte:
 [docs/STATUS.md](docs/STATUS.md). Plan und Hintergründe:
-[docs/PLAN.md](docs/PLAN.md).
+[docs/PLAN.md](docs/PLAN.md). Alle Sounds des Spiels:
+[docs/SOUNDS.md](docs/SOUNDS.md).
 
 ## ROMs
 

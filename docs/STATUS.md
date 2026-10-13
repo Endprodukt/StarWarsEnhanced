@@ -98,7 +98,13 @@ Soundplatine, die Zeit des Vektorgenerators.
 * **Film vom Port** (`tools/swvideo`): lässt das Spiel ohne Automat laufen
   (Attract, zwei Münzen, Start, Joch pendelt und feuert), zeichnet jedes
   Bild wie ein Vektormonitor und schreibt den Ton mit; `mux.py` macht daraus
-  ein MP4 (braucht PyAV). Ergebnis: `video/starwarsvp.mp4` (nicht im Repo).
+  ein MP4 (braucht PyAV). Ergebnis: `video/starwarsvp.mp4` (nicht im Repo;
+  es liegt immer nur das neueste Video dort, alte werden gelöscht). Behoben
+  am 2026-10-13: Das Werkzeug ließ das Soundboard nicht zwischen zwei
+  Anforderungen eines Frames laufen, das Spiel setzte es deshalb 129-mal
+  zurück (Ton und Musik abgehackt). Das Spiel selbst (`src/main.c`) war
+  nicht betroffen.
+* **Liste aller Sounds** für den späteren Ersatz: `docs/SOUNDS.md`.
 * **Strich-Sortierung**: 3-mal weniger Leerweg auf der Highscore-Seite.
 * **Fadenkreuz zentriert** ab dem ersten Bild (`yoke_autocenter`).
 * **NOVRAM** (Optionen, Buchhaltung, beste drei Scores) in `save/nvram.bin`.

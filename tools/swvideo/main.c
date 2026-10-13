@@ -162,6 +162,14 @@ static void wav_header(FILE *f, uint32_t samples)
     fwrite("data", 1, 4, f); fwrite(&bytes, 4, 1, f);
 }
 
+/* sw_machine.sound_wait: the game waits for the sound board to take a byte
+ * (without it a second request in a frame resets the board). */
+static void on_sound_wait(void *u, int cycles)
+{
+    (void)u;
+    sw_sndboard_run(&snd, cycles);
+}
+
 int main(int argc, char **argv)
 {
     const char *paths[32];
@@ -203,12 +211,15 @@ int main(int argc, char **argv)
     sw_sndboard_reset(&snd);
     sw_reset(&m);
     m.sound_board = 1;
+    m.sound_wait = on_sound_wait;
     sw_picture_init(&pic, &m);
 
     wav_header(wav, 0);
     uint32_t samples = 0;
     static int16_t pcm[4096];
     uint64_t irqs = 0;
+    uint32_t seen = 0;
+    unsigned resets = 0;
     long frames = (long)(seconds * fps);
     long start = (long)(attract * SW_IRQ_HZ);      /* the interrupt the first coin drops at */
     for (long f = 0; f < frames; f++) {
@@ -243,6 +254,7 @@ int main(int argc, char **argv)
             sw_picture_irq_begin(&pic, (double)irqs / SW_IRQ_HZ);
             sw_irq(&m);
             sw_main_poll(&m);
+            for (; seen < m.snd_w; seen++) resets += m.snd_q[seen % sizeof m.snd_q] == 0;
             sw_sndboard_run(&snd, SND_CYCLES_PER_IRQ);
             sw_picture_irq_end(&pic);
             for (int got; (got = sw_sndboard_read(&snd, pcm, 4096)) > 0; ) {
@@ -258,6 +270,7 @@ int main(int argc, char **argv)
             fprintf(stderr, "swvideo: %.0f s of %.0f, phase %02X, wave %d, shields %d, %d lines\n", now, seconds,
                     m.ram[SW_PHASE - 0x4800], m.ram[SW_GM_WAV - 0x4800] + 1, (int8_t)m.ram[SW_S_GAS - 0x4800], count);
     }
+    fprintf(stderr, "swvideo: %u requests to the sound board, %u of them resets\n", (unsigned)m.snd_w, resets);
     fseek(wav, 0, SEEK_SET);
     wav_header(wav, samples);
     fclose(wav);
