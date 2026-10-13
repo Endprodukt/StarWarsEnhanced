@@ -106,6 +106,15 @@ Soundplatine, die Zeit des Vektorgenerators.
   nicht betroffen.
 * **Liste aller Sounds** für den späteren Ersatz: `docs/SOUNDS.md`.
 * **Strich-Sortierung**: 3-mal weniger Leerweg auf der Highscore-Seite.
+* **Eigenes Testmenü** (`src/platform/menu.c`, 2026-10-13): Der
+  Selbsttest-Knopf (`p1_button6`) öffnet es, das Spiel steht solange. Zeilen:
+  Enhanced Settings (Occlusion, Smooth Motion, Frame Pace, Stroke Sorting),
+  Sound Test (alle 59 Anforderungen aus `docs/SOUNDS.md` mit Nummer und
+  Name), Screen Calibration, Arcade Operator Screens (die Statistik- und
+  Optionsseiten des Automatenprogramms; der Knopf führt von dort zurück),
+  Save and Exit. Joch wählt und ändert, Feuer löst aus, der Selbsttest-Knopf
+  speichert in `save/starwarsvp.ini` und schließt. Kompiliert für PC und Pi,
+  aber **noch nie gesehen oder bedient** (kein Automat, kein Bildschirmfoto).
 * **Occlusion** (`occlusion = 1`, Standard; erste "Enhanced"-Funktion,
   abschaltbar, Wunsch des Besitzers vom 2026-10-13): Dinge sind nicht mehr
   durchsichtig. `src/render/solid.c` schneidet aus dem fertigen Bild die
@@ -142,6 +151,10 @@ Attract-Modus davor. Ungeprüft am Gerät, also nur gerechnet und gemessen:
 * `--calibrate`, die Bildrate der Platine im Spiel.
 
 ## Bekannte Grenzen
+
+* **Testmenü**: ungesehen (siehe oben). `yoke_autocenter` steht nicht im
+  Menü (wirkt erst nach Neustart). Der Controls-Test (`--controls`) ist
+  noch kein Menüpunkt.
 
 * **Occlusion**: noch nicht am Automaten gesehen, und die Rechenzeit auf dem
   Pi ist nicht gemessen (jede Linie gegen jede Fläche; am PC unauffällig).

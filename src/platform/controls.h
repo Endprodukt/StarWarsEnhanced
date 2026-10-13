@@ -8,7 +8,8 @@
  *   right thumb p1_button3              -> IN1 D4
  *   coins       coin1 / coin2           -> IN0 D1 / D0, as a 100 ms pulse
  *   aux coin    p1_button5              -> IN0 D2 (the operator's button: next page in self test)
- *   self test   p1_button6              -> IN0 D4, a switch: each press turns it over
+ *   self test   p1_button6              -> opens Star Wars VP's own test menu (platform/menu.h);
+ *                                          from there IN0 D4, the board's self-test switch
  *
  * The same buttons as MAME's Star Wars mapping. Coins are pulses timed in
  * IRQs, because MOOLAH accepts only 16..200 ms of switch closure.
@@ -26,7 +27,7 @@ typedef struct sw_controls {
     uint8_t in0, in1;          /* levels from the last read, active low */
     uint8_t adc_x, adc_y;
     int     coin_pulse[2];     /* IRQs left with the coin switch closed */
-    int     self_test;         /* the self-test switch is on */
+    int     self_test;         /* the self-test switch is on (set by the program, from its menu) */
 } sw_controls;
 
 void sw_controls_init(sw_controls *c, vp_input *in);

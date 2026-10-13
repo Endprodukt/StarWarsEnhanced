@@ -15,6 +15,9 @@ Darstellung flüssig.
   der des Automaten im Schnitt (Graben 13, Banner 20,5 Frames pro Sekunde):
   so schnell wie das Original, ohne dessen Schwanken. Einstellbar
   (`steady_frames`).
+* **Testmenü**: Der Selbsttest-Knopf öffnet ein eigenes Menü mit den
+  Enhanced Settings (alle abschaltbar), Soundtest, Bildkalibrierung und dem
+  Weg zu den Operator-Seiten des Automaten.
 * **Occlusion** (Enhanced, abschaltbar mit `occlusion = 0`): Schiffe, Türme,
   der Schriftzug und die eigenen Kanonen sind massiv; was dahinter liegt,
   wird nicht gezeichnet.
@@ -121,7 +124,21 @@ Belegung über die `advmame.rc` des Automaten, wie bei MAMEs Star Wars:
 | Daumen links / rechts | `p1_button2` / `p1_button3` |
 | Münze L / R | `coin1` / `coin2` |
 | Aux-Münze (Betreiber: nächste Seite im Selbsttest) | `p1_button5` |
-| Selbsttest-Schalter (jeder Druck schaltet um: Statistik, Optionen, Tests) | `p1_button6` |
+| Selbsttest-Knopf: öffnet und schließt das Testmenü (siehe unten) | `p1_button6` |
+
+### Testmenü
+
+Der Selbsttest-Knopf hält das Spiel an und öffnet das Menü. Joch auf/ab
+wählt eine Zeile, links/rechts oder Feuer ändert sie; der Selbsttest-Knopf
+speichert und kehrt ins Spiel zurück.
+
+| Zeile | |
+|---|---|
+| Occlusion, Smooth Motion, Frame Pace, Stroke Sorting | die Enhanced Settings, jede abschaltbar (wie `occlusion`, `smooth`, `steady_frames`, `sort_strokes` unten) |
+| Sound Test | Joch links/rechts wählt eine der 59 Anforderungen ([docs/SOUNDS.md](docs/SOUNDS.md)), Feuer spielt sie |
+| Screen Calibration | das Testbild von `--calibrate`; Feuer wechselt Größe, Lage, Gamma, Helligkeit, das Joch stellt ein |
+| Arcade Operator Screens | Statistik und Optionen des Automatenprogramms (Aux-Münze blättert); der Selbsttest-Knopf führt zurück ins Spiel |
+| Save and Exit | wie der Selbsttest-Knopf |
 
 ## Einstellungen
 
@@ -139,8 +156,8 @@ Belegung über die `advmame.rc` des Automaten, wie bei MAMEs Star Wars:
 | `gamma`, `floor`, `brightness`, `color_*`, `defocus_mode` | Helligkeit und Farben |
 
 Optionen des Spiels (Münzen, Schilde, Schwierigkeit, Musik im Attract-Modus)
-stellt man wie am Automaten auf dessen Optionsseite ein (Selbsttest-Schalter,
-dann Aux-Münze). Sie liegen mit Buchhaltung und den besten drei Scores in
+stellt man wie am Automaten auf dessen Optionsseite ein (Testmenü, Arcade
+Operator Screens, dann Aux-Münze). Sie liegen mit Buchhaltung und den besten drei Scores in
 `save/nvram.bin`.
 
 ## Aufnahmen aus MAME

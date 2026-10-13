@@ -7,6 +7,8 @@
  * shows the controls test, --calibrate the calibration screen for the
  * monitor.
  *
+ * The self-test button opens the port's own test menu (platform/menu.h).
+ *
  *   starwarsvp [--calibrate | --controls] [--roms PATH] [--config INI] [--hz N]
  *              [--dvg [PORT] | --window | --windowed]
  */
@@ -19,6 +21,7 @@
 #include "platform/controls.h"
 #include "platform/app.h"
 #include "platform/audio.h"
+#include "platform/menu.h"
 #include "render/config.h"
 #include "render/dvgmap.h"
 #include "render/picture.h"
@@ -134,6 +137,14 @@ static void calib_adjust(calib *c, sw_display_cfg *cfg, vp_input *in)
     if (vp_input_pressed(in, "p1_button1")) c->mode = (c->mode + 1) % 4;
     int dx = vp_input_pressed(in, "p1_right") - vp_input_pressed(in, "p1_left");
     int dy = vp_input_pressed(in, "p1_up") - vp_input_pressed(in, "p1_down");
+    /* the cabinet has no such switches: a push of its yoke is a step too */
+    static int held_x, held_y;
+    float ax = vp_input_axis(in, "p1_stickx"), ay = vp_input_axis(in, "p1_sticky");
+    int px = ax < -0.5f ? -1 : ax > 0.5f ? 1 : 0, py = ay < -0.5f ? 1 : ay > 0.5f ? -1 : 0;
+    if (px != held_x) dx += px;
+    if (py != held_y) dy += py;
+    held_x = px;
+    held_y = py;
     if (!dx && !dy) return;
     switch (c->mode) {
     case 0:     /* size: the margins shrink or grow the picture */
@@ -342,6 +353,8 @@ int main(int argc, char **argv)
 
     int calibrate = sw_flag(argc, argv, "--calibrate");
     static calib cal;
+    static sw_menu menu;
+    int menu_calibrate = 0;                 /* the calibration screen, from the menu */
     sw_sched sched;
     sw_sched_init(&sched);
 
@@ -391,7 +404,49 @@ int main(int argc, char **argv)
     double dt;
     while (sw_app_poll(&app, &dt)) {
         sw_controls_read(&brd.ctl, app.in);
-        sw_sched_advance(&sched, dt, roms_ok ? &hooks : NULL);
+        /* The self-test button: out of where it led (the arcade program's
+         * operator screens, the calibration), else the menu open or shut. */
+        int menu_left = 0;
+        if (roms_ok && !calibrate && vp_input_pressed(app.in, "p1_button6")) {
+            if (brd.ctl.self_test) brd.ctl.self_test = 0;
+            else if (menu_calibrate) menu_calibrate = 0;
+            else if (menu.open) menu_left = 1;
+            else menu.open = 1;
+        }
+        if (menu.open && !menu_calibrate && !menu_left) {
+            switch (sw_menu_update(&menu, &cfg, app.in, app.clock)) {
+            case SW_MENU_CHANGED:
+                brd.pic.occlusion = brd.native && cfg.occlusion;
+                brd.m.steady = brd.original ? 0 : (uint8_t)cfg.steady_frames;
+                break;
+            case SW_MENU_SOUND:             /* as the main board asks for it */
+                brd.m.sound_out = (uint8_t)menu.sound;
+                brd.m.sound_out_full = 1;
+                break;
+            case SW_MENU_CALIBRATE:
+                menu_calibrate = 1;
+                cal.mode = 3;               /* (the same push of the trigger steps on to the first) */
+                break;
+            case SW_MENU_OPERATOR:
+                brd.ctl.self_test = 1;
+                menu_left = 1;
+                break;
+            case SW_MENU_CLOSE:
+                menu_left = 1;
+                break;
+            }
+        }
+        if (menu_left) {
+            menu.open = 0;
+            if (sw_display_cfg_save(&cfg, cfg_path) == 0) printf("starwarsvp: saved %s\n", cfg_path);
+            else fprintf(stderr, "starwarsvp: cannot write %s\n", cfg_path);
+        }
+        if (menu.open) {
+            /* the game stands still; the sound board goes on, for the sound test */
+            if (brd.snd) sw_sndboard_run(brd.snd, (int)((dt > 0.1 ? 0.1 : dt) * SW_IRQ_HZ * SW_CPU_CYCLES_PER_IRQ));
+        } else {
+            sw_sched_advance(&sched, dt, roms_ok ? &hooks : NULL);
+        }
         if (brd.snd) sw_audio_balance(brd.snd);
         if (brd.m.nv_stores != nv_saved) {      /* the program stored its NOVRAM */
             nv_saved = brd.m.nv_stores;
@@ -416,9 +471,9 @@ int main(int argc, char **argv)
             const char *text[] = { "STAR WARS VP", "ROMS NOT FOUND", "NEEDED: MAME SET STARWARS1",
                                    "STARWARS1.ZIP AND STARWARS.ZIP", "IN THE ROM FOLDER OR --ROMS" };
             draw_text_lines(app.dvg, text, 5, 2600);
-        } else if (calibrate) {
+        } else if (calibrate || menu_calibrate) {
             calib_adjust(&cal, &cfg, app.in);
-            if (vp_input_pressed(app.in, "p1_button2")) {
+            if (calibrate && vp_input_pressed(app.in, "p1_button2")) {
                 if (sw_display_cfg_save(&cfg, cfg_path) == 0) printf("starwarsvp: saved %s\n", cfg_path);
                 else fprintf(stderr, "starwarsvp: cannot write %s\n", cfg_path);
             }
@@ -426,9 +481,11 @@ int main(int argc, char **argv)
             sw_draw_lines(app.dvg, &cfg, cal.lines, cal.count);
             static const char *const modes[] = { "SIZE", "POSITION", "GAMMA FLOOR", "BRIGHTNESS" };
             char line[64];
-            snprintf(line, sizeof line, "%s  B1 MODE  B2 SAVE", modes[cal.mode]);
+            snprintf(line, sizeof line, calibrate ? "%s  B1 MODE  B2 SAVE" : "%s  FIRE MODE  TEST BUTTON BACK", modes[cal.mode]);
             const char *text[] = { line };
             draw_text_lines(app.dvg, text, 1, 700);
+        } else if (menu.open) {
+            sw_menu_draw(&menu, &cfg, app.dvg);
         } else if (brd.controls_test) {
             draw_controls_test(&app, &cfg, &brd, sw_sched_vg_alpha(&sched), mbox_ok);
         } else {
