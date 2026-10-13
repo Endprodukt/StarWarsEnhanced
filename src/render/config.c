@@ -21,7 +21,7 @@ void sw_display_cfg_defaults(sw_display_cfg *c)
     c->margin_left = c->margin_right = c->margin_bottom = c->margin_top = 64;
     c->gamma = 1.0f;
     c->floor = 0.12f;
-    c->brightness = 1.0f;
+    c->brightness = 1.7f;       /* the game's normal line (COLOR 80h) at 95 %, its bright ones at full */
     for (int i = 0; i < 8; i++) {
         c->palette[i][0] = (i & 4) ? 255 : 0;
         c->palette[i][1] = (i & 2) ? 255 : 0;
@@ -119,7 +119,8 @@ int sw_display_cfg_save(const sw_display_cfg *c, const char *path)
     fprintf(f, "margin_left = %d\nmargin_right = %d\nmargin_bottom = %d\nmargin_top = %d\n",
             c->margin_left, c->margin_right, c->margin_bottom, c->margin_top);
     fprintf(f, "flip_x = %d\nflip_y = %d\n", c->flip_x, c->flip_y);
-    fprintf(f, "\n; beam = floor + (1 - floor) * (intensity/255)^gamma, times brightness\n");
+    fprintf(f, "\n; beam = floor + (1 - floor) * (intensity/255)^gamma, times brightness (up to 2;\n"
+               "; the game's normal lines have intensity 80h, so 1.7 puts them near full)\n");
     fprintf(f, "gamma = %g\nfloor = %g\nbrightness = %g\n", c->gamma, c->floor, c->brightness);
     fprintf(f, "\n; board RGB per AVG color at full intensity\n");
     for (int i = 1; i < 8; i++)

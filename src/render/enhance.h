@@ -57,6 +57,9 @@ typedef struct sw_enhance {
     /* the view: where the player is, how he is turned */
     double   r[3][3], t[3];
     double   spin_c, spin_s;
+    /* what is drawn is shrunk on the screen about the point (foot_x, foot_y)
+     * by `shrink` (1: not at all): the arcade machine's sizing of a building */
+    float    shrink, foot_x, foot_y;
     float    plate;                             /* how bright the plating is (1; fading as the ground ends) */
     double   plate_at;                    /* a block being drawn is turned so about its upright axis (cos, sin) */
 

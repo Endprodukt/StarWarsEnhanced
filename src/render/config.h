@@ -20,7 +20,9 @@ typedef struct sw_display_cfg {
     int flip_x, flip_y;
 
     /* Intensity 0..255 -> beam: out = floor + (1 - floor) * (i/255)^gamma,
-     * times brightness. floor keeps the faintest lit vectors visible. */
+     * times brightness (up to 2: the game draws its normal lines at the
+     * intensity 80h, so 1.7 brings them near full, its bright ones to it).
+     * floor keeps the faintest lit vectors visible. */
     float gamma;
     float floor;
     float brightness;

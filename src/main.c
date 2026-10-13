@@ -167,7 +167,7 @@ static void calib_adjust(calib *c, sw_display_cfg *cfg, vp_input *in)
     case 3:
         cfg->brightness += (float)(dx + dy) * 0.05f;
         if (cfg->brightness < 0.1f) cfg->brightness = 0.1f;
-        if (cfg->brightness > 1.0f) cfg->brightness = 1.0f;
+        if (cfg->brightness > 2.0f) cfg->brightness = 2.0f;
         break;
     }
 }

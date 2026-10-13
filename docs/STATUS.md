@@ -290,6 +290,28 @@ Sprung nicht); die Reihenfolge aller anderen Linien bleibt die des Spiels,
 nichts wird umsortiert. Damit kommt der Strahl zum T immer vom selben Ort.
 Am Gerät ungeprüft.
 
+## Größe der Türme, Helligkeit (2026-10-13)
+
+* **Türme wirkten gedrungen, das Original weitläufiger** (Besitzer). Grund:
+  Der Automat zeichnet ein Gebäude nicht in reiner Perspektive. GDVIEW legt
+  über die Perspektive noch einen linearen Maßstab mit der Entfernung
+  (`M.GDSC`: Linearfaktor XP<<2, also Größe mal 1 - XP/4000h), um den Fuß
+  des Gebäudes herum. Ein fernes Gebäude ist damit viel kleiner als die
+  Perspektive es machte, und die Szene wirkt weit. Die erweiterten Türme
+  bekommen jetzt genau diesen Faktor (`sw_enhance.shrink`, um den Fuß).
+  Standbilder Original gegen erweitert: gleiche Größe und gleicher
+  Abstand. Folge: Die Türme wachsen beim Näherkommen wieder wie am Automaten
+  (das ist derselbe Mechanismus); die Helligkeit nimmt weiter mit der Nähe
+  zu.
+* **Gesamthelligkeit unter MAME am Gerät** (Besitzer). Die Zeichenroutinen
+  des Spiels benutzen als normale Helligkeit das COLOR-Byte 80h; nach dem
+  ZZ-Netzwerk und der Kurve `floor + (1 - floor) * (i/255)^gamma` landete
+  eine normale Linie bei 56 %. `brightness` darf jetzt bis 2,0 gehen, ab
+  Werk 1,7: eine normale Linie bei 95 %, die hellen (FFh, Treffer, Blitze)
+  am Anschlag. Wie AdvanceMAME die Intensität auf die DVG abbildet, ist
+  nicht nachgesehen; der Wert ist eine Annahme und am Gerät nachzustellen
+  (Testmenü, Screen Calibration, vierter Modus, Joch).
+
 ## Free Play (2026-10-13)
 
 Der Besitzer wünschte sich ein Spiel ohne Münzen. Das hat das Original
