@@ -78,9 +78,15 @@ Eingaben und Zufallszahlen (`PRNG`, 0x4703) mitgeschnitten und eingespeist.
       Originalkommentaren. Dazu ein Mikrocode-Interpreter als Referenz,
       Tests gegen ihn und gegen die Formeln aus SWMP.DOC, der Divider, und
       beim Start ein Selbsttest gegen die PROMs des eigenen ROM-Satzes
-- [ ] **3 Takte und Steuerung**: WSINT nativ (Entprellen, `DOPOTS`, `RHLIM`,
-      `RHPOS`, `GNSITE`), Joch über `vp_input_axis`, Münzen und Credits
-      über `vp_credits`, LEDs über `vp_lamps`
+- [x] **3 Interrupt und Steuerung**: WSINT nativ (`src/game/irq.c`):
+      Spieltakt über `GMTIMR`/`GMSYNC`, Entprellen, Feuer-Flanken
+      (`VG.LON`), Potifilter (`DOPOTS`), Spielzeit-Timer in BCD,
+      VG-Neustart mit Pufferwechsel, Joch-Kalibrierung (`RHLIM`),
+      Fadenkreuz (`RHPOS`, `GNSITE`), Laser-, Schuss- und Blitz-Tabellen,
+      Laser-Splash (TCSPLS). Münzen über Ataris MOOLAH (COIN69) 1:1.
+      Speicherbild mit den Originaladressen (`src/core/machine.c`),
+      Steuerung über `vp_input` (`src/platform/controls.c`), Live-Testbild
+      für Joch, Knöpfe und Münzen
 - [ ] **4 Phasen**, jede gegen die MAME-Aufnahme geprüft: Attract/Banner/
       Highscores → Weltraumwellen (SP1/SP2, `STWSP1`, `AIM`, `CPU`) →
       Boden und Türme (WSGRND) → Graben (WSBASE) → Explosionen (WSXPLD)
@@ -93,6 +99,16 @@ Eingaben und Zufallszahlen (`PRNG`, 0x4703) mitgeschnitten und eingespeist.
 - [ ] **8 Paket**: `.vpk`, Highscores über `vp_hiscore`, Marquee
 
 ## Offene Punkte
+
+* EEROM/NOVRAM (TCEROM.MAC: Optionen, Buchhaltung, Highscores) ist noch
+  nicht portiert. Bis dahin ist der Münzmodus fest „1 Spiel pro Münze“.
+* Laut Quellcode zählt die erste Münze nach dem Einschalten nicht (`$CNSTT`
+  startet bei 0 = „zu lange“, MOOLAH läuft erst bei Schalteraktivität).
+  Gegen eine MAME-Aufnahme zu prüfen.
+* Im Original läuft die Hauptschleife über mehrere IRQs hinweg und liest
+  dabei vom IRQ geänderte Werte (z. B. `VGTOSITE` unter SEI). Nativ läuft sie
+  in einem Stück. Beim Vergleich mit MAME-Aufnahmen müssen diese Werte
+  aufgezeichnet und eingespeist werden.
 
 * Die AVG-Einheiten des Bildschirms (VGEDG*: ±510 × −612…+600) sind aus
   WSROOT.MAP übernommen. Lage und Seitenverhältnis auf dem WG6100 müssen mit

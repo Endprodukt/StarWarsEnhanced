@@ -11,7 +11,7 @@ USB-DVG, Vektormonitor (Wells-Gardner 6100).
 * Remaster: verdeckte Linien, neue Modelle, Sound wahlweise original
   (POKEY/TMS5220) oder neu
 
-Stand: **Schritt 2 von 8** (Grundgerüst, Math Box). Plan und Hintergründe:
+Stand: **Schritt 3 von 8** (Grundgerüst, Math Box, Interrupt und Steuerung). Plan und Hintergründe:
 [docs/PLAN.md](docs/PLAN.md).
 
 ## ROMs
@@ -43,13 +43,25 @@ Das SDK liegt unverändert als Submodul unter `external/VectorPie`.
 
 | Programm | Zweck |
 |---|---|
-| `starwarsvp` | das Spiel; zurzeit ROM-Prüfung, Takte, Kalibrierung |
+| `starwarsvp` | das Spiel; zurzeit ROM- und Math-Box-Prüfung und ein Testbild für die Steuerung: Fadenkreuz am Joch (mit dem originalen Nachziehen und der Joch-Kalibrierung), Feuer färbt es rot, Münzen zählen Credits |
 | `starwarsvp --calibrate` | Kalibrierbild: Bildschirmrand, Clip-Grenzen, Kreis, alle Farben in 7 Helligkeiten. Joystick ändert, Knopf 1 wechselt den Modus (Größe, Lage, Gamma/Floor, Helligkeit), Knopf 2 speichert nach `save/starwarsvp.ini` |
 | `avgreplay AUFNAHME.swcap` | spielt in MAME aufgenommene Displaylisten im Originaltakt auf dem Monitor ab; `--lerp` zeigt die Interpolation, `--loop` wiederholt |
 
 Allgemeine Optionen: `--dvg [PORT]`, `--window`, `--windowed`, `--vertical`,
 `--hz N` (Bildrate), `--config INI`. `VP_STATS=1` gibt die Kosten pro Bild aus
 (Vektoren, Leerwege, Weglängen).
+
+## Steuerung
+
+Belegung über die `advmame.rc` des Automaten, wie bei MAMEs Star Wars:
+
+| Automat | VectorPie-Aktion |
+|---|---|
+| Joch links/rechts, hoch/runter | `p1_stickx`, `p1_sticky` |
+| Feuer links (auch Start) | `p1_button1`, `start1` |
+| Feuer rechts | `p1_button4`, `start2` |
+| Daumen links / rechts | `p1_button2` / `p1_button3` |
+| Münze L / R | `coin1` / `coin2` |
 
 ## Aufnahmen aus MAME
 

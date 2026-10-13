@@ -1,15 +1,19 @@
 /* starwarsvp - Star Wars (Atari, 1983), native, for VectorPie.
  *
  * At this stage: finds and checks the ROM set, runs the original's clocks
- * and shows the calibration screen for the monitor. The game core follows
- * phase by phase (docs/PLAN.md).
+ * with the native interrupt (coins, switches, yoke and sight), shows a
+ * controls test and the calibration screen for the monitor. The game core
+ * follows phase by phase (docs/PLAN.md).
  *
  *   starwarsvp [--calibrate] [--roms PATH] [--config INI] [--hz N]
  *              [--dvg [PORT] | --window | --windowed]
  */
 #include "avg/avg.h"
 #include "mbox/mbox.h"
+#include "core/machine.h"
 #include "core/sched.h"
+#include "game/game.h"
+#include "platform/controls.h"
 #include "platform/app.h"
 #include "render/config.h"
 #include "render/dvgmap.h"
@@ -153,6 +157,72 @@ static void draw_text_lines(vp_dvg *d, const char *const *text, int n, int y)
         vp_text(d, text[i], 2048, y, 90, VP_TEXT_CENTER);
 }
 
+/* --- the running board ------------------------------------------------------ */
+
+typedef struct board {
+    sw_machine  m;
+    sw_controls ctl;
+    float       sight_prev[2], sight_cur[2];   /* at the last two VG restarts */
+    int         fire_frames;                   /* show FIRE for a moment */
+} board;
+
+static float vg13(uint16_t v) { return (float)((int16_t)(uint16_t)(v << 3) >> 3); }
+
+static void on_irq(void *u)
+{
+    board *b = (board *)u;
+    sw_controls_tick(&b->ctl, &b->m);
+    sw_irq(&b->m);
+}
+
+static void on_vg(void *u)
+{
+    /* The sight moves at VG restarts (RHPOS in DOVG): keep the last two
+     * positions to draw between them. */
+    board *b = (board *)u;
+    b->sight_prev[0] = b->sight_cur[0];
+    b->sight_prev[1] = b->sight_cur[1];
+    b->sight_cur[0] = vg13(RAM16(&b->m, SW_VG_CX));
+    b->sight_cur[1] = vg13(RAM16(&b->m, SW_VG_CY)) + (float)(int16_t)SW_VGOFFY;
+}
+
+static void on_game(void *u)
+{
+    /* Until the main line is ported, consume the lasers as it would. */
+    board *b = (board *)u;
+    if (RAM8(&b->m, SW_VG_LON)) {
+        RAM8(&b->m, SW_VG_LON) = 0;
+        b->fire_frames = 10;
+    }
+}
+
+static void draw_controls_test(sw_app *app, const sw_display_cfg *cfg, board *b, double vg_alpha, int mbox_ok)
+{
+    /* The sight, between its last two positions. */
+    float a = (float)vg_alpha;
+    float x = b->sight_prev[0] + (b->sight_cur[0] - b->sight_prev[0]) * a;
+    float y = b->sight_prev[1] + (b->sight_cur[1] - b->sight_prev[1]) * a;
+    static calib s;
+    s.count = 0;
+    unsigned col = b->fire_frames > 0 ? 4 : 6;
+    add(&s, x - 40, y, x - 12, y, col, 7, 0xff); add(&s, x + 12, y, x + 40, y, col, 7, 0xff);
+    add(&s, x, y - 40, x, y - 12, col, 7, 0xff); add(&s, x, y + 12, x, y + 40, col, 7, 0xff);
+    /* the yoke's reach: VGCUR limits, +-128 scaled to +-512 */
+    float l = 4.0f * (int8_t)(uint8_t)SW_VGCURL, r = 4.0f * (int8_t)SW_VGCURR;
+    float bt = 4.0f * (int8_t)(uint8_t)SW_VGCURB + (int16_t)SW_VGOFFY, t = 4.0f * (int8_t)SW_VGCURT + (int16_t)SW_VGOFFY;
+    add(&s, l, bt, r, bt, 1, 3, 0x80); add(&s, r, bt, r, t, 1, 3, 0x80);
+    add(&s, r, t, l, t, 1, 3, 0x80); add(&s, l, t, l, bt, 1, 3, 0x80);
+    sw_draw_lines(app->dvg, cfg, s.lines, s.count);
+    if (b->fire_frames > 0) b->fire_frames--;
+
+    char l1[64], l2[64];
+    snprintf(l1, sizeof l1, "CREDITS %u", RAM8(&b->m, SW_SSCRDT));
+    snprintf(l2, sizeof l2, "PITCH %02X  YAW %02X", RAM8(&b->m, SW_PT_VL2), RAM8(&b->m, SW_PT_VL1));
+    const char *text[] = { "STAR WARS VP  CONTROLS TEST",
+                           mbox_ok ? "ROMS OK  MATH BOX OK" : "ROMS OK  MATH BOX DIFFERS", l1, l2 };
+    draw_text_lines(app->dvg, text, 4, 3700);
+}
+
 /* --- main ------------------------------------------------------------------ */
 
 int main(int argc, char **argv)
@@ -196,10 +266,21 @@ int main(int argc, char **argv)
     sw_sched sched;
     sw_sched_init(&sched);
 
+    static board brd;
+    sw_machine_init(&brd.m, &roms);
+    sw_reset(&brd.m);
+    /* Until the EEROM is ported: coin mode 1 play per coin. */
+    brd.m.nvram[SW_OPTS0 + 1 - 0x4500] = 2;
+    sw_controls_init(&brd.ctl, app.in);
+    if (roms_ok && sw_splash_verify(&brd.m) != 0)
+        fprintf(stderr, "starwarsvp: the splash table differs from the ROM\n");
+    sw_sched_hooks hooks = { on_irq, on_vg, on_game, &brd };
+
     int status = 0;
     double dt;
     while (sw_app_poll(&app, &dt)) {
-        sw_sched_advance(&sched, dt, NULL);
+        sw_controls_read(&brd.ctl, app.in);
+        sw_sched_advance(&sched, dt, roms_ok ? &hooks : NULL);
         sw_app_begin_frame(&app);
 
         if (!roms_ok) {
@@ -220,13 +301,7 @@ int main(int argc, char **argv)
             const char *text[] = { line };
             draw_text_lines(app.dvg, text, 1, 700);
         } else {
-            char line[96];
-            snprintf(line, sizeof line, "CLOCK %.1f S  GAME TICK %llu", sched.game_count / (SW_IRQ_HZ / SW_GAME_DIV),
-                     (unsigned long long)sched.game_count);
-            const char *text[] = { "STAR WARS VP", mbox_ok ? "ROMS OK  MATH BOX OK" : "ROMS OK  MATH BOX DIFFERS",
-                                   "GAME CORE IN PROGRESS", line,
-                                   "--CALIBRATE FOR THE MONITOR" };
-            draw_text_lines(app.dvg, text, 5, 2600);
+            draw_controls_test(&app, &cfg, &brd, sw_sched_vg_alpha(&sched), mbox_ok);
         }
 
         if (sw_app_end_frame(&app) != 0) {

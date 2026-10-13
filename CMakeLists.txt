@@ -41,6 +41,10 @@ add_library(swcore STATIC
     src/avg/avg.c
     src/mbox/mbox.c
     src/mbox/mbox_programs.c
+    src/core/machine.c
+    src/game/irq.c
+    src/game/coin.c
+    src/game/splash.c
 )
 target_include_directories(swcore PUBLIC src)
 target_link_libraries(swcore PUBLIC miniz)
@@ -55,6 +59,7 @@ add_library(swout STATIC
     src/render/dvgmap.c
     src/render/config.c
     src/platform/app.c
+    src/platform/controls.c
 )
 target_link_libraries(swout PUBLIC swcore vectorpie)
 target_compile_options(swout PRIVATE -Wall -Wextra)
@@ -88,6 +93,10 @@ if(BUILD_TESTING)
     target_link_libraries(test_mbox PRIVATE swcore)
     target_include_directories(test_mbox PRIVATE tests)
     add_test(NAME mbox COMMAND test_mbox)
+
+    add_executable(test_irq tests/test_irq.c)
+    target_link_libraries(test_irq PRIVATE swcore)
+    add_test(NAME irq COMMAND test_irq)
 
     add_executable(test_capture tests/test_capture.c src/capture/capture.c)
     target_link_libraries(test_capture PRIVATE swcore)
