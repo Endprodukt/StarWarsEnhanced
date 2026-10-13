@@ -79,6 +79,21 @@ int main(void)
     }
     if ((sw_rd8(&m, SW_SCMODE) & 3) != 3) { printf("coin mode not taken over (%02X)\n", sw_rd8(&m, SW_SCMODE)); fail = 1; }
 
+    /* free play (coin value 0): the attract mode keeps a credit, and the
+     * fire button alone starts a game */
+    sw_option_set(&m, 0, 0);
+    run(600);
+    if (sw_rd8(&m, SW_SSCRDT) != 1) { printf("free play: credits %d, 1 expected\n", sw_rd8(&m, SW_SSCRDT)); fail = 1; }
+    for (int i = 0; i < 40; i++) {
+        m.in.in0 = i < 30 ? (uint8_t)~SW_IN0_LFIRE : 0xff;
+        m.in.in1 = 0xff;
+        m.in.adc[0] = m.in.adc[1] = 0x80;
+        sw_irq(&m);
+        sw_main_poll(&m);
+    }
+    uint8_t phase = sw_rd8(&m, SW_PHASE);
+    if (phase < SW_PHSSG1 || phase > SW_PHSBGN + 1) { printf("free play: no game started with fire (phase %02X)\n", phase); fail = 1; }
+
     printf("test_options: %s\n", fail ? "FAILED" : "ok");
     return fail;
 }

@@ -4,6 +4,7 @@
 #include "core/sched.h"
 #include "core/sw_symbols.h"
 
+#include <stdlib.h>
 #include <string.h>
 
 static float vg13(uint16_t v) { return (float)((int16_t)(uint16_t)(v << 3) >> 3); }
@@ -92,16 +93,44 @@ void sw_picture_irq_end(sw_picture *p)
 }
 
 static int picture_lines(sw_picture *p, double now, int smooth, const sw_line **lines, const sw_machine **state);
+static int stars_last(sw_picture *p, const sw_line *in, int n, const sw_line **out);
 
 int sw_picture_lines(sw_picture *p, double now, int smooth, const sw_line **lines)
 {
     const sw_machine *state = p->m;         /* the game as it is in the picture */
     int n = picture_lines(p, now, smooth, lines, &state);
     n = sw_enhance_run(&p->enhance, state, now, *lines, n, lines);
-    if (!p->occlusion) return n;
-    p->solid.extra = p->enhance.faces;
-    p->solid.n_extra = p->enhance.n_faces;
-    return sw_solid_run(&p->solid, *lines, n, lines);
+    if (p->occlusion) {
+        p->solid.extra = p->enhance.faces;
+        p->solid.n_extra = p->enhance.n_faces;
+        n = sw_solid_run(&p->solid, *lines, n, lines);
+    }
+    return stars_last(p, *lines, n, lines);
+}
+
+/* The lines as they are, the stars among them moved to the end. */
+static int stars_last(sw_picture *p, const sw_line *in, int n, const sw_line **out)
+{
+    int stars = 0;
+    for (int i = 0; i < n; i++) {
+        unsigned sec = (unsigned)(in[i].id >> 58);
+        stars += sec == SW_TAG_STAR || sec == SW_TAG_STARSEC;
+    }
+    if (!stars || stars == n) { *out = in; return n; }
+    if (p->order_cap < n) {
+        sw_line *o = (sw_line *)realloc(p->order, (size_t)n * sizeof *o);
+        if (!o) { *out = in; return n; }
+        p->order = o;
+        p->order_cap = n;
+    }
+    int k = 0, s = n - stars;
+    for (int i = 0; i < n; i++) {
+        unsigned sec = (unsigned)(in[i].id >> 58);
+        if (sec == SW_TAG_STAR || sec == SW_TAG_STARSEC) p->order[s++] = in[i];
+        else p->order[k++] = in[i];
+    }
+    *out = p->order;
+    return n;
 }
 
 static int picture_lines(sw_picture *p, double now, int smooth, const sw_line **lines, const sw_machine **state)

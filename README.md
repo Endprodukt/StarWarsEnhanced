@@ -143,7 +143,7 @@ Seite; BACK führt zur Hauptseite, Tab speichert und kehrt ins Spiel zurück.
 | Graphics | Smooth Motion, Frame Pace, Occlusion, Yellow Logo; Surface Plating, Detailed Towers, Distant Dogfights; Stars, Trench Clipping (wie `smooth`, `steady_frames`, `occlusion`, `logo_yellow`, `enh_*` unten) |
 | Sound | Replaced Sounds; Sound Test (Joch links/rechts wählt eine der 59 Anforderungen aus [docs/SOUNDS.md](docs/SOUNDS.md), Feuer spielt sie) |
 | Controls and Screen | Yoke Auto Center; Screen Calibration (das Testbild von `--calibrate`; Feuer wechselt Größe, Lage, Gamma, Helligkeit, das Joch stellt ein) |
-| Game Options | Coin Value, Left Mech, Right Mech, Bonus Adder; Starting Shields, Difficulty, Bonus Shields, Music in Attract: die Optionen des Spiels, dieselben wie auf der Optionsseite des Automaten; sie liegen in dessen NOVRAM (`save/nvram.bin`) und gelten sofort |
+| Game Options | Coin Value, Left Mech, Right Mech, Bonus Adder; Starting Shields, Difficulty, Bonus Shields, Music in Attract: die Optionen des Spiels, dieselben wie auf der Optionsseite des Automaten; sie liegen in dessen NOVRAM (`save/nvram.bin`) und gelten sofort. Coin Value = FREE PLAY: kein Münzeinwurf, Feuer startet das Spiel |
 | Arcade Operator Screens | Statistik, Optionen, Resets und NOVRAM-Test des Automatenprogramms (Aux-Münze blättert); Tab führt zurück ins Spiel |
 | Save and Exit | wie Tab |
 

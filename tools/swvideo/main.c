@@ -323,10 +323,22 @@ int main(int argc, char **argv)
                         nb++;
                         lb += hypot(lines[i].x1 - lines[i].x0, lines[i].y1 - lines[i].y0);
                     }
-                float bx = 0, by = 0;
+                /* the topmost line of the logo */
+                const sw_line *top = NULL;
                 for (int i = 0; i < count; i++)
-                    if ((unsigned)(lines[i].id >> 58) == SW_TAG_BANNER) { bx = lines[i].x0; by = lines[i].y0; break; }
-                fprintf(stderr, "PIC %.4f %02X %d banner %d %.2f at %.3f %.3f\n", now, m.ram[SW_PHASE - 0x4800], count, nb, lb, bx, by);
+                    if ((unsigned)(lines[i].id >> 58) == SW_TAG_BANNER && (!top || lines[i].y0 + lines[i].y1 > top->y0 + top->y1))
+                        top = &lines[i];
+                /* and its short pieces (cut by the occlusion), and the lines right before the topmost */
+                int tiny = 0, before = -1;
+                for (int i = 0; i < count; i++) {
+                    if ((unsigned)(lines[i].id >> 58) != SW_TAG_BANNER) continue;
+                    if (hypotf(lines[i].x1 - lines[i].x0, lines[i].y1 - lines[i].y0) < 1.0f) tiny++;
+                    if (&lines[i] == top) before = i;
+                }
+                fprintf(stderr, "PIC %.4f %02X %d banner %d %.2f top %.3f %.3f %.3f %.3f zz %u lum %u tiny %d prev %.2f %.2f\n",
+                        now, m.ram[SW_PHASE - 0x4800], count, nb, lb, top ? top->x0 : 0.0f, top ? top->y0 : 0.0f,
+                        top ? top->x1 : 0.0f, top ? top->y1 : 0.0f, top ? top->zz : 0u, top ? top->intensity : 0u, tiny,
+                        before > 0 ? lines[before - 1].x1 : 0.0f, before > 0 ? lines[before - 1].y1 : 0.0f);
             }
             for (int i = 0; i < count; i++) {
                 const sw_line *l = &lines[i];

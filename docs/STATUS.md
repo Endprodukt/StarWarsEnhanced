@@ -278,6 +278,27 @@ Seite am PC 0,02 statt 0,06 ms pro Bild (die 22 ms am Pi sind damit auch
 weg). Gemessen: Länge der Schriftzug-Linien je Bild fällt mit und ohne
 Occlusion gleichmäßig (Differenz nimmt stetig ab, kein Springen).
 
+Das half nicht: Der Besitzer sah weiter nur den obersten Strich des T
+wackeln. Zweiter Befund: Dieser Strich ist die erste Linie des Schriftzugs
+in der Displayliste, und davor kommen die Sterne. Der Strahl springt also
+dunkel von einem Stern, der jedes Bild woanders steht, zum Anfang dieses
+Strichs; auf der DVG-Platine zittert der Anfang der ersten Linie nach so
+einem Sprung mit (gemessen: die Linie davor war von Bild zu Bild eine
+andere, die Linie selbst in der Rechnung glatt). Jetzt zeichnet
+`sw_picture_lines` die Sterne jedes Bildes zuletzt (Punkte stört der
+Sprung nicht); die Reihenfolge aller anderen Linien bleibt die des Spiels,
+nichts wird umsortiert. Damit kommt der Strahl zum T immer vom selben Ort.
+Am Gerät ungeprüft.
+
+## Free Play (2026-10-13)
+
+Der Besitzer wünschte sich ein Spiel ohne Münzen. Das hat das Original
+schon: die Option COIN VALUE auf FREE PLAY (im Testmenü unter Game Options
+oder auf der Optionsseite des Automaten). Dann hält der Attract-Modus immer
+einen Credit, "INSERT COINS" erscheint nicht mehr, es steht "PRESS FIRE TO
+START" und "1 CREDIT", und Feuer startet das Spiel (`tests/test_options.c`
+prüft es: Credit da, Feuer startet).
+
 ## Marquee (2026-10-13)
 
 Der Marquee-Bildschirm des Automaten (HDMI, 1920x360, `advmame.rc`:
