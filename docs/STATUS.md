@@ -17,8 +17,12 @@ Das ganze Spiel, unverändert, in drei Arten (`starwarsvp`):
   Original-ROM aus: ganze Phasen (`original_frame`) oder einzelne
   Unterroutinen einer sonst portierten Phase (`ORIG(adresse)`), auf demselben
   Speicher. Portiert sind Interrupt, Münzen, Attract, Spielstart,
-  Wellenaufbau, Choreografie und der Ablauf der Weltraumwelle; deren
-  Bildaufbau, Gegner, Schüsse und Explosionen laufen noch über `ORIG`.
+  Wellenaufbau, Choreografie und von der Weltraumwelle: Ablauf, Bildaufbau
+  (`VIEW`), Spielerbewegung und Zielen, Darstellung der Schiffe und des
+  fernen Todessterns, Gegner-KI (`CPU`, `CPURET`), Glühen, Schildanzeige.
+  Über `ORIG` laufen dort noch: Laser (TSTLAZ, CLSLZ, VWLAZ), Schüsse
+  (MVGUN, VWGUN, FRAGUN), Explosionen (IXPLD, DOXPLD, VWXPLD) und der
+  Übergang beim Tod (PHIS0D).
   Boden, Graben und Explosion laufen noch ganz über den Kern.
 * `--original`: das ganze Originalprogramm auf dem 6809-Kern.
 * `--native`: nur C, ohne Kern (eine fehlende Phase führt zum Banner).
@@ -77,10 +81,15 @@ Attract-Modus davor. Ungeprüft am Gerät, also nur gerechnet und gemessen:
 ## Als Nächstes
 
 0. Weiter portieren, in dieser Reihenfolge, jede Routine einzeln gegen die
-   Aufnahmen geprüft (`sh tools/checkall.sh ORDNER ROMDIR`): die `ORIG`-Aufrufe
-   der Weltraumwelle in `src/game/mainline.c` ersetzen (VIEW 72C7, STWSP1
-   6DD2, SMVSP1 6F5F, CPU, MVGUN, DOXPLD, DONGLW, DO1GLW, DO1GAS, IXPLD,
-   PHIS0D 6C76), dann die Phasen S0G bis EGM. Lokale Adressen findet
+   Aufnahmen geprüft (`sh tools/checkall.sh ORDNER ROMDIR`): die restlichen
+   `ORIG`-Aufrufe der Weltraumwelle ersetzen (`grep -rn "ORIG(" src/game`:
+   WSLAZR, WSGUNS, WSXPLD, PHIS0D 6C76), dann die Phasen S0G bis EGM.
+   Die Aufnahme `play1` deckt nicht alles ab: Treffer am Spieler und
+   Schildverlust in der Weltraumwelle, Darth Vader und höhere Wellen kommen
+   kaum vor. Dafür weitere Aufnahmen mit anderem `SWCAP_PLAY` machen.
+   Ein Frame (Münzeinwurf während der Highscore-Seite) weicht im Vergleich
+   ab, weil die Wiedergabe der vom Interrupt gelesenen Werte dort aus dem
+   Tritt kommt; noch nicht untersucht. Lokale Adressen findet
    `python3 -I tools/dis6809.py ROMZIP ADRESSE` (Phasentabelle bei 6044).
    Danach den Ton: SNDAUD, SNDPM, SNDSPK.
    Parallel der Renderer aus dem Spielzustand: Schiffe und Sterne aus ihren

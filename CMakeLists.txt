@@ -64,6 +64,7 @@ add_library(swcore STATIC
     src/game/pace.c
     src/game/obj.c
     src/game/alien.c
+    src/game/aliencpu.c
     src/game/player.c
     src/game/shipview.c
     src/game/glow.c

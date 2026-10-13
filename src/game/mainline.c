@@ -787,7 +787,7 @@ static int space_frame(sw_machine *m)
 static void phesp1(sw_machine *m)
 {
     if (!space_frame(m)) return;
-    ORIG(SW_CPU);                           /* COMPUTER DRONES */
+    sw_cpu(m);                              /* COMPUTER DRONES */
 
     vgtosite(m);                            /* PULL IN SITE COORDS FROM IRQ RHEOSTATS */
     sw_stwsp1(m);                           /* TWIRL PLAYER */
@@ -829,7 +829,7 @@ static void phisp1(sw_machine *m)
 static void phesp2(sw_machine *m)
 {
     if (!space_frame(m)) return;
-    ORIG(SW_CPURET);                        /* COMPUTER DRONES RUN AWAY */
+    sw_cpuret(m);                           /* COMPUTER DRONES RUN AWAY */
 
     vgtosite(m);
     sw_stwsp2(m);                           /* TWIRL PLAYER */

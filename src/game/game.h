@@ -82,6 +82,8 @@ void sw_objdrw(sw_machine *m);
 /* WSCPU.MAC (game/alien.c): the enemy ships. X is an alien's record. */
 void sw_nwnshp(sw_machine *m);
 void sw_adashp(sw_machine *m);
+void sw_cpu(sw_machine *m);         /* game/aliencpu.c */
+void sw_cpuret(sw_machine *m);
 void sw_nwchor(sw_machine *m, uint16_t x);
 void sw_chopdo(sw_machine *m, uint16_t x);
 void sw_cpugon(sw_machine *m);
