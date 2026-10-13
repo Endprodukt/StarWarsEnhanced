@@ -6,11 +6,13 @@
  * off), the game's own options as the arcade program keeps them in its
  * NOVRAM (coins, shields, difficulty, music), a sound test, the screen
  * calibration, and the way on to the arcade program's own operator
- * screens (statistics, the resets, the NOVRAM test).
+ * screens (statistics, the resets, the NOVRAM test). The main page leads
+ * to four pages: GRAPHICS, SOUND, CONTROLS AND SCREEN, GAME OPTIONS.
  *
  *   yoke up / down      choose a line
  *   yoke left / right   change its value
- *   fire                change it, or do what the line says
+ *   fire                change it, open a page, or do what the line says
+ *   BACK                the main page again
  *   Tab / test button   save the settings and go back to the game
  */
 #ifndef SWVP_MENU_H
@@ -33,7 +35,8 @@ enum {
 
 typedef struct sw_menu {
     int    open;
-    int    item;
+    int    page;            /* the page shown: 0 the main one, else one of its parts */
+    int    item[8];         /* the line chosen on each page */
     int    sound;           /* the request of the sound test (docs/SOUNDS.md) */
     int    dir_x, dir_y;    /* where the yoke was held the last time */
     double repeat_at;       /* when a held yoke counts again (seconds) */

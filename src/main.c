@@ -466,7 +466,7 @@ int main(int argc, char **argv)
             if (brd.ctl.self_test) brd.ctl.self_test = 0;
             else if (menu_calibrate) menu_calibrate = 0;
             else if (menu.open) menu_left = 1;
-            else menu.open = 1;
+            else { menu.open = 1; menu.page = 0; }
         }
         if (menu.open && !menu_calibrate && !menu_left) {
             switch (sw_menu_update(&menu, &cfg, &brd.m, app.in, app.clock)) {

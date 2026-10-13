@@ -135,17 +135,17 @@ Belegung über die `advmame.rc` des Automaten, wie bei MAMEs Star Wars:
 Die Tab-Taste (wie in MAME) oder der Selbsttest-Knopf hält das Spiel an
 und öffnet das Menü; dieselbe Taste führt auch wieder hinaus und aus der
 Kalibrierung und den Operator-Seiten zurück. Joch auf/ab
-wählt eine Zeile, links/rechts oder Feuer ändert sie; der Selbsttest-Knopf
-speichert und kehrt ins Spiel zurück.
+wählt eine Zeile, links/rechts oder Feuer ändert sie, Feuer öffnet eine
+Seite; BACK führt zur Hauptseite, Tab speichert und kehrt ins Spiel zurück.
 
-| Zeile | |
+| Seite | Zeilen |
 |---|---|
-| Occlusion, Surface Plating, Trench Stars, Detailed Towers, Distant Dogfights, Trench Clipping, Yellow Logo, Replaced Sounds, Yoke Auto Center, Smooth Motion, Frame Pace | die Enhanced Settings, jede abschaltbar (wie `occlusion`, `enh_*`, `smooth`, `steady_frames` unten) |
-| Coin Value, Left Mech, Right Mech, Bonus Adder, Starting Shields, Difficulty, Bonus Shields, Music in Attract | die Optionen des Spiels, dieselben wie auf der Optionsseite des Automaten; sie liegen in dessen NOVRAM (`save/nvram.bin`) und gelten sofort |
-| Sound Test | Joch links/rechts wählt eine der 59 Anforderungen ([docs/SOUNDS.md](docs/SOUNDS.md)), Feuer spielt sie |
-| Screen Calibration | das Testbild von `--calibrate`; Feuer wechselt Größe, Lage, Gamma, Helligkeit, das Joch stellt ein |
-| Arcade Operator Screens | Statistik und Optionen des Automatenprogramms (Aux-Münze blättert); der Selbsttest-Knopf führt zurück ins Spiel |
-| Save and Exit | wie der Selbsttest-Knopf |
+| Graphics | Smooth Motion, Frame Pace, Occlusion, Yellow Logo; Surface Plating, Detailed Towers, Distant Dogfights; Trench Stars, Trench Clipping (wie `smooth`, `steady_frames`, `occlusion`, `logo_yellow`, `enh_*` unten) |
+| Sound | Replaced Sounds; Sound Test (Joch links/rechts wählt eine der 59 Anforderungen aus [docs/SOUNDS.md](docs/SOUNDS.md), Feuer spielt sie) |
+| Controls and Screen | Yoke Auto Center; Screen Calibration (das Testbild von `--calibrate`; Feuer wechselt Größe, Lage, Gamma, Helligkeit, das Joch stellt ein) |
+| Game Options | Coin Value, Left Mech, Right Mech, Bonus Adder; Starting Shields, Difficulty, Bonus Shields, Music in Attract: die Optionen des Spiels, dieselben wie auf der Optionsseite des Automaten; sie liegen in dessen NOVRAM (`save/nvram.bin`) und gelten sofort |
+| Arcade Operator Screens | Statistik, Optionen, Resets und NOVRAM-Test des Automatenprogramms (Aux-Münze blättert); Tab führt zurück ins Spiel |
+| Save and Exit | wie Tab |
 
 ## Einstellungen
 

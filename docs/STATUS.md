@@ -146,7 +146,11 @@ Soundplatine, die Zeit des Vektorgenerators.
   (gemessen). Mit Occlusion verdecken die neuen Türme, was dahinter liegt.
   Geprüft an Standbildern; mit allen vier aus stimmen die Aufnahmen weiter.
 * **Eigenes Testmenü** (`src/platform/menu.c`, 2026-10-13): Der
-  Selbsttest-Knopf (`p1_button6`), am Gerät die Tab-Taste, öffnet es, das Spiel steht solange. Zeilen:
+  Selbsttest-Knopf (`p1_button6`), am Gerät die Tab-Taste, öffnet es, das
+  Spiel steht solange. Seit 2026-10-13 in Seiten (Graphics, Sound, Controls
+  and Screen, Game Options; dazu Arcade Operator Screens und Save and Exit
+  auf der Hauptseite), weil eine Seite mit 23 Zeilen zu klein geschrieben
+  war. Zeilen:
   Enhanced Settings (Occlusion, Surface Plating, Surface Stars, Detailed
   Towers, Distant Dogfights, Trench Clipping, Yellow Logo, Replaced Sounds,
   Yoke Auto Center, Smooth Motion, Frame Pace), Game Options (die acht
