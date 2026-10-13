@@ -204,6 +204,13 @@ static void on_frame(void *u, int after)
     board *b = (board *)u;
     if (after) {
         sw_subframe_after(&b->pair[1], &b->m);
+        if (b->m.steady) {
+            /* Frames come like clockwork: this one is shown from now until
+             * the next one runs, on its way to what that one will draw. */
+            b->shown = b->pair[1];
+            b->shown_at = (double)b->irqs / SW_IRQ_HZ;
+            b->frame_time = 12.0 / SW_IRQ_HZ;
+        }
     } else {
         b->pair[0] = b->pair[1];
         sw_subframe_before(&b->pair[1], &b->m);
@@ -238,7 +245,7 @@ static void on_irq(void *u)
         sw_avg_run_tagged(b->space, 0, b->m.vgtag, b->m.vgstart, &b->list, 0);
         int new_frame = b->m.vgram[0] != b->vg_buffer;
         b->vg_buffer = b->m.vgram[0];
-        if (new_frame) {
+        if (new_frame && !b->m.steady) {
             /* The frame now on display: the last one run, unless the next
              * one has run already in this same interrupt. */
             double t = (double)b->irqs / SW_IRQ_HZ;
@@ -403,6 +410,7 @@ int main(int argc, char **argv)
     uint32_t nv_saved = brd.m.nv_stores;
     brd.native = sw_flag(argc, argv, "--native");
     brd.m.yoke_exact = cfg.yoke_autocenter != 0;
+    brd.m.steady = cfg.steady_frames != 0 && !sw_flag(argc, argv, "--original");
     if (roms_ok) {
         /* Three ways to run the game:
          *   default     the C routines; the 6809 stands in for the two phases

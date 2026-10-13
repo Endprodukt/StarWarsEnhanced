@@ -92,7 +92,7 @@ void sw_wr8(sw_machine *m, uint16_t a, uint8_t v)
     case 0x4400: m->sound_out = v; m->sound_out_full = 1; return;
     case 0x4600:                                    /* VGGO */
         m->vg_starts++;
-        m->vg_left = sw_avg_cycles(m->vgram, m->rom ? m->rom->vrom : 0, 0);
+        m->vg_left = m->steady ? 0 : sw_avg_cycles(m->vgram, m->rom ? m->rom->vrom : 0, 0);
         return;
     case 0x4620: m->vg_left = 0; return;            /* VGSTOP */
     case 0x4700: m->n_mb[v]++; sw_mbox_go(&m->mbox, v); return;    /* MW0: PC and go */

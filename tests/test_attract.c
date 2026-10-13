@@ -94,6 +94,7 @@ static int run_game(int irqs, int stand_in)
     emu.snd = &snd;
     emu.yoke_exact = 1;
     m.yoke_exact = 1;
+    m.steady = stand_in == 2;
     if (stand_in) {
         /* the C routines, the 6809 only for the phases not ported */
         sw_reset(&m);
@@ -217,5 +218,6 @@ int main(void)
     fails += run(0xff, 0x00, 12000);
     fails += run_game(60000, 0);
     fails += run_game(60000, 1);
+    fails += run_game(60000, 2);     /* the same with steady frames */
     return fails ? 1 : 0;
 }

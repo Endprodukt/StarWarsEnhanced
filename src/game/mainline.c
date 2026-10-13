@@ -1973,6 +1973,7 @@ void sw_main_poll(sw_machine *m)
         if (m->frame_hook) m->frame_hook(m->frame_user, 1);
         m->frames++;
         m->busy = sw_pace_frame_cycles(m, phase);
+        if (m->steady) m->busy = 0;         /* no waiting for a 6809: the frame is done */
         if (m->original_cycles) {           /* the 6809 ran the phase: its own time, counted */
             m->busy = m->original_cycles;
             m->original_cycles = 0;

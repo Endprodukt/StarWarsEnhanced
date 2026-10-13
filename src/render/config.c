@@ -30,6 +30,7 @@ void sw_display_cfg_defaults(sw_display_cfg *c)
     c->defocus_mode = 1;
     c->yoke_autocenter = 1;
     c->smooth = 3;
+    c->steady_frames = 1;
     c->sort_strokes = 1;
 }
 
@@ -54,6 +55,7 @@ static int set(sw_display_cfg *c, const char *key, const char *val)
         { "flip_x", &c->flip_x }, { "flip_y", &c->flip_y },
         { "defocus_mode", &c->defocus_mode },
         { "yoke_autocenter", &c->yoke_autocenter }, { "smooth", &c->smooth },
+        { "steady_frames", &c->steady_frames },
         { "sort_strokes", &c->sort_strokes },
     };
     for (size_t i = 0; i < sizeof floats / sizeof floats[0]; i++)
@@ -120,6 +122,8 @@ int sw_display_cfg_save(const sw_display_cfg *c, const char *path)
     fprintf(f, "\n; motion between the game's frames: 0 off, 1 lines between the last two frames,\n"
                "; 2 lines ahead of the last, 3 computed from the state of the game\n"
                "smooth = %d\n", c->smooth);
+    fprintf(f, "\n; 1: a game frame every 12th interrupt, always (20.5 a second); 0: with the\n"
+               "; slowdowns of the arcade machine\nsteady_frames = %d\n", c->steady_frames);
     fprintf(f, "\n; draw strokes in an order that saves the beam dark travel\nsort_strokes = %d\n", c->sort_strokes);
     fclose(f);
     return 0;
