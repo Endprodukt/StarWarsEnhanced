@@ -59,6 +59,11 @@ typedef struct sw_display_cfg {
      * X-wing's own guns is not drawn (render/solid.h). 0: wire frames you
      * see through, as the arcade machine drew them. */
     int occlusion;
+    /* Enhanced, over the surface of the Death Star (render/enhance.h), each
+     * 1 or 0: its plating drawn on the ground; stars in the sky; the towers
+     * in true perspective, with more to them, seen from farther and fading
+     * in; far off, TIE fighters chasing an X-wing. */
+    int enh_surface, enh_stars, enh_towers, enh_dogfights;
 } sw_display_cfg;
 
 void sw_display_cfg_defaults(sw_display_cfg *c);

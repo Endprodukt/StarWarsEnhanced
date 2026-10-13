@@ -40,6 +40,13 @@ typedef struct sw_solid_poly {
     uint64_t points;                /* its points, as bits */
 } sw_solid_poly;
 
+/* A face given as it is in the picture: its corners with their 1/X. */
+typedef struct sw_solid_extra {
+    uint16_t inst;                  /* the lines of the same thing carry it too */
+    uint8_t  n;
+    float    x[6], y[6], w[6];
+} sw_solid_extra;
+
 /* The shape of an outline, on a grid. */
 typedef struct sw_solid_mask {
     uint64_t group;                 /* which instruction of the list drew it */
@@ -71,6 +78,10 @@ typedef struct sw_solid {
     int            n_edges, cap_edges;
     sw_line       *out;
     int            n_out, cap_out;
+    /* Faces of things that are no object of the ROM (render/enhance.h), for
+     * the next sw_solid_run: set by the caller, NULL/0 for none. */
+    const sw_solid_extra *extra;
+    int            n_extra;
     sw_solid_mask  mask[SW_SOLID_MASKS];
     uint32_t       run;
     int           *stack;

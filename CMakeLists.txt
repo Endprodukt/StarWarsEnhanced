@@ -79,6 +79,7 @@ add_library(swcore STATIC
     src/render/smooth.c
     src/render/picture.c
     src/render/solid.c
+    src/render/enhance.c
     src/cpu/m6809.c
     src/core/emu.c
     src/sound/pokey.c

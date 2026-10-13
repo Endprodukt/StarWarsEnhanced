@@ -18,6 +18,10 @@ Darstellung flüssig.
 * **Testmenü**: Der Selbsttest-Knopf öffnet ein eigenes Menü mit den
   Enhanced Settings (alle abschaltbar), Soundtest, Bildkalibrierung und dem
   Weg zu den Operator-Seiten des Automaten.
+* **Oberfläche des Todessterns** (Enhanced, vier Schalter): der Boden als
+  Plattenmuster, Sterne am Himmel, Türme in echter Perspektive mit mehr
+  Details und aus größerer Entfernung eingeblendet, in der Ferne
+  Verfolgungsjagden von TIE Fightern und X-Wing.
 * **Occlusion** (Enhanced, abschaltbar mit `occlusion = 0`): Schiffe, Türme,
   der Schriftzug und die eigenen Kanonen sind massiv; was dahinter liegt,
   wird nicht gezeichnet.
@@ -134,7 +138,7 @@ speichert und kehrt ins Spiel zurück.
 
 | Zeile | |
 |---|---|
-| Occlusion, Smooth Motion, Frame Pace, Stroke Sorting | die Enhanced Settings, jede abschaltbar (wie `occlusion`, `smooth`, `steady_frames`, `sort_strokes` unten) |
+| Occlusion, Surface Plating, Surface Stars, Detailed Towers, Distant Dogfights, Smooth Motion, Frame Pace, Stroke Sorting | die Enhanced Settings, jede abschaltbar (wie `occlusion`, `enh_*`, `smooth`, `steady_frames`, `sort_strokes` unten) |
 | Sound Test | Joch links/rechts wählt eine der 59 Anforderungen ([docs/SOUNDS.md](docs/SOUNDS.md)), Feuer spielt sie |
 | Screen Calibration | das Testbild von `--calibrate`; Feuer wechselt Größe, Lage, Gamma, Helligkeit, das Joch stellt ein |
 | Arcade Operator Screens | Statistik und Optionen des Automatenprogramms (Aux-Münze blättert); der Selbsttest-Knopf führt zurück ins Spiel |
@@ -151,6 +155,10 @@ speichert und kehrt ins Spiel zurück.
 | `smooth` | Bewegung zwischen den Spielframes: `3` (Standard) aus dem Spielzustand neu gerechnet, ohne Verzögerung und mit richtiger Perspektive; `0` aus (jedes Spielbild wie im Original), `1` Linien zwischen den letzten beiden Frames verschoben (die Welt einen Spielframe später), `2` Linien dem letzten Frame voraus (ohne Verzögerung, schießen bei Richtungswechseln kurz über). Auf den Attract-Seiten wandern die Linien bei `3` zum voraus gerechneten Bild des nächsten Frames, ebenfalls ohne Verzögerung. |
 | `yoke_autocenter` | `1`: Fadenkreuz ab dem ersten Bild zentriert, das Joch geht exakt durch (Ruhelage aus der Joystick-Kalibrierung des Automaten). `0`: wie der Automat von 1983, der den Bereich des Jochs nach jedem Einschalten neu lernt |
 | `occlusion` | Enhanced. `1` (Standard): Dinge sind massiv, was hinter einem Schiff, einem Turm, dem Schriftzug oder den eigenen Kanonen liegt, wird nicht gezeichnet. `0`: durchsichtige Drahtmodelle wie am Automaten |
+| `enh_surface` | Enhanced, über der Oberfläche. `1` (Standard): der Boden wird als Plattenmuster des Todessterns gezeichnet |
+| `enh_stars` | Enhanced. `1` (Standard): Sterne am Himmel über der Oberfläche |
+| `enh_towers` | Enhanced. `1` (Standard): Türme und Bunker in echter Perspektive, detaillierter, aus doppelter Entfernung sichtbar und eingeblendet; der Laser trifft sie so, wie sie gezeichnet sind. `0`: die Türme des Automaten, die beim Näherkommen aus dem Boden wachsen |
+| `enh_dogfights` | Enhanced. `1` (Standard): in der Ferne jagen TIE Fighter einen X-Wing über den Himmel |
 | `sort_strokes` | `1`: Striche in einer Reihenfolge zeichnen, die dem Strahl Leerweg spart (mehr Bilder pro Sekunde auf der Platine) |
 | `avg_*`, `margin_*`, `flip_*` | Lage und Größe des Bildes, mit `--calibrate` einzustellen |
 | `gamma`, `floor`, `brightness`, `color_*`, `defocus_mode` | Helligkeit und Farben |

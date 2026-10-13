@@ -87,6 +87,10 @@ typedef struct sw_machine {
      * 6809 took over it. 1: the frames of a phase come at one fixed pace,
      * the average of the arcade machine in that phase. 2: a frame every
      * 12th interrupt in every phase. */
+    /* 1: the towers of the surface are drawn in true perspective
+     * (render/enhance.h), and the laser hits them as they are drawn: not
+     * shrunk towards their foot when far away, as the arcade machine has it. */
+    uint8_t    enh_towers;
     uint8_t    steady;
     uint32_t   irqs;             /* interrupts run */
     uint32_t   steady_due;       /* when the next frame is due, in sixteenths of an interrupt */

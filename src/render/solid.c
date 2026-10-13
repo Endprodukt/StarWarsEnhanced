@@ -174,6 +174,39 @@ static int add_edge(sw_solid *s, sw_solid_poly *p, float x0, float y0, float x1,
     return 0;
 }
 
+/* A face in the picture: its n corners on the screen with their 1/X. */
+static void picture_face(sw_solid *s, const float *x, const float *y, const float *w, int n, uint16_t inst, uint64_t mask)
+{
+    float area = 0, cx = 0, cy = 0, cw = 0;
+    for (int i = 0; i < n; i++) {
+        int b = (i + 1) % n;
+        area += x[i] * y[b] - x[b] * y[i];
+        cx += x[i]; cy += y[i]; cw += w[i];
+    }
+    if (fabsf(area) * 0.5f < MIN_AREA) return;
+    sw_solid_poly *p = new_poly(s);
+    if (!p) return;
+    cx /= (float)n; cy /= (float)n; cw /= (float)n;
+    /* 1/X across the face: the plane through its points, least squares */
+    float sxx = 0, sxy = 0, syy = 0, sxw = 0, syw = 0;
+    for (int i = 0; i < n; i++) {
+        int b = (i + 1) % n;
+        float dx = x[i] - cx, dy = y[i] - cy, dw = w[i] - cw;
+        sxx += dx * dx; sxy += dx * dy; syy += dy * dy; sxw += dx * dw; syw += dy * dw;
+        if (w[i] > p->wmax) p->wmax = w[i];
+        if (add_edge(s, p, x[i], y[i], x[b], y[b]) != 0) return;
+    }
+    float det = sxx * syy - sxy * sxy;
+    if (fabsf(det) > 1e-3f) {
+        p->a = (sxw * syy - syw * sxy) / det;
+        p->b = (syw * sxx - sxw * sxy) / det;
+    }
+    p->c = cw - p->a * cx - p->b * cy;
+    p->inst = inst;
+    p->points = mask;
+    s->n_polys++;
+}
+
 /* The faces of one object drawn: lines[0..n-1] are its lines, and tell
  * where its points are on the screen and how far away. */
 static void object_faces(sw_solid *s, const sw_line *lines, int n)
@@ -196,36 +229,14 @@ static void object_faces(sw_solid *s, const sw_line *lines, int n)
     for (int k = 0; k < s->model[model].n; k++) {
         const sw_solid_face *f = &s->model[model].faces[k];
         uint64_t mask = 0;
-        float area = 0, cx = 0, cy = 0, cw = 0;
+        float fx[SW_SOLID_FACE_MAX], fy[SW_SOLID_FACE_MAX], fw[SW_SOLID_FACE_MAX];
         for (int i = 0; i < f->n; i++) {
-            int a = f->pt[i], b = f->pt[(i + 1) % f->n];
+            int a = f->pt[i];
             mask |= 1ull << a;
-            area += px[a] * py[b] - px[b] * py[a];
-            cx += px[a]; cy += py[a]; cw += pw[a];
+            fx[i] = px[a]; fy[i] = py[a]; fw[i] = pw[a];
         }
         if ((mask & known) != mask) continue;       /* (not all of it drawn: a damaged ship) */
-        if (fabsf(area) * 0.5f < MIN_AREA) continue;
-        sw_solid_poly *p = new_poly(s);
-        if (!p) return;
-        cx /= f->n; cy /= f->n; cw /= f->n;
-        /* 1/X across the face: the plane through its points, least squares */
-        float sxx = 0, sxy = 0, syy = 0, sxw = 0, syw = 0;
-        for (int i = 0; i < f->n; i++) {
-            int a = f->pt[i], b = f->pt[(i + 1) % f->n];
-            float dx = px[a] - cx, dy = py[a] - cy, dw = pw[a] - cw;
-            sxx += dx * dx; sxy += dx * dy; syy += dy * dy; sxw += dx * dw; syw += dy * dw;
-            if (pw[a] > p->wmax) p->wmax = pw[a];
-            if (add_edge(s, p, px[a], py[a], px[b], py[b]) != 0) return;
-        }
-        float det = sxx * syy - sxy * sxy;
-        if (fabsf(det) > 1e-3f) {
-            p->a = (sxw * syy - syw * sxy) / det;
-            p->b = (syw * sxx - sxw * sxy) / det;
-        }
-        p->c = cw - p->a * cx - p->b * cy;
-        p->inst = lines[0].inst;
-        p->points = mask;
-        s->n_polys++;
+        picture_face(s, fx, fy, fw, f->n, lines[0].inst, mask);
     }
 }
 
@@ -523,6 +534,8 @@ int sw_solid_run(sw_solid *s, const sw_line *in, int n, const sw_line **out)
         object_faces(s, in + i, j - i);
         i = j;
     }
+    for (int i = 0; i < s->n_extra; i++)
+        picture_face(s, s->extra[i].x, s->extra[i].y, s->extra[i].w, s->extra[i].n, s->extra[i].inst, 0);
     outlines(s, in, n);
     for (int i = 0; i < n; i++) {
         if (always_shown(section_of(&in[i]))) emit(s, &in[i], 0.0f, 1.0f);

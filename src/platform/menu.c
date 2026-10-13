@@ -23,7 +23,7 @@ const char *sw_menu_sound_name(int n)
 }
 
 enum {
-    I_OCCLUSION, I_SMOOTH, I_STEADY, I_SORT,
+    I_OCCLUSION, I_SURFACE, I_STARS, I_TOWERS, I_DOGFIGHTS, I_SMOOTH, I_STEADY, I_SORT,
     I_SOUND, I_CALIBRATE, I_OPERATOR, I_EXIT,
     N_ITEMS
 };
@@ -71,6 +71,18 @@ int sw_menu_update(sw_menu *u, sw_display_cfg *cfg, vp_input *in, double now)
     case I_OCCLUSION:
         if (d) { cfg->occlusion = !cfg->occlusion; return SW_MENU_CHANGED; }
         break;
+    case I_SURFACE:
+        if (d) { cfg->enh_surface = !cfg->enh_surface; return SW_MENU_CHANGED; }
+        break;
+    case I_STARS:
+        if (d) { cfg->enh_stars = !cfg->enh_stars; return SW_MENU_CHANGED; }
+        break;
+    case I_TOWERS:
+        if (d) { cfg->enh_towers = !cfg->enh_towers; return SW_MENU_CHANGED; }
+        break;
+    case I_DOGFIGHTS:
+        if (d) { cfg->enh_dogfights = !cfg->enh_dogfights; return SW_MENU_CHANGED; }
+        break;
     case I_SMOOTH:
         if (d) { cfg->smooth = step(cfg->smooth, d, 0, 3); return SW_MENU_CHANGED; }
         break;
@@ -107,6 +119,10 @@ void sw_menu_draw(const sw_menu *u, const sw_display_cfg *cfg, vp_dvg *d)
     const char *label[N_ITEMS];
     memset(value, 0, sizeof value);
     label[I_OCCLUSION] = "OCCLUSION";       snprintf(value[I_OCCLUSION], 40, "%s", on_off(cfg->occlusion));
+    label[I_SURFACE] = "SURFACE PLATING";   snprintf(value[I_SURFACE], 40, "%s", on_off(cfg->enh_surface));
+    label[I_STARS] = "SURFACE STARS";       snprintf(value[I_STARS], 40, "%s", on_off(cfg->enh_stars));
+    label[I_TOWERS] = "DETAILED TOWERS";    snprintf(value[I_TOWERS], 40, "%s", on_off(cfg->enh_towers));
+    label[I_DOGFIGHTS] = "DISTANT DOGFIGHTS"; snprintf(value[I_DOGFIGHTS], 40, "%s", on_off(cfg->enh_dogfights));
     label[I_SMOOTH] = "SMOOTH MOTION";      snprintf(value[I_SMOOTH], 40, "%s", SMOOTH[cfg->smooth & 3]);
     label[I_STEADY] = "FRAME PACE";         snprintf(value[I_STEADY], 40, "%s", STEADY[cfg->steady_frames % 3]);
     label[I_SORT] = "STROKE SORTING";       snprintf(value[I_SORT], 40, "%s", on_off(cfg->sort_strokes));
@@ -117,23 +133,23 @@ void sw_menu_draw(const sw_menu *u, const sw_display_cfg *cfg, vp_dvg *d)
 
     vp_text_font(VP_FONT_ASTEROIDS);
     vp_color(d, 200, 200, 60);
-    vp_text(d, "STAR WARS VP  TEST MENU", 2048, 3650, 110, VP_TEXT_CENTER);
+    vp_text(d, "STAR WARS VP  TEST MENU", 2048, 3750, 110, VP_TEXT_CENTER);
     vp_color(d, 60, 160, 200);
-    vp_text(d, "ENHANCED SETTINGS", 600, 3250, 70, VP_TEXT_LEFT);
-    vp_text(d, "TESTS", 600, 3250 - 5 * 190 - 60, 70, VP_TEXT_LEFT);
+    vp_text(d, "ENHANCED SETTINGS", 600, 3450, 70, VP_TEXT_LEFT);
+    vp_text(d, "TESTS", 600, 3450 - (I_SOUND + 1) * 165 - 50, 70, VP_TEXT_LEFT);
 
     for (int i = 0; i < N_ITEMS; i++) {
-        float y = 3250.0f - 190.0f * (float)(i + 1) - (i >= I_SOUND ? 250.0f : 0.0f);
+        float y = 3450.0f - 165.0f * (float)(i + 1) - (i >= I_SOUND ? 230.0f : 0.0f);
         if (i == u->item) vp_color(d, 255, 255, 255);
         else vp_color(d, 120, 120, 120);
         if (i == u->item) {             /* an arrow before the line chosen */
-            vp_moveto(d, 600, (int)y + 80);
-            vp_lineto(d, 690, (int)y + 45);
-            vp_lineto(d, 600, (int)y + 10);
+            vp_moveto(d, 600, (int)y + 72);
+            vp_lineto(d, 690, (int)y + 40);
+            vp_lineto(d, 600, (int)y + 8);
         }
-        vp_text(d, label[i], 760, y, 90, VP_TEXT_LEFT);
-        if (value[i][0]) vp_text(d, value[i], 3500, y, 90, VP_TEXT_RIGHT);
+        vp_text(d, label[i], 760, y, 80, VP_TEXT_LEFT);
+        if (value[i][0]) vp_text(d, value[i], 3500, y, 80, VP_TEXT_RIGHT);
     }
     vp_color(d, 110, 110, 110);
-    vp_text(d, "YOKE CHOOSE AND CHANGE   FIRE DO   TEST BUTTON EXIT", 2048, 420, 60, VP_TEXT_CENTER);
+    vp_text(d, "YOKE CHOOSE AND CHANGE   FIRE DO   TEST BUTTON EXIT", 2048, 330, 60, VP_TEXT_CENTER);
 }

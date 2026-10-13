@@ -33,6 +33,7 @@ void sw_display_cfg_defaults(sw_display_cfg *c)
     c->steady_frames = 1;
     c->sort_strokes = 1;
     c->occlusion = 1;
+    c->enh_surface = c->enh_stars = c->enh_towers = c->enh_dogfights = 1;
 }
 
 static char *trim(char *s)
@@ -59,6 +60,8 @@ static int set(sw_display_cfg *c, const char *key, const char *val)
         { "steady_frames", &c->steady_frames },
         { "sort_strokes", &c->sort_strokes },
         { "occlusion", &c->occlusion },
+        { "enh_surface", &c->enh_surface }, { "enh_stars", &c->enh_stars },
+        { "enh_towers", &c->enh_towers }, { "enh_dogfights", &c->enh_dogfights },
     };
     for (size_t i = 0; i < sizeof floats / sizeof floats[0]; i++)
         if (strcmp(key, floats[i].k) == 0) { *floats[i].f = (float)atof(val); return 0; }
@@ -132,6 +135,10 @@ int sw_display_cfg_save(const sw_display_cfg *c, const char *path)
     fprintf(f, "\n; enhanced: things are solid, what is behind them is not drawn (0: wire frames\n"
                "; you see through, as the arcade machine)\n"
                "occlusion = %d\n", c->occlusion);
+    fprintf(f, "\n; enhanced, over the surface of the Death Star: the ground drawn, stars in the sky,\n"
+               "; towers in true perspective with more detail and from farther, chases far off\n"
+               "enh_surface = %d\nenh_stars = %d\nenh_towers = %d\nenh_dogfights = %d\n",
+            c->enh_surface, c->enh_stars, c->enh_towers, c->enh_dogfights);
     fclose(f);
     return 0;
 }

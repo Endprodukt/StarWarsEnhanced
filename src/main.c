@@ -280,6 +280,18 @@ static void draw_game(sw_app *app, const sw_display_cfg *cfg, board *b, double n
     sw_draw_lines(app->dvg, cfg, lines, n);
 }
 
+/* The enhanced settings, taken over: they are for the game in C only. */
+static void apply_enhanced(board *b, const sw_display_cfg *cfg)
+{
+    int on = b->native;
+    b->pic.occlusion = on && cfg->occlusion;
+    b->pic.enhance.surface = on && cfg->enh_surface;
+    b->pic.enhance.stars = on && cfg->enh_stars;
+    b->pic.enhance.towers = on && cfg->enh_towers;
+    b->pic.enhance.dogfights = on && cfg->enh_dogfights;
+    b->m.enh_towers = (uint8_t)(on && cfg->enh_towers);
+}
+
 /* --- the NOVRAM's file --------------------------------------------------------- */
 
 /* Options, accounting, the three best scores and the yoke's learned range
@@ -393,7 +405,7 @@ int main(int argc, char **argv)
             brd.emu.yoke_exact = cfg.yoke_autocenter != 0;
         }
         sw_picture_init(&brd.pic, &brd.m);
-        brd.pic.occlusion = brd.native && cfg.occlusion;
+        apply_enhanced(&brd, &cfg);
     }
     sw_controls_init(&brd.ctl, app.in);
     if (roms_ok && sw_splash_verify(&brd.m) != 0)
@@ -416,7 +428,7 @@ int main(int argc, char **argv)
         if (menu.open && !menu_calibrate && !menu_left) {
             switch (sw_menu_update(&menu, &cfg, app.in, app.clock)) {
             case SW_MENU_CHANGED:
-                brd.pic.occlusion = brd.native && cfg.occlusion;
+                apply_enhanced(&brd, &cfg);
                 brd.m.steady = brd.original ? 0 : (uint8_t)cfg.steady_frames;
                 break;
             case SW_MENU_SOUND:             /* as the main board asks for it */

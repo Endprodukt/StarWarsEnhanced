@@ -106,9 +106,30 @@ Soundplatine, die Zeit des Vektorgenerators.
   nicht betroffen.
 * **Liste aller Sounds** für den späteren Ersatz: `docs/SOUNDS.md`.
 * **Strich-Sortierung**: 3-mal weniger Leerweg auf der Highscore-Seite.
+* **Grafische Erweiterungen über der Oberfläche** (`src/render/enhance.c`,
+  2026-10-13, Wunsch des Besitzers; vier Einstellungen, jede abschaltbar, im
+  Testmenü und in der Einstellungsdatei, Standard an):
+  * `enh_surface`: der Boden als Plattenmuster des Todessterns, Linien in
+    Perspektive bis zum Horizont, manche Platten unterteilt oder mit Luke.
+  * `enh_stars`: Sterne am Himmel.
+  * `enh_towers`: Türme und Bunker in echter Perspektive statt zum Fuß hin
+    geschrumpft (am Automaten wachsen sie deshalb beim Näherkommen aus dem
+    Boden), aus doppelter Entfernung sichtbar und eingeblendet, mit Stufen,
+    Nähten, Geschützturm und Rohren (Vorlage: Foto eines Turmmodells). Die
+    Türme des Spiels werden dafür aus dem Bild genommen. Einzige Änderung am
+    Spiel: Mit `sw_machine.enh_towers` trifft der Laser die Türme so, wie
+    sie gezeichnet sind (`grlzcl` ohne den Abzug für den linearen Maßstab).
+  * `enh_dogfights`: in der Ferne jagen TIE Fighter einen X-Wing über den
+    Himmel, alle 13 Sekunden, mal zwei Schiffe, mal drei.
+  Alles wird aus dem Zustand des Spiels gezeichnet (Ort und Lage des
+  Spielers, Karte der Gebäude und ihr Zustand) mit der Perspektive des
+  Spiels; die Rechnung stimmt mit der Math Box auf den Punkt überein
+  (gemessen). Mit Occlusion verdecken die neuen Türme, was dahinter liegt.
+  Geprüft an Standbildern; mit allen vier aus stimmen die Aufnahmen weiter.
 * **Eigenes Testmenü** (`src/platform/menu.c`, 2026-10-13): Der
   Selbsttest-Knopf (`p1_button6`) öffnet es, das Spiel steht solange. Zeilen:
-  Enhanced Settings (Occlusion, Smooth Motion, Frame Pace, Stroke Sorting),
+  Enhanced Settings (Occlusion, Surface Plating, Surface Stars, Detailed
+  Towers, Distant Dogfights, Smooth Motion, Frame Pace, Stroke Sorting),
   Sound Test (alle 59 Anforderungen aus `docs/SOUNDS.md` mit Nummer und
   Name), Screen Calibration, Arcade Operator Screens (die Statistik- und
   Optionsseiten des Automatenprogramms; der Knopf führt von dort zurück),
@@ -151,6 +172,15 @@ Attract-Modus davor. Ungeprüft am Gerät, also nur gerechnet und gemessen:
 * `--calibrate`, die Bildrate der Platine im Spiel.
 
 ## Bekannte Grenzen
+
+* **Erweiterungen über der Oberfläche**: nicht am Automaten gesehen; sie
+  bringen deutlich mehr Linien ins Bild (Boden rund 80, ein naher Turm rund
+  60), ob die Platine das flüssig schafft, ist offen. Mit `enh_towers`
+  trifft der Laser ferne Türme leichter als am Automaten (ihre Trefferfläche
+  schrumpft dort mit der Entfernung). Die Türme schießen weiter nach der
+  Regel des Automaten. Verfolgungsjagden gibt es nur über der Oberfläche,
+  nicht im Weltraum oder im Graben. Der Tod über dem Boden und der Übergang
+  zum Graben sind nur flüchtig angesehen.
 
 * **Testmenü**: ungesehen (siehe oben). `yoke_autocenter` steht nicht im
   Menü (wirkt erst nach Neustart). Der Controls-Test (`--controls`) ist

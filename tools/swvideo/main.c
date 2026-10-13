@@ -4,6 +4,9 @@
  *           [--wire] [--every N] --wav FILE > frames.rgb
  *
  * --wire: wire frames as the arcade machine drew them (no occlusion).
+ * --plain: without what the port adds over the surface (render/enhance.h).
+ * --aim 80,4c: the first game starts on the Death Star in the middle (wave
+ * 3, which has the surface).
  * --every N: only every Nth picture is written (stills to look at).
  *
  * Runs the game as starwarsvp does (the programs in C, steady frames, the
@@ -226,6 +229,10 @@ int main(int argc, char **argv)
     m.sound_wait = on_sound_wait;
     sw_picture_init(&pic, &m);
     pic.occlusion = !arg_flag(argc, argv, "--wire");
+    if (!arg_flag(argc, argv, "--plain")) {
+        pic.enhance.surface = pic.enhance.stars = pic.enhance.towers = pic.enhance.dogfights = 1;
+        m.enh_towers = 1;
+    }
 
     wav_header(wav, 0);
     uint32_t samples = 0;
@@ -278,6 +285,7 @@ int main(int argc, char **argv)
         const sw_line *lines;
         int count = sw_picture_lines(&pic, now, 3, &lines);
         if (f % every != 0) continue;
+        if (every > 1) memset(after, 0, (size_t)W * H * 3 * sizeof *after);    /* (stills: no afterglow of the last one) */
         picture(lines, count);
         if (fwrite(rgb, 3, (size_t)W * H, stdout) != (size_t)W * H) return 1;
         if (f % 600 == 0)

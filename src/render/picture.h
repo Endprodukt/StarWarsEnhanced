@@ -9,7 +9,8 @@
  *      ahead
  *   1, 2  the lines of the last pictures shown, moved (render/smooth.h)
  *   0  the last picture as it is
- * and cuts away what is behind something else, if asked to (render/solid.h).
+ * adds what the port adds to the game's pictures (render/enhance.h) and
+ * cuts away what is behind something else, if asked to (render/solid.h).
  */
 #ifndef SWVP_PICTURE_H
 #define SWVP_PICTURE_H
@@ -19,6 +20,7 @@
 #include "game/subframe.h"
 #include "render/smooth.h"
 #include "render/solid.h"
+#include "render/enhance.h"
 
 typedef struct sw_picture {
     sw_machine *m;
@@ -39,6 +41,7 @@ typedef struct sw_picture {
     sw_machine  scratch;
     int         occlusion;                  /* 1: what is behind something is not drawn (render/solid.h) */
     sw_solid    solid;
+    sw_enhance  enhance;                    /* what the port adds to the picture (its settings are set by the caller) */
     uint8_t     subspace[SW_AVG_SPACE_SIZE];
 } sw_picture;
 

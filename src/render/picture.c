@@ -53,6 +53,7 @@ void sw_picture_init(sw_picture *p, sw_machine *m)
     m->frame_hook = on_frame;
     m->frame_user = p;
     sw_solid_init(&p->solid, m);
+    sw_enhance_init(&p->enhance, m);
     /* The sight is drawn by the routine the word at VGSITE calls. */
     if (m->rom)
         p->ahead.sight_routine = p->smooth.sight_routine =
@@ -89,21 +90,27 @@ void sw_picture_irq_end(sw_picture *p)
                   vg13(ram16(m, SW_VG_CX)) * 0.25f, vg13(ram16(m, SW_VG_CY)) * 0.25f);
 }
 
-static int picture_lines(sw_picture *p, double now, int smooth, const sw_line **lines);
+static int picture_lines(sw_picture *p, double now, int smooth, const sw_line **lines, const sw_machine **state);
 
 int sw_picture_lines(sw_picture *p, double now, int smooth, const sw_line **lines)
 {
-    int n = picture_lines(p, now, smooth, lines);
-    return p->occlusion ? sw_solid_run(&p->solid, *lines, n, lines) : n;
+    const sw_machine *state = p->m;         /* the game as it is in the picture */
+    int n = picture_lines(p, now, smooth, lines, &state);
+    n = sw_enhance_run(&p->enhance, state, now, *lines, n, lines);
+    if (!p->occlusion) return n;
+    p->solid.extra = p->enhance.faces;
+    p->solid.n_extra = p->enhance.n_faces;
+    return sw_solid_run(&p->solid, *lines, n, lines);
 }
 
-static int picture_lines(sw_picture *p, double now, int smooth, const sw_line **lines)
+static int picture_lines(sw_picture *p, double now, int smooth, const sw_line **lines, const sw_machine **state)
 {
     if (smooth >= 3 &&
         sw_subframe_render(&p->shown, p->m, (float)((now - p->shown_at) / p->frame_time), &p->scratch)) {
         /* computed from the state of the game (game/subframe.h) */
         run_list(p, &p->scratch, p->subspace, &p->sublist);
         *lines = p->sublist.lines;
+        *state = &p->scratch;
         return p->sublist.count;
     }
     /* else lines moved (render/smooth.h): from this frame's picture to the
