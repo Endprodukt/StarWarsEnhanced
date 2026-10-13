@@ -152,7 +152,9 @@ static void grlzcl(sw_machine *m)
         W16(SW_M_YP, 7 * UNIT);             /* DOUBLE BUNKER HITE */
         W16(SW_M_ZP, 6 * UNIT);             /* DOUBLE BUNKER HITE */
     }
-    uint16_t d = (uint16_t)(R16(SW_M_XP) - 0x100);  /* GET 1/X: ADJUST FOR LINEAR SCALE EFFECT */
+    /* GET 1/X: ADJUST FOR LINEAR SCALE EFFECT (100h; less when the enhanced
+     * towers are sized with a weaker scale, sw_machine.tower_adjust) */
+    uint16_t d = (uint16_t)(R16(SW_M_XP) - m->tower_adjust);
     if (d & 0x8000) d = 0;                  /* BUT DONT GO OVERBOARD */
     W16(SW_M_XP, d);
     sw_mgowt(m, SW_MSPERS);                 /* DO THE MULTIPLYS */
