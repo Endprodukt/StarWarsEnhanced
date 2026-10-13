@@ -78,6 +78,7 @@ typedef struct sw_machine {
     uint16_t   y;                /* the 6809's Y: where the display list is being written */
     uint8_t    main_state;       /* SW_MAIN_xxx */
     uint8_t    in_irq;           /* inside sw_irq (who is reading the PRNG) */
+    uint8_t    hold_frames;      /* game frames the main line still waits inside a routine (the NOVRAM test) */
     uint8_t    steady;           /* option steady_frames: a game frame every 12th interrupt, always (game/pace.c) */
     uint8_t    yoke_exact;       /* option yoke_autocenter: the yoke passed through exactly */
 

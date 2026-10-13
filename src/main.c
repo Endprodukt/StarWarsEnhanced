@@ -239,10 +239,8 @@ static void on_irq(void *u)
         sw_irq(&b->m);
         sw_main_poll(&b->m);
         if (b->snd) sw_sndboard_run(b->snd, SW_CPU_CYCLES_PER_IRQ);
-    } else if (b->original) {
-        sw_emu_irq(&b->emu);
     } else {
-        sw_emu_native_irq(&b->emu);
+        sw_emu_irq(&b->emu);
     }
     if (b->m.vg_starts != b->vg_seen) {
         /* The vector generator was started on a picture: the game's new
@@ -420,15 +418,13 @@ int main(int argc, char **argv)
     brd.m.yoke_exact = cfg.yoke_autocenter != 0;
     brd.m.steady = cfg.steady_frames != 0 && !sw_flag(argc, argv, "--original");
     if (roms_ok) {
-        /* Three ways to run the game:
-         *   default     the C routines and the sound board's program in C:
-         *               no 6809 at all (self test and options, which are
-         *               not ported, lead back to the banner)
-         *   --hybrid    the same, with a 6809 core standing in for those
-         *               two phases
-         *   --original  the whole original programs on 6809 cores */
+        /* Two ways to run the game:
+         *   default     the game's and the sound board's programs in C:
+         *               no 6809 at all
+         *   --original  the whole original programs on 6809 cores, to
+         *               compare with */
         brd.original = sw_flag(argc, argv, "--original");
-        brd.native = !brd.original && !sw_flag(argc, argv, "--hybrid");
+        brd.native = !brd.original;
         if (!brd.controls_test && !sw_flag(argc, argv, "--nosound")) {
             static sw_sndboard snd;
             sw_sndboard_init(&snd, &brd.m);
@@ -444,15 +440,9 @@ int main(int argc, char **argv)
             brd.m.sound_wait = on_sound_wait;
             brd.m.sound_user = &brd;
         } else {
+            sw_emu_init(&brd.emu, &brd.m);
+            brd.emu.snd = brd.snd;
             brd.emu.yoke_exact = cfg.yoke_autocenter != 0;
-            if (brd.original) {
-                sw_emu_init(&brd.emu, &brd.m);
-                brd.emu.snd = brd.snd;
-                brd.emu.yoke_exact = cfg.yoke_autocenter != 0;
-            } else {
-                sw_reset(&brd.m);
-                sw_emu_attach(&brd.emu, &brd.m);
-            }
         }
         /* The sight is drawn by the routine the word at VGSITE calls. */
         brd.m.frame_hook = on_frame;

@@ -7,7 +7,7 @@ Darstellung flüssig.
 
 * **Das Spiel ist das Original, in C**: Das Programm von 1983 ist von Hand
   Zeile für Zeile nach C portiert und Frame für Frame gegen MAME-Aufnahmen
-  geprüft (21.609 Frames, alle gleich), ebenso das Programm der
+  geprüft (27.313 Frames, alle gleich), ebenso das Programm der
   Soundplatine (Effekte, Musik, Sprache). Im normalen Betrieb läuft kein
   6809 mehr mit. Math Box, Dividierer, NOVRAM, POKEYs und Sprachchip sind
   als Bausteine nachgebildet.
@@ -92,7 +92,6 @@ Arbeitszähler pro Frame für das Tempomodell (docs/PLAN.md).
 | Programm | Zweck |
 |---|---|
 | `starwarsvp` | das Spiel: Spiel- und Sound-Programm in C, kein 6809 |
-| `starwarsvp --hybrid` | dasselbe; für Selbsttest und Optionsseite (nicht portiert) springt ein 6809-Kern mit dem Original-ROM ein |
 | `starwarsvp --original` | die ganzen Originalprogramme (Spiel und Ton) auf 6809-Kernen, zum Vergleich |
 | `starwarsvp --nosound` | ohne Soundplatine |
 | `starwarsvp --controls` | Testbild für die Steuerung: Fadenkreuz am Joch (mit dem originalen Nachziehen und der Joch-Kalibrierung), Feuer färbt es rot, Münzen zählen Credits |

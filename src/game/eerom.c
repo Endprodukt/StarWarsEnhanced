@@ -124,7 +124,7 @@ static void eeini2(sw_machine *m, uint8_t a)
     } while (x < R16(SW_TEMP));
 }
 
-enum { EE_INIT, EE_INI0 };
+enum { EE_INIT, EE_INI0, EE_INI1 };
 
 /* EEINIT and its second entry EEINI0 (which always sets up the option
  * switch areas from area A's defaults). */
@@ -133,6 +133,7 @@ static void eeinit_from(sw_machine *m, int entry, uint8_t a)
     uint16_t x, u;
 
     if (entry == EE_INI0) goto eeini0;
+    if (entry == EE_INI1) goto eeini1;
 
     /* COPY EEROM TO BUFFER */
     for (x = SW_EEROM, u = SW_EEBUF; x < SW_EEROMZ; x += 2, u += 2) W16(u, R16(x));
@@ -347,4 +348,371 @@ void sw_eeacct(sw_machine *m)
     sw_tmpee3(m, SW_POTSAV, SW_TEMP, 3);    /* MOVE THEM FROM TEMP TO POTSAV IN EEROM: 4 BYTES WORTH */
 
     sw_eeutim(m);
+}
+
+/* --- the operator's pages: statistics and options ------------------------------------- */
+
+/* local tables (addresses from the program ROM) */
+#define EEMASK 0xC737       /* the masks of fields of 1 to 4 bits */
+#define T_OPT  0xC797       /* OPTION DESCRIPTOR TABLE: 20*POS+8*(LEN-1)+WRD */
+#define N_OPT  12
+#define T_ACCP 0xC7BB       /* Y POSITIONS FOR ACCOUNTING INFO */
+#define T_HISP 0xC7CD       /* Y POSITIONS FOR HISTOGRAM */
+#define T_MOPV 0xC7F1       /* TABLE OF MESSAGE #'S FOR OPTION SWITCH VALUES */
+
+/* TIME: DISPLAY TIME IN M:S FORMAT. A: minutes in the high nibble, seconds
+ * in fours in the low one */
+static void time_ms(sw_machine *m, uint8_t a)
+{
+    W8(SW_BT_SUP, 0);
+    uint8_t b = a & 0x0f;
+    a >>= 4;
+    if (a >= 0x0a) a = 0x09;                /* MAX OF 9 */
+    sw_vwnibl(m, a);                        /* MINUTES */
+    VG(SW_VJCOLN);                          /* CHANGE TO COLON IF WE MAKE ONE */
+    a = 0;
+    for (; b != 0; b--) {                   /* SECONDS: MULTIPLY BY 4 IN DECIMAL */
+        int c = 0;
+        a = add_daa(a, 0x04, &c);
+    }
+    sw_vwbyte(m, a);
+}
+
+/* TMPMUL: TEMP times 4 in decimal (GOT TO MULTIPLY BY 4 FOR SECONDS) */
+static void tmpmul(sw_machine *m)
+{
+    for (int i = 0; i < 2; i++) {           /* DO IT TWICE: ADD TEMP TO TEMP IN DECIMAL */
+        int c = 0;
+        for (uint16_t x = SW_TEMP + 3; x >= SW_TEMP; x--)       /* START WITH LSD */
+            W8(x, add_daa(R8(x), R8(x), &c));
+    }
+}
+
+/* DIVIDE: TEMP2/TEMP, RESULT IN TEMP. USES ITERATIVE ADD OF -TEMP UNTIL
+ * WRAP. TEMP = DENOMINATOR ( NON-ZERO ) */
+static void divide(sw_machine *m)
+{
+    /* PERFORM DECIMAL NEGATE OF DENOMINATOR */
+    W8(SW_TMPCNT, 1);                       /* SETUP FOR NEGATE */
+    for (uint16_t x = SW_TEMP + 3; x >= SW_TEMP; x--) {     /* 4 BYTES WORTH */
+        int c = 0;
+        W8(x, add_daa((uint8_t)(0x99 - R8(x)), R8(SW_TMPCNT), &c));
+        W8(SW_TMPCNT, c ? 1 : 0);           /* PROPAGATE THE CARRY */
+    }
+    uint8_t b = 0xff;
+    for (;;) {                              /* START DIVIDE */
+        b++;
+        if (b == 0xef) break;               /* OVERFLOW---LEAVE AT MAX */
+        int c = 0;
+        /* START WITH LSB: SUBTRACT DENOMINATOR ( ADD NEGATIVE IN DECIMAL) */
+        for (int i = 3; i >= 0; i--)
+            W8(SW_TEMP2 + i, add_daa(R8(SW_TEMP2 + i), R8(SW_TEMP + i), &c));
+        if (!c) break;                      /* DONE WHEN STAYS NEGATIVE ( DECIMAL ) NO CARRY */
+    }
+    W8(SW_TEMP, b);
+}
+
+/* A row of the statistics: its place, then what the caller draws. */
+static void acc_row(sw_machine *m, int row)
+{
+    VG(R16(T_ACCP + 2 * row));
+    VG(0x1fff & 48);
+}
+
+/* EEACC: DISPLAY STATS AND ACCOUNTING INFO */
+void sw_eeacc(sw_machine *m)
+{
+    uint8_t a;
+    int c;
+    for (a = SW_MS_ACC; a < SW_MS_OPT; a++) sw_messon(m, a);
+    sw_messon(m, SW_MS_XIT);                /* EXIT MESSAGE */
+
+    VG(SW_VGCOLR + (VGCRED << 8));          /* SETUP COLOR FOR DATA MESSAGES */
+    uint16_t x = SW_AMECH;                  /* START WITH AUX COIN DATA */
+    uint16_t u = T_ACCP;                    /* TABLE OF POSITIONS */
+    do {
+        VG(R16(u)); u += 2;                 /* SET POSITION */
+        VG(0x1fff & 48);
+        W16(SW_TEMP, u);                    /* SAVE U--- VWNIBL ALTERS U */
+        W8(SW_BT_SUP, 5);
+        for (int i = 0; i < 6; i++) sw_vwnibl(m, R8(x++));     /* VIEW 6 NIBBLES */
+        VG(SW_VGCNTR);
+        u = R16(SW_TEMP);                   /* GET POINTER TO POS TABLE BACK */
+    } while (x < SW_TTIME);
+
+    /* DISPLAY HIGHEST LEVEL ATTAINED */
+    VG(R16(T_ACCP + 6));
+    VG(0x1fff & 316);
+    W8(SW_BT_SUP, 1);                       /* SUPRESS 1 DIGIT */
+    sw_vwnibl(m, R8(SW_ENDGAM));            /* BCD VALUE OF HIGHEST WAVE ATTAINED ( HI NIBL ) */
+    sw_vwnibl(m, R8(SW_ENDGAM + 1));        /* LO NIBL */
+    VG(SW_VGCNTR);
+
+    /* GET TOTAL COINS PAID */
+    sw_eetemp(m, SW_RMECH);                 /* GET RIGHT MECH DATA INTO TEMP */
+    sw_eetmp3(m, SW_LMECH, SW_TEMP2, 3);    /* GET LEFT MECH DATA INTO TEMP2 */
+    c = 0;                                  /* 3 BYTE ADD, RESULT IN TEMP */
+    W8(SW_TEMP + 2, add_daa(R8(SW_TEMP + 2), R8(SW_TEMP2 + 2), &c));
+    W8(SW_TEMP + 1, add_daa(R8(SW_TEMP + 1), R8(SW_TEMP2 + 1), &c));
+    W8(SW_TEMP + 0, add_daa(R8(SW_TEMP + 0), R8(SW_TEMP2 + 0), &c));    /* NOW THE MSB */
+    acc_row(m, 4);                          /* DISPLAY TOTAL COINS */
+    W8(SW_BT_SUP, 5);
+    for (int i = 0; i < 3; i++) sw_vwbyte(m, R8(SW_TEMP + i));
+    VG(SW_VGCNTR);                          /* CENTER */
+
+    sw_eetemp(m, SW_TTIME);                 /* DISPLAY TOTAL GAME TIME */
+    tmpmul(m);                              /* GOT TO MULTIPLY BY 4 FOR SECONDS */
+    acc_row(m, 7);
+    W8(SW_BT_SUP, 7);
+    for (int i = 0; i < 4; i++) sw_vwbyte(m, R8(SW_TEMP + i));
+    VG(SW_VGCNTR);
+
+    sw_eetemp(m, SW_TIMEON);                /* DISPLAY TOTAL TIME ON */
+    tmpmul(m);
+    acc_row(m, 8);
+    W8(SW_BT_SUP, 7);
+    for (int i = 0; i < 4; i++) sw_vwbyte(m, R8(SW_TEMP + i));
+    VG(SW_VGCNTR);
+
+    /* CALCULATE AND SHOW AVERAGE GAME TIME */
+    sw_eetemp(m, SW_GAMES - 2);             /* MOVE NUMBER OF GAMES PLAYED TO TEMP+1 */
+    (void)R8(SW_TEMP);
+    W8(SW_TEMP, 0);                         /* LEADING 0 */
+    if ((R8(SW_TEMP + 1) | R8(SW_TEMP + 2) | R8(SW_TEMP + 3)) != 0) {  /* I WON'T DIVIDE BY 0 */
+        sw_eetmp3(m, SW_TTIME, SW_TEMP2, 3);    /* GET TOTAL GAME TIME TO TEMP2 */
+        divide(m);                          /* ( GAME TIME/# OF GAMES) */
+        /* ADJUST ANSWER FOR M:S FORMAT: E MEANS 56 SECONDS ( 14*4) F IS 60 SECONDS */
+        a = R8(SW_TEMP);
+        if ((a & 0x0f) >= 0x0f)             /* 60 SECONDS GETS ADDED IN AS A MINUTE (HI NIBBLE) */
+            W8(SW_TEMP, R8(SW_TEMP) + 1);
+        /* HI NIBBLE REALLY 64 SECONDS NOT 60 SECONDS, SO ADD 64 SECOND NIBBLE TO 4 SECOND NIBBLE */
+        a = (uint8_t)((a >> 4) + R8(SW_TEMP));
+        W8(SW_TEMP, a);                     /* ADJUSTED MINUTES+SECONDS/4 IE. M:S */
+        if ((a & 0x0f) >= 0x0f)             /* IF 60 SECONDS ADD 1 TO MINUTES */
+            W8(SW_TEMP, R8(SW_TEMP) + 1);   /* 0F+1=10 */
+    }
+    acc_row(m, 5);                          /* SHOW IT */
+    time_ms(m, R8(SW_TEMP));
+    VG(SW_VGCNTR);
+
+    /* CALCULATE AND SHOW PERCENTAGE OF PLAY/TIMEON */
+    sw_eetemp(m, SW_TIMEON);                /* GET TOTAL TIME ON TO TEMP */
+    if ((R8(SW_TEMP) | R8(SW_TEMP + 1) | R8(SW_TEMP + 2) | R8(SW_TEMP + 3)) != 0) {    /* WON'T DIVIDE BY ZERO */
+        sw_eetmp3(m, SW_TTIME + 2, SW_TEMP2, 3);    /* GET PLAY TIME ON TO TEMP2 ( 2 LSD IGNORED ) */
+        (void)R8(SW_TEMP2 + 3);
+        W8(SW_TEMP2 + 3, 0);                /* * 100. */
+        divide(m);
+    }
+    acc_row(m, 6);                          /* SHOW IT */
+    sw_binbcd(m, R8(SW_TEMP), 0x10);        /* CONVERT FROM HEX */
+    W8(SW_BT_SUP, 1);
+    sw_vwbyte(m, R8(SW_BCD + 2));
+    VG(SW_VGCNTR);
+
+    /* DISPLAY HISTOGRAM OF GAME TIMES */
+    W8(SW_TEMP, (SW_ZHISTO - SW_HISTOG - 2) / 2);   /* START AT LARGEST TIME ( 6:00 ) */
+    W16(SW_TEMP + 2, T_HISP);
+    do {
+        u = R16(SW_TEMP + 2);
+        VG(R16(u)); u += 2;                 /* Y POSITION */
+        /* PAST HALF WAY POINT + 2: PUT DATA ON LEFT HALF OF SCREEN, ELSE RIGHT SIDE */
+        VG(u >= T_HISP + 20 ? (0x1fff & (uint16_t)-300) : (0x1fff & 100));
+        W16(SW_TEMP + 2, u);
+        time_ms(m, R8(T_HIST - 1 + R8(SW_TEMP)));   /* TIME SLOT TIME IN M:S FORMAT */
+        uint16_t d = R16(SW_VGMSGA);        /* 2 BLANKS */
+        VG(d);
+        VG(d);
+        W8(SW_BT_SUP, 0);
+        uint8_t b = (uint8_t)(R8(SW_TEMP) << 1);
+        sw_vwnibl(m, R8(SW_HISTOG + b));    /* HIGH NIBBLE: SHOW IT */
+        sw_vwnibl(m, R8(SW_HISTOG + b + 1));
+        VG(SW_VGCNTR);                      /* CENTER INSTRUCTION */
+        a = (uint8_t)(R8(SW_TEMP) - 1);
+        W8(SW_TEMP, a);
+    } while (!(a & 0x80));
+}
+
+/* EEOPT3: DISLAY THE OPTION SWITCH VALUE. A=OPTION NUMBER. The color MUST
+ * BE ALREADY SET UP */
+void sw_eeopt3(sw_machine *m, uint8_t a)
+{
+    uint8_t b = R8(T_OPT + a);              /* OPTION SWITCH DESCRIPTOR */
+    W8(SW_TEMP, b);                         /* SAVE IT */
+    uint16_t x = (uint16_t)(SW_OPTS0 + ((b & 0x07) << 1));  /* WHICH WORD? NIBBLES REMEMBER */
+    b = R8(SW_TEMP) >> 3;
+    W8(SW_TEMP, b);
+    uint16_t u = (uint16_t)(EEMASK + (b & 0x03));   /* WHAT IS THE FIELD SIZE? POINTS TO FIELD MASK */
+    b = R8(SW_TEMP) >> 2;
+    W8(SW_TEMP, b);                         /* BIT POSITION OF FIELD */
+    b = (uint8_t)(R8(x) << 4);              /* GET OPTION SWITCH DATA (BOTH NIBBLES) */
+    W8(SW_TEMP + 1, b);
+    b = (uint8_t)((R8(x + 1) & 0x0f) + R8(SW_TEMP + 1));
+    for (;;) {                              /* MOVE FIELD TO LSB */
+        uint8_t n = (uint8_t)(R8(SW_TEMP) - 1);
+        W8(SW_TEMP, n);
+        if (n & 0x80) break;
+        b >>= 1;
+    }
+    b &= R8(u);                             /* MASK FOR FIELD */
+    W8(SW_EEVAL, b);
+    sw_domes2(m, (uint8_t)(b + R8(T_MOPV + a)));    /* MESSAGE NUMBER OF THIS VALUE */
+}
+
+/* EECMP: COMPARE EEROM DATA TO BUFFER DATA. Returns 0 if they are the same
+ * (and says so in NVTSTR), else the address after the first that is not. */
+static uint16_t eecmp(sw_machine *m)
+{
+    for (uint16_t x = SW_EEROM, u = SW_EEBUF; x < SW_EEROMZ; x++, u++)
+        if (((R8(x) ^ R8(u)) & 0x0f) != 0) return (uint16_t)(x + 1);    /* LOW NIBBLE ONLY */
+    W8(SW_NVTSTR, 0x01);                    /* SET FLAG TO SAY NOVRAM OK */
+    return 0;
+}
+
+/* RESTOR: ERROR IN NOVRAM, SET FLAGS AND REWRITE DATA WITH BUFFER */
+static void restor(sw_machine *m, uint16_t x)
+{
+    W16(SW_NVADDR, x - 1);                  /* ADDRESS OF ERROR, FOR REPORTING */
+    W8(SW_NVTSTR, 0xff);                    /* FLAG SAYING NOVRAM BAD */
+    for (uint16_t e = SW_EEROM, u = SW_EEBUF; e < SW_EEROMZ; e += 2, u += 2)
+        W16(e, R16(u));                     /* COPY BUFFER TO EEROM RAM */
+}
+
+/* NOVRCL: RECALL NON-VOLATILE MEMORY. The original waits 33 game frames
+ * for the line's capacitor; the frames are waited for afterwards
+ * (sw_machine.hold_frames). */
+static void novrcl(sw_machine *m)
+{
+    W8(SW_NVRRCL, 0xff);                    /* D7 = 1 PUTS NOVRAM IN RECALL MODE */
+    W8(SW_NVRRCL, 0x00);                    /* D7 = 0 BRINGS US OUT OF RECALL MODE */
+    m->hold_frames = (uint8_t)(m->hold_frames + 33);
+}
+
+/* EETST: TEST STORE-ABILITY OF EEROM (NOVRAM).
+ * *** NOTE: USES UP 2 OF THE 1000 STORES QUOTED BY THE MANUFACTURER. *** */
+static void eetst(sw_machine *m)
+{
+    uint16_t x, u;
+    for (x = SW_EEROM, u = SW_EEBUF; x < SW_EEROMZ; x += 2, u += 2) W16(u, R16(x));    /* COPY CURRENT DATA TO BUFFER */
+    for (x = SW_EEROM; x < SW_EEROMZ; x++) W8(x, ~R8(x));  /* COMPLIMENT THE DATA PRIOR TO STORE */
+    W8(SW_NSTORE, 0);                       /* STORE IT OUT TO ROM PORTION OF EEROM */
+    for (x = SW_EEROM; x < SW_EEROMZ; x++) W8(x, 0);       /* CLEAR IT OUT TO TEST THE RECALL */
+    novrcl(m);                              /* RECALL THE DATA: SHOULD BE COMPLIMENT OF BUFFER DATA */
+    for (x = SW_EEROM; x < SW_EEROMZ; x++) W8(x, ~R8(x));  /* COMPLIMENT IT AGAIN: THE ORIGINAL DATA AGAIN */
+    W8(SW_NSTORE, 0);                       /* STORE IT OUT AGAIN */
+    x = eecmp(m);                           /* COMPARE DATA TO BUFFER */
+    if (x != 0) { restor(m, x); return; }   /* BAD DATA--SET FLAG AND RESTORE WITH BUFFER DATA */
+    /* TWICE COMPLIMENTED DATA LOOKS OK, TRY RECALLING THE DATA AGAIN */
+    for (x = SW_EEROM; x < SW_EEROMZ; x++) W8(x, 0);
+    novrcl(m);
+    x = eecmp(m);                           /* ONE LAST COMPARE */
+    if (x != 0) restor(m, x);               /* PUT THE RAM PORTION BACK IF POSSIBLE */
+}
+
+/* EETSTR: REPORT EETST RESULTS */
+static void eetstr(sw_machine *m)
+{
+    uint8_t a = R8(SW_NVTSTR);              /* 0 MEANS NO TEST PERFORMED */
+    if (a == 0) return;
+    if (a == 0x01) {                        /* NO ERRORS -- GOOD EEROM */
+        sw_domess(m, SW_MS_GNV);            /* "NO ERRORS" ( GOOD NOVRAM ) */
+        return;
+    }
+    VG(0x1fff & (uint16_t)-150);            /* THERE WERE ERRORS */
+    VG(0x1fff & 420);
+    sw_vwbyte(m, R8(SW_NVADDR + 1));        /* LOW BYTE OF ADDRESS OF ERROR */
+    VG(SW_VGCNTR);
+    sw_domess(m, SW_MS_BNV);                /* "ERROR AT" ( BAD NOVRAM ) */
+}
+
+/* EEOPT: DISPLAY ALL OPTIONS, and do what the operator asked to be reset */
+void sw_eeopt(sw_machine *m)
+{
+    uint8_t a;
+    for (a = SW_MS_OPT; a < SW_MS_VLC; a++) sw_messon(m, a);   /* OPTION SWITCH MESSAGES */
+    sw_messon(m, SW_MS_TST);                /* "AUX FOR SELF TEST" MESSAGE */
+    VG(SW_VGCOLR + (VGCGRN << 8));          /* OPTION SWITCH VALUE COLOR */
+    W8(SW_TEMP2, N_OPT - 1);                /* DISPLAY ALL OPTION SWITCH VALUES */
+    do {
+        sw_eeopt3(m, R8(SW_TEMP2));
+        a = (uint8_t)(R8(SW_TEMP2) - 1);
+        W8(SW_TEMP2, a);
+    } while (!(a & 0x80));
+
+    eetstr(m);                              /* REPORT RESULTS OF EEROM ( NOVRAM ) TEST */
+
+    if ((R8(SW_RESETS) & 0x0f) == 0) return;    /* SOMETHING NEEDS TO BE RESET */
+    sw_domess(m, SW_MS_RES);                /* "USE RIGHT FIRE BUTTON TO PERFORM ANY RESET" */
+    if ((R8(SW_GN_SWE) & SW_RFIRBT) == 0) return;   /* CHECK FOR RIGHT FIRE: IT WAS PUSHED, RESET INDICATED AREAS */
+    if (R8(SW_RESETS) & 0x08) {             /* RESET HIGH SCORES? */
+        eecpy(m, 0x01);                     /* PERFORM DEFAULT COPY ON AREA 1 */
+        sw_setint(m);                       /* RESET OTHER INITIALS TOO */
+    }
+    if (R8(SW_RESETS) & 0x04) {             /* RESET ACCOUNTING INFO? */
+        /* CLEAR AREA 2 STARTING AT GAMES ( LEAVE COINS ALONE ) */
+        for (uint16_t x = SW_GAMES; x < SW_EECK2; x += 2) W16(x, 0x0000);
+        sw_eecksm(m, 0x02);                 /* CHECKSUM AREA 2 */
+    }
+    if (R8(SW_RESETS) & 0x02) {             /* RESET OPTIONS TO DEFAULT? */
+        eecpy(m, 0x00);                     /* SET AREA 0 TO DEFAULT */
+        /* COPY BACKUP AREA TO PRIMARY AREA */
+        uint16_t x = (uint16_t)(SW_EEROM + R8(SW_L_TAREA + NAREA));
+        uint16_t u = SW_EEROM;
+        W8(SW_TMPCNT, R8(SW_L_TAREA + 1));
+        do {
+            W8(x++, R8(u++));
+            W8(SW_TMPCNT, R8(SW_TMPCNT) - 1);
+        } while (R8(SW_TMPCNT) != 0);
+    }
+    if (R8(SW_RESETS) & 0x01) eetst(m);     /* TEST NOVRAM? TEST STORE-ABILITY OF NOVRAM */
+    W16(SW_RESETS, 0x0000);                 /* CLEAR RESET BYTE */
+}
+
+/* EEOPT1: MAKE CHANGES TO OPTION SWITCH VALUES. The yoke up and down
+ * chooses the option, the left trigger steps its value. */
+void sw_eeopt1(sw_machine *m)
+{
+    uint8_t a, b;
+    if ((R8(SW_FRAMEL) & 0x0f) == 0) {      /* NOT TOO QUICK */
+        b = R8(SW_SI_RSY);                  /* UP/DOWN */
+        if (b < 0xd0 && b > 0x30) {         /* MAY BE NEGATIVE ENOUGH; LARGE ENOUGH TO CHANGE */
+            if (!(b & 0x80)) {              /* BACK AN OPTION */
+                b = (uint8_t)(R8(SW_EEINDX) - 1);
+                if (b & 0x80) b = N_OPT - 1;    /* WRAP WHEN BELOW 0 */
+            } else {                        /* FORWARD AN OPTION */
+                b = (uint8_t)(R8(SW_EEINDX) + 1);
+                if (b > N_OPT - 1) b = 0;   /* WRAP */
+            }
+            W8(SW_EEINDX, b);
+        }
+    }
+    b = R8(T_OPT + R8(SW_EEINDX));          /* GET OPTION DESCRIPTOR */
+    W8(SW_TEMP + 2, b);
+    a = R8(EEMASK + ((b >> 3) & 0x03));     /* FIELD SIZE: MASK FOR THIS FIELD SIZE */
+    W8(SW_TEMP, a);                         /* ALSO MAX VALUE FOR CURRENT OPTION */
+
+    /* LEFT FIRE BUTTON CHANGES THE OPTION */
+    if ((R8(SW_GN_SWE) & SW_LFIRBT) == 0) return;   /* LOOK FOR EDGE OF LEFT FIRE BUTTON */
+    b = (uint8_t)(R8(SW_EEVAL) + 1);        /* CURRENT VALUE: NEXT VALUE, MAYBE */
+    if (b > R8(SW_TEMP)) b = 0x00;          /* PAST MAX? YES, WRAP BACK TO LOWEST VALUE */
+    W8(SW_EEVAL, a);                        /* (STA: the mask, as the original has it) */
+
+    a = (R8(SW_TEMP + 2) >> 5) & 0x07;      /* OPTION DESCRIPTOR: GET BIT POSITION */
+    for (; a != 0; a--) {                   /* MOVE DATA AND MASK INTO POSITION */
+        b = (uint8_t)(b << 1);              /* SHIFT DATA */
+        W8(SW_TEMP, R8(SW_TEMP) << 1);      /* SHIFT MASK */
+    }
+    /* INDEX INTO OPTION SWITCH AREA: NIBBLES, NIBBLES, NIBBLES. I'VE GOT TO REMEMBER NIBBLES */
+    uint16_t x = (uint16_t)(SW_OPTS0 + ((R8(SW_TEMP + 2) & 0x07) << 1));
+    W8(SW_TEMP + 1, R8(x) << 4);            /* GET THE DATA INTO TEMP STORAGE: HIGH NIBBLE */
+    W8(SW_TEMP + 1, (R8(x + 1) & 0x0f) + R8(SW_TEMP + 1));     /* LO NIBBLE */
+    b ^= R8(SW_TEMP + 1);                   /* PUT NEW DATA INTO TEMP */
+    b &= R8(SW_TEMP);
+    b ^= R8(SW_TEMP + 1);
+    W8(x + 1, b);                           /* PUT IT BACK INTO EEROM */
+    W8(x, b >> 4);
+    sw_eecksm(m, NAREA);                    /* SET CHECKSUM */
+    /* MOV EEROM TO EEBUF TO PREPARE FOR "EEINI1" */
+    for (uint16_t e = SW_EEROM, u = SW_EEBUF; e < SW_EEROM + 0xff; e += 2, u += 2) W16(u, R16(e));
+    eeinit_from(m, EE_INI1, 0);             /* SETUP BACKUP AND CHECK OTHER AREAS */
+    sw_eeopt3(m, R8(SW_EEINDX));            /* DISPLAY THE NEW VALUE */
 }

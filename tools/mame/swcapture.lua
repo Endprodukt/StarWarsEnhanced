@@ -77,6 +77,7 @@ end
 -- A played script: SWCAP_PLAY is a list of "FRAME WHAT [ARGS]" separated by
 -- ';', FRAME counted in game frames from power-on:
 --   coin N | fire N | rfire N | thumb N   close the switch for N frames
+--   test N | aux N                        the self test switch, the aux coin switch
 --   stick X Y                             the yoke, 00..FF each, 80 the middle
 --   weave N                               from here on: the yoke circles and
 --                                         the trigger is pulled every N frames
@@ -97,6 +98,7 @@ local ports = machine.ioport.ports
 local switches = {
     coin = ports[":IN0"].fields["Coin 1"], fire = ports[":IN0"].fields["P1 Button 1"],
     rfire = ports[":IN0"].fields["P1 Button 4"], thumb = ports[":IN1"].fields["P1 Button 2"],
+    test = ports[":IN0"].fields["Service Mode"], aux = ports[":IN0"].fields["Service 1"],
 }
 local stick_x, stick_y = ports[":STICKX"].fields["AD Stick X"], ports[":STICKY"].fields["AD Stick Y"]
 local held = {}             -- switch name -> frames left

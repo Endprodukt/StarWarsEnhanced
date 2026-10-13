@@ -7,8 +7,7 @@ Stand: 2026-10-13. Architektur und Hintergründe: [PLAN.md](PLAN.md).
 Hundertprozentig C, auch der Ton; keine Emulation. Eine feste Bildrate ohne
 die Einbrüche des Automaten ("steady frames per second"), und echte, nicht
 vorgetäuschte Flüssigkeit. Der 6809-Kern dient nur noch dem Vergleich
-(`--original`, die Tests) und als Einspringer für Selbsttest und
-Optionsseite (`--hybrid`), bis auch die portiert sind.
+(`--original`, die Tests).
 
 ## Was läuft
 
@@ -16,19 +15,22 @@ Das ganze Spiel, unverändert, als C-Programm (`src/game`, Zeile für Zeile
 nach der Quelle von 1983): Interrupt, Münzen, Attract, Spielstart,
 Weltraumwelle, Anflug, Boden mit Türmen und Bunkern, Graben, Protonentorpedo,
 Explosion des Todessterns, Wellenwechsel, alle Tode, Spielende mit
-Buchhaltung und Highscore-Eingabe. In `src/game` gibt es keinen Aufruf ins
+Buchhaltung und Highscore-Eingabe, dazu die Betreiberseiten (Statistik,
+Optionen mit Ändern, Zurücksetzen und NOVRAM-Test). In `src/game` gibt es keinen Aufruf ins
 Originalprogramm mehr (`grep -rn "ORIG(" src/game` ist leer).
 
 Ebenso das Programm der Soundplatine (`src/sound/sndprog.c`: Hauptschleife,
 Effekte SNDAUD, Musik SNDPM, Sprache SNDSPK).
 
-`starwarsvp` kennt drei Arten:
+`starwarsvp` kennt zwei Arten:
 
-* **Standard**: alles in C, kein 6809. Selbsttest und Optionsseite (STS,
-  OPT; nur mit Testschalter erreichbar) sind nicht portiert und führen
-  zurück zum Banner.
-* `--hybrid`: dasselbe, für STS und OPT springt ein 6809-Kern ein.
+* **Standard**: alles in C, kein 6809.
 * `--original`: Spiel- und Sound-Programm ganz auf 6809-Kernen (zum Vergleich).
+
+Nicht portiert und nicht vorgesehen: der Selbsttest der Platine (TCTEST.MAC:
+RAM-, ROM- und Math-Box-Prüfung beim Einschalten mit Testschalter). Diese
+Hardware gibt es hier nicht; "AUX" auf der Optionsseite setzt das Spiel nur
+zurück.
 
 Als Bausteine nachgebildet (keine Programme, sondern Hardware): Math Box,
 Dividierer, NOVRAM, die vier POKEYs, der Sprachchip TMS5220, der RIOT der
@@ -49,8 +51,9 @@ Soundplatine, die Zeit des Vektorgenerators.
   Musik-Kanäle, 18 auf die Steuerregister; die 6.685 Sprachbytes sind
   gleich und höchstens einen Durchlauf (4 ms) versetzt.
 * **Geprüft gegen MAME**, Frame für Frame (RAM, Math-Box-RAM,
-  Displayliste), sechs Aufnahmen mit 21.609 Frames: Attract und fünf
-  gespielte (Tod im Graben, Tod im Weltraum, verfehlter Schacht mit
+  Displayliste), acht Aufnahmen mit 27.313 Frames: Attract, zwei der
+  Betreiberseiten (Statistik mit Spielgeschichte, Optionen mit 30
+  Änderungen und Zurücksetzen) und fünf gespielte (Tod im Graben, Tod im Weltraum, verfehlter Schacht mit
   Wiederholung, zerstörter Todesstern, vier Wellen am Stück mit Darth
   Vader, Bunkern und Türmen). Alle Frames stimmen, mit den C-Routinen wie
   mit dem ganzen Original auf dem Kern.
@@ -116,10 +119,12 @@ Attract-Modus davor. Ungeprüft am Gerät, also nur gerechnet und gemessen:
   der Tod über dem Boden (G0D), die Meldung "AVOID CATWALKS", die
   Histogramm-Halbierung in EEACCT und CHKEE bei kaputter Prüfsumme.
 * Kein Menüeintrag am Automaten, kein `.vpk`.
-* Selbsttest und Optionsseite brauchen den Testschalter: `p1_button6`
+* Statistik- und Optionsseite brauchen den Testschalter: `p1_button6`
   schaltet ihn um, `p1_button5` ist die Aux-Münze. Beide sind am Automaten
-  nicht belegt, solange `advmame.rc` sie nicht zuweist. Diese beiden Phasen
-  gibt es nur mit `--hybrid` (6809-Kern).
+  nicht belegt, solange `advmame.rc` sie nicht zuweist.
+* Der NOVRAM-Test der Optionsseite ist portiert, aber in keiner Aufnahme
+  sicher ausgelöst worden. Er hält das Bild im Original 66 Frames an; hier
+  wird die Arbeit sofort getan und danach 66 Frames gewartet.
 
 ## Als Nächstes
 
@@ -131,10 +136,8 @@ Attract-Modus davor. Ungeprüft am Gerät, also nur gerechnet und gemessen:
 3. Den Ton nach Gehör prüfen: POKEY-Hochpass, TMS5220 genauer (Vergleich
    mit einer MAME-Aufnahme, `-wavwrite`). Das Programm ist portiert; was
    noch von MAME abweichen kann, sind die Bausteine.
-4. STS und OPT portieren (TCTEST.MAC); dann kann `--hybrid` entfallen und
-   der 6809-Kern dient nur noch den Vergleichstests.
-5. Menüeintrag und `.vpk`.
-6. Mehr Aufnahmen: ab Welle 5 (schwerer Todesstern), Tod über dem Boden.
+4. Menüeintrag und `.vpk`.
+5. Mehr Aufnahmen: ab Welle 5 (schwerer Todesstern), Tod über dem Boden.
 
 ## Arbeitsweise
 
@@ -144,7 +147,10 @@ Attract-Modus davor. Ungeprüft am Gerät, also nur gerechnet und gemessen:
   für die C-Routinen, mit `--emu 1` für das Originalprogramm auf dem Kern.
 * Aufnahmen: `tools/mame/swcapture.lua`, mit `SWCAP_PLAY` als gespieltem
   Skript, z. B. `"120 coin 1;160 coin 1;240 fire 3;560 aim 5"` (Münzpulse
-  16 bis 200 ms: `coin 1`). Was das Spiel von selbst nicht erreicht, holt
+  16 bis 200 ms: `coin 1`); `test N` und `aux N` sind Testschalter und
+  Aux-Münze (dafür einen eigenen `-cfg_directory` nehmen: MAME merkt sich
+  den Testschalter, und mit ihm startet die nächste Aufnahme im
+  Selbsttest). Was das Spiel von selbst nicht erreicht, holt
   `poke ADRESSE WERT` (`4860 06`: Schilde auffüllen, `4844 01`: Torpedo
   auslösen, `4860 00`: keine Schilde mehr); der Vergleich macht den
   Eingriff mit. Eine Aufnahme braucht 44 KB je Frame.

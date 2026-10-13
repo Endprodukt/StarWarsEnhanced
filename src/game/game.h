@@ -66,6 +66,11 @@ uint16_t sw_tmpee3(sw_machine *m, uint16_t x, uint16_t u, uint8_t a);
 void     sw_eeutim(sw_machine *m);
 void     sw_chkee(sw_machine *m, uint8_t a);
 void     sw_eeacct(sw_machine *m);
+void     sw_eeacc(sw_machine *m);    /* the statistics page */
+void     sw_eeopt(sw_machine *m);    /* the options page: all of it, */
+void     sw_eeopt1(sw_machine *m);   /* the yoke and trigger changing it, */
+void     sw_eeopt3(sw_machine *m, uint8_t a);    /* and one option's value */
+void     sw_binbcd(sw_machine *m, uint16_t d, uint16_t x);     /* game/mainline.c */
 
 /* WSSTAR.MAC (game/star.c): the stars in space and on the ground. */
 void sw_vwstar(sw_machine *m);

@@ -197,7 +197,7 @@ static void istar(sw_machine *m)
 
 /* BINBCD: CONVERT POSITIVE BINARY TO BCD. INPUT BINARY IN D, NUMBER OF
  * SHIFTS IN X. OUTPUT IS BCD IN BCD,BCD+1,BCD+2 */
-static void binbcd(sw_machine *m, uint16_t d, uint16_t x)
+void sw_binbcd(sw_machine *m, uint16_t d, uint16_t x)
 {
     W16(SW_BIN, d);
     W16(SW_BCD, 0);
@@ -712,7 +712,7 @@ static void phibgn(sw_machine *m)           /* BEGIN ACT */
 {
     old1shp(m);                             /* USE OLD SHIPS UNIT VECTORS */
 
-    binbcd(m, (uint16_t)((uint8_t)(R8(SW_GM_WAV) + 1) << 8), 8);    /* VIEW WAVE STARTS AT 1 */
+    sw_binbcd(m, (uint16_t)((uint8_t)(R8(SW_GM_WAV) + 1) << 8), 8);    /* VIEW WAVE STARTS AT 1 */
     W8(SW_GM_DWA, R8(SW_BCD + 2));          /* DECIMAL FOR VIEWING */
 
     uint8_t a = R8(SW_GM_WAV);
@@ -1794,6 +1794,65 @@ static void phenxt(sw_machine *m)
     W8(SW_PHASE, SW_PHSBGN);                /* GO TO BEGINNING OF NEW WAVE */
 }
 
+/* --- the operator's pages (test switch on) -------------------------------------------- */
+
+/* PHISTS: STATISTICS DISPLAY */
+static void phists(sw_machine *m)
+{
+    sw_alloff(m);
+    W16(SW_PH_YOF, 0x0000);                 /* NO Y OFFSET FOR MESSAGES */
+    W16(SW_MSYOFF, 0x0000);
+    W8(SW_PHASE, R8(SW_PHASE) + 1);
+}
+
+static void phests(sw_machine *m)
+{
+    ivgen1(m);                              /* SETUP VG */
+    sw_eeacc(m);                            /* DISPLAY STATS AND ACCOUNTING INFO */
+    sw_vwmess(m);
+    vgdone(m);
+
+    if (R8(SW_GN_SWE) & SW_AUXBIT)          /* CHECK FOR AUX SWITCH: GOTO NEXT PHASE */
+        W8(SW_PHASE, SW_PHSOPT);            /* OPTIONS PAGE */
+    if (R8(SW_IN_SW0) & SW_TESTBT)          /* CHECK FOR SELF TEST SWITCH: OFF, GO BACK TO ATTRACT MODE */
+        W8(SW_PHASE, SW_PHSBNR);            /* BANNER PHASE */
+}
+
+/* PHIOPT: the options page */
+static void phiopt(sw_machine *m)
+{
+    sw_alloff(m);                           /* TURN OFF ALL MESSAGES */
+    W8(SW_EEINDX, 0x0a);                    /* HIGH LITE INDEX STARTS WITH MESSAGE */
+    W8(SW_RESETS, 0x00);                    /* START WITH A CLEAN SHEET */
+    W8(SW_NVTSTR, 0x00);                    /* NOVRAM TEST RESULTS ( 0 MEANS NO TEST DONE ) */
+    if (sw_summit(m, SW_NAREA, 0, 0) != 0)  /* CHECK FOR PROPER CHECKSUM: ?BAD CHECKSUM? */
+        sw_eeini0(m, SW_NAREA);             /* THEN RE-INIT IT */
+    W8(SW_PHASE, R8(SW_PHASE) + 1);
+}
+
+static void pheopt(sw_machine *m)
+{
+    ivgen1(m);                              /* SETUP VG */
+    sw_eeopt(m);                            /* DISPLAY ALL OPTIONS */
+    VG(SW_VGCOLR + (VGCWHT << 8));          /* HILITE COLOR */
+    sw_domes2(m, (uint8_t)(SW_MS_OPT + 1 + R8(SW_EEINDX)));    /* OUTPUT OPTION MESSAGE IN HILITE */
+    sw_eeopt3(m, R8(SW_EEINDX));            /* HILITE THIS OPTION'S VALUE */
+    sw_eeopt1(m);                           /* MAKE CHANGES TO OPTIONS */
+    sw_vwmess(m);
+    vgdone(m);
+
+    if (R8(SW_GN_SWE) & SW_AUXBIT) {        /* CHECK FOR AUX SWITCH */
+        /* DO RESET AND SELF TEST. (The self test of the board's RAM, ROM
+         * and math box is not here: there is no such hardware to test.) */
+        sw_reset(m);
+        return;
+    }
+    if (R8(SW_IN_SW0) & SW_TESTBT) {        /* CHECK FOR SELF TEST SWITCH: OFF, GO BACK TO ATTRACT MODE */
+        sw_alloff(m);                       /* TURN OFF ALL MESSAGES */
+        W8(SW_PHASE, SW_PHSBNR);            /* BANNER PHASE */
+    }
+}
+
 /* --- the main line ------------------------------------------------------------------ */
 
 /* MAIN: EXECUTE PHASE (TPHASE) */
@@ -1801,6 +1860,10 @@ static void run_phase(sw_machine *m)
 {
     switch (R8(SW_PHASE)) {
     case SW_PHSRES:     pheres(m); break;
+    case SW_PHSSTS:     phists(m); break;
+    case SW_PHSSTS + 1: phests(m); break;
+    case SW_PHSOPT:     phiopt(m); break;
+    case SW_PHSOPT + 1: pheopt(m); break;
     case SW_PHSBNR:
     case SW_PHSCN1:     phibnr(m); break;
     case SW_PHSBNR + 1:
@@ -1935,6 +1998,10 @@ void sw_main_poll(sw_machine *m)
             uint8_t g = R8(SW_GMSYNC);
             W8(SW_GMSYNC, g >> 1);
             if (!(g & 1)) return;
+            if (m->hold_frames) {           /* inside a routine that waits for frames (the NOVRAM test) */
+                m->hold_frames--;
+                continue;
+            }
             if (m->original_suspended && m->original_frame) {
                 /* SOME FRAME NEEDS A DELAY, THEN LET IT CONTINUE: a routine of
                  * the original called WAITFRAME itself and goes on from there. */
