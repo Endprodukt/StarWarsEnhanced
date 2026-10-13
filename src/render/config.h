@@ -59,7 +59,9 @@ typedef struct sw_display_cfg {
     int steady_frames;
     /* 1: the strokes of a picture are drawn in an order that keeps the
      * beam's dark travel short (the board then manages more pictures a
-     * second). 0: in the game's order. */
+     * second). 0 (the default): in the game's order. On the cabinet's tube
+     * the sorted picture wobbles: the order, and with it where the beam
+     * comes from, changes from picture to picture. */
     int sort_strokes;
     /* 1: things are solid: what is behind a ship, a tower, the logo or the
      * X-wing's own guns is not drawn (render/solid.h). 0: wire frames you

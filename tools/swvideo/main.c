@@ -204,6 +204,7 @@ int main(int argc, char **argv)
     if (arg(argc, argv, "--aim")) sscanf(arg(argc, argv, "--aim"), "%x,%x", &aim_x, &aim_y);
     W &= ~3; H &= ~3;
     int immortal = arg_flag(argc, argv, "--immortal");
+    double from = arg(argc, argv, "--from") ? atof(arg(argc, argv, "--from")) : 0.0;   /* pictures from this second on */
     long every = arg(argc, argv, "--every") ? atol(arg(argc, argv, "--every")) : 1;
     if (every < 1) every = 1;
     FILE *wav = arg(argc, argv, "--wav") ? fopen(arg(argc, argv, "--wav"), "wb") : NULL;
@@ -297,7 +298,7 @@ int main(int argc, char **argv)
         }
         const sw_line *lines;
         int count = sw_picture_lines(&pic, now, 3, &lines);
-        if (f % every != 0) continue;
+        if (f % every != 0 || now < from) continue;
         if (every > 1) memset(after, 0, (size_t)W * H * 3 * sizeof *after);    /* (stills: no afterglow of the last one) */
         picture(lines, count);
         if (fwrite(rgb, 3, (size_t)W * H, stdout) != (size_t)W * H) return 1;

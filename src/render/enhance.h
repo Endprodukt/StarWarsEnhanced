@@ -5,16 +5,17 @@
  * Over the surface of the Death Star:
  *   surface    the ground is drawn: the plating of the Death Star, lines
  *              in perspective out to the horizon
- *   stars      stars in the sky; in the trench too, between the tops of its
- *              walls
  *   towers     the towers and bunkers in true perspective, with more to
- *              them, seen from twice as far and fading in. (The arcade
+ *              them, dark where they come into sight and brighter as they
+ *              come nearer. (The arcade
  *              machine shrinks a far tower towards its foot, so that it
  *              grows out of the ground as it comes nearer.) The game's own
  *              are taken out of the picture; with sw_machine.enh_towers
  *              the laser hits them as they are drawn here.
  *   dogfights  far off, TIE fighters chase an X-wing across the sky, two
  *              ships or three
+ * In the trench:
+ *   stars      stars in the strip of sky between the tops of its walls
  * And in the attract mode:
  *   logo       the STAR WARS logo is yellow, as in the films (the arcade
  *              machine has it blue)
@@ -31,8 +32,7 @@
 #include "core/machine.h"
 #include "render/solid.h"
 
-/* Stars of the sky: over the surface the first 96 of them, over the trench
- * (where only a strip of sky shows) all. */
+/* Stars of the sky (many: over the trench only a strip of it shows). */
 #define SW_ENHANCE_STARS 420
 
 typedef struct sw_enhance {

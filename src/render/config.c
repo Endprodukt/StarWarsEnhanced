@@ -31,7 +31,7 @@ void sw_display_cfg_defaults(sw_display_cfg *c)
     c->yoke_autocenter = 1;
     c->smooth = 3;
     c->steady_frames = 1;
-    c->sort_strokes = 1;
+    c->sort_strokes = 0;
     c->occlusion = 1;
     c->enh_surface = c->enh_stars = c->enh_towers = c->enh_dogfights = 1;
     c->logo_yellow = 1;

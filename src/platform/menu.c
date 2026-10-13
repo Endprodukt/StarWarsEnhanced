@@ -121,7 +121,7 @@ void sw_menu_draw(const sw_menu *u, const sw_display_cfg *cfg, vp_dvg *d)
     memset(value, 0, sizeof value);
     label[I_OCCLUSION] = "OCCLUSION";       snprintf(value[I_OCCLUSION], 40, "%s", on_off(cfg->occlusion));
     label[I_SURFACE] = "SURFACE PLATING";   snprintf(value[I_SURFACE], 40, "%s", on_off(cfg->enh_surface));
-    label[I_STARS] = "STARS";               snprintf(value[I_STARS], 40, "%s", on_off(cfg->enh_stars));
+    label[I_STARS] = "TRENCH STARS";        snprintf(value[I_STARS], 40, "%s", on_off(cfg->enh_stars));
     label[I_TOWERS] = "DETAILED TOWERS";    snprintf(value[I_TOWERS], 40, "%s", on_off(cfg->enh_towers));
     label[I_DOGFIGHTS] = "DISTANT DOGFIGHTS"; snprintf(value[I_DOGFIGHTS], 40, "%s", on_off(cfg->enh_dogfights));
     label[I_LOGO] = "YELLOW LOGO";          snprintf(value[I_LOGO], 40, "%s", on_off(cfg->logo_yellow));
