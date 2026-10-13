@@ -315,7 +315,19 @@ int main(int argc, char **argv)
             stat[ph].secs += (double)(clock() - t0) / CLOCKS_PER_SEC;
             stat[ph].pictures++;
             stat[ph].lines += count;
-            if (getenv("SWDBG")) fprintf(stderr, "PIC %.4f %02X %d\n", now, m.ram[SW_PHASE - 0x4800], count);
+            if (getenv("SWDBG")) {
+                int nb = 0;
+                double lb = 0;
+                for (int i = 0; i < count; i++)
+                    if ((unsigned)(lines[i].id >> 58) == SW_TAG_BANNER) {
+                        nb++;
+                        lb += hypot(lines[i].x1 - lines[i].x0, lines[i].y1 - lines[i].y0);
+                    }
+                float bx = 0, by = 0;
+                for (int i = 0; i < count; i++)
+                    if ((unsigned)(lines[i].id >> 58) == SW_TAG_BANNER) { bx = lines[i].x0; by = lines[i].y0; break; }
+                fprintf(stderr, "PIC %.4f %02X %d banner %d %.2f at %.3f %.3f\n", now, m.ram[SW_PHASE - 0x4800], count, nb, lb, bx, by);
+            }
             for (int i = 0; i < count; i++) {
                 const sw_line *l = &lines[i];
                 unsigned sec = (unsigned)(l->id >> 58);
