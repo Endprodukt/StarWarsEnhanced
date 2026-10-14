@@ -1050,7 +1050,9 @@ int sw_dogfight_lines(sw_dogfight *d, const sw_machine *m, const sw_line **out)
     /* the Death Star, as the game draws it as it comes near (DTHVW) */
     {
         double x, y;
-        if (project(d, DEATH_STAR, &x, &y, NULL) && on_screen(x, y, 60.0)) {
+        /* (shown as long as any of its disc is: its radius on the screen is
+         * about 120, whatever way one looks) */
+        if (project(d, DEATH_STAR, &x, &y, NULL) && on_screen(x, y, 135.0)) {
             const uint16_t scale = SW_VGSCAL + 0x200;     /* (its stamps are big: the game draws them small at first) */
             static const uint16_t stamps[5] = { SW_VJBCIR, SW_VJBTRN, SW_VJBDSH, SW_VJBNSD, SW_VJBFRM };
             d->tag = SW_TAG(SW_TAG_DSTAR, 3);
@@ -1203,6 +1205,31 @@ int sw_dogfight_lines(sw_dogfight *d, const sw_machine *m, const sw_line **out)
             }
             d->list.count = k;
         }
+    }
+
+    /* What reaches past the edge of the screen (the Death Star, half out of
+     * the view) is cut there: the game's own lists never do that, and the
+     * board would draw it beyond its edge. */
+    {
+        int k = 0;
+        for (int i = 0; i < d->list.count; i++) {
+            sw_line l = d->list.lines[i];
+            double t0 = 0.0, t1 = 1.0, dx = l.x1 - l.x0, dy = l.y1 - l.y0;
+            double p[4] = { -dx, dx, -dy, dy }, q[4] = { l.x0 + 127.5, 127.5 - l.x0, l.y0 + 153.0, 150.0 - l.y0 };
+            int out = 0;
+            for (int j = 0; j < 4 && !out; j++) {
+                if (p[j] == 0.0) { if (q[j] < 0.0) out = 1; continue; }
+                double r = q[j] / p[j];
+                if (p[j] < 0.0) { if (r > t1) out = 1; else if (r > t0) t0 = r; }
+                else { if (r < t0) out = 1; else if (r < t1) t1 = r; }
+            }
+            if (out) continue;
+            float x0 = l.x0, y0 = l.y0;
+            l.x0 = (float)(x0 + dx * t0); l.y0 = (float)(y0 + dy * t0);
+            l.x1 = (float)(x0 + dx * t1); l.y1 = (float)(y0 + dy * t1);
+            d->list.lines[k++] = l;
+        }
+        d->list.count = k;
     }
 
     /* the ships, in true perspective (after the list: their lines are added) */
