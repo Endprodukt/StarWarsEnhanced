@@ -14,8 +14,12 @@
 #define PERSPECTIVE 512.0
 #define W_UNIT      8388608.0               /* how near (1/X) in the units of the game's notes */
 #define NEAR        30.0
-#define SIGHT_X     0.0
-#define SIGHT_Y     (VG_OFFY * VG_SCALE)    /* where the sight is: the middle of the view */
+/* where the sight is: out of the middle of the view as the yoke has it
+ * (in functions that have the dogfight d) */
+#define SIGHT_X     ((double)d->sight_x)
+#define SIGHT_Y     (VG_OFFY * VG_SCALE + (double)d->sight_y)
+#define SIGHT_REACH_X 40.0                  /* how far it goes out with the yoke at its end */
+#define SIGHT_REACH_Y 32.0
 
 /* the box, and how fast the ship is (units a second) */
 #define BOX         8000.0
@@ -749,13 +753,24 @@ void sw_dogfight_step(sw_dogfight *d, const sw_dogfight_input *in, double dt)
         d->pitch_rate = ease(d->pitch_rate, 0.0f, dt * 6.0);
         d->roll_rate = ease(d->roll_rate, 0.0f, dt * 6.0);
         aim(d->f, d->r, d->u, home, BACK_RATE * dt);
+        d->sight_x = ease(d->sight_x, 0.0f, dt * 6.0);
+        d->sight_y = ease(d->sight_y, 0.0f, dt * 6.0);
     } else {
-        /* the yoke turns and pitches; with both thumb buttons it rolls */
-        float yaw = roll ? 0.0f : in->yaw * (float)YAW_RATE;
+        /* The yoke moves the sight, at once and softly; the ship turns as
+         * far out as the sight is, gently near the middle (small aims
+         * without turning), fully at its reach. With both thumb buttons the
+         * yoke rolls the ship instead. */
+        float tx = roll || d->over ? 0.0f : in->yaw * (float)SIGHT_REACH_X;
+        float ty = d->over ? 0.0f : in->pitch * (float)SIGHT_REACH_Y;
+        d->sight_x = ease(d->sight_x, tx, dt * 12.0);
+        d->sight_y = ease(d->sight_y, ty, dt * 12.0);
+        float nx = d->sight_x / (float)SIGHT_REACH_X, ny = d->sight_y / (float)SIGHT_REACH_Y;
+        float cx = nx * (0.3f + 0.7f * fabsf(nx)), cy = ny * (0.3f + 0.7f * fabsf(ny));
+        float yaw = cx * (float)YAW_RATE;
         float rl = roll ? in->yaw * (float)ROLL_RATE : 0.0f;
-        if (d->over) yaw = rl = 0.0f;
+        if (d->over) rl = 0.0f;
         d->yaw_rate = ease(d->yaw_rate, yaw, dt * 5.0);
-        d->pitch_rate = ease(d->pitch_rate, d->over ? 0.0f : in->pitch * (float)PITCH_RATE, dt * 5.0);
+        d->pitch_rate = ease(d->pitch_rate, cy * (float)PITCH_RATE, dt * 5.0);
         d->roll_rate = ease(d->roll_rate, rl, dt * 5.0);
         turn(d->f, d->r, d->yaw_rate * dt);         /* to the right: f towards r */
         turn(d->f, d->u, d->pitch_rate * dt);       /* up: f towards u */

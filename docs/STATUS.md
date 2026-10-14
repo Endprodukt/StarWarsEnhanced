@@ -337,6 +337,18 @@ wiederholt sich alle 8000h, jedes Gebäude wird auf dieser und der nächsten
 Runde betrachtet. Standbilder: am Start der Oberfläche nichts neben dem
 Spieler, am Horizont die kleinen dunklen Türme.
 
+## Dogfight: Fadenkreuz geht mit dem Joch (2026-10-14)
+
+Rückmeldung: Fadenkreuz fest in der Mitte macht die Bewegungen zu nervös.
+Jetzt bewegt das Joch zuerst das Fadenkreuz (sofort und weich, bis 40 nach
+der Seite und 32 nach oben/unten), und das Schiff dreht, je weiter es
+draußen ist, mit einer Kennlinie n * (0,3 + 0,7 |n|): nah der Mitte sanft
+(kleine Korrekturen nur mit dem Fadenkreuz), am Rand voll. Laser und
+Treffer gehen dorthin, wo das Fadenkreuz steht. Beim Rollen (beide
+Daumentasten) und beim Umdrehen am Rand kehrt es zur Mitte zurück. Am
+Gerät nicht gefühlt; Reichweite und Kennlinie sind Setzungen
+( in dogfight.c).
+
 ## Dogfight, Etappe 2: Gegner, Laser, Joch direkt (2026-10-14)
 
 * **Joch direkt** (`src/platform/yoke.c`, aus Time Pilot 3D übernommen):
@@ -600,7 +612,7 @@ sobald das Menü neu startet (nach dem Verlassen des Spiels). Nicht geprüft
 am Gerät, auch nicht, ob der längere Titel des Testmenüs (jetzt Größe 90
 statt 110) in die Breite passt.
 
-Marquee erneuert (zweites Artwork des Besitzers, ohne die Streifen unten; auf die volle Breite 1920 gezogen, 17 % breiter als das Original), Version 0.2.1. **Noch nicht auf dem Automaten**, der war aus: beim nächsten Mal `sh tools/deploy.sh` und die neueste `dist/swenhanced-<version>.vpk` (jetzt 0.3.1, mit Dogfight Etappe 2) nach `/persistent/games/packages/` (dort liegt noch 0.2.0).
+Marquee erneuert (zweites Artwork des Besitzers, ohne die Streifen unten; auf die volle Breite 1920 gezogen, 17 % breiter als das Original), Version 0.2.1. **Noch nicht auf dem Automaten**, der war aus: beim nächsten Mal `sh tools/deploy.sh` und die neueste `dist/swenhanced-<version>.vpk` (jetzt 0.3.2, mit Dogfight Etappe 2) nach `/persistent/games/packages/` (dort liegt noch 0.2.0).
 
 Paketdatei: `sh tools/pack.sh` (in WSL, nach dem Pi-Build) schreibt
 `dist/swenhanced-<version>.vpk` mit dem `vp-pack` des SDK (dessen Skript und
