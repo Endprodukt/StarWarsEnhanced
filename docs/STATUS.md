@@ -337,6 +337,34 @@ wiederholt sich alle 8000h, jedes Gebäude wird auf dieser und der nächsten
 Runde betrachtet. Standbilder: am Start der Oberfläche nichts neben dem
 Spieler, am Horizont die kleinen dunklen Türme.
 
+## Dogfight: mehr Tempo, Formationen, Abprallen, neuer Interceptor (2026-10-14)
+
+Rückmeldungen des Besitzers und was daraus wurde:
+
+* **"Wirkt sehr langsam":** eigenes Schiff 700/1350/2300 statt 450/900/1500,
+  Wenden 1,75/1,5/3,3 rad/s statt 1,3/1,1/2,6, Gegner gut 40 % schneller
+  (TIE 1350, Interceptor 1650, Vader 1500) und wendiger, Feuerbälle 2300
+  statt 1500, Laser alle 0,18 s und bis 11000; Box 9000.
+* **"Gegner kleben aufeinander":** Sie halten 900 Abstand voneinander
+  (Flügelleute ihrer Formation 280), unter 260 werden sie auseinander
+  geschoben.
+* **Formationen:** TIE Fighter kommen oft zu dritt in V (Flügelleute 420
+  seitlich und 380 hinter dem Anführer), fliegen gemeinsam an, schießen
+  auch in Formation und lösen sich auf, wenn der Anführer unter 2600 am
+  Schiff ist oder fällt.
+* **Kollision:** Schiff und Gegner prallen voneinander ab (900 Stoß, klingt
+  ab), beide nehmen Schaden: ein Schild, ein Treffer am Gegner; ein Ruck
+  in Gier und Nicken. Vorher explodierte der Gegner sofort.
+* **Todesstern größer:** Maßstab der Stempel VGSCAL+200h statt +340h (groß, vom Besitzer so gewollt).
+* **Interceptor neu** ("sieht gegen die anderen schlecht aus"; Vorlage ein
+  Foto des Modells): jetzt aus den Teilen des ROM-TIE (Kugel aus zwei
+  Achtecken, Pylonenringe, Naben) und eigenen Flügeln im selben Stil:
+  lange schmale Dolche mit tiefer Kerbe bis zur Nabe, Ecken 62 nach innen
+  geknickt, Speichen von der Nabe zu jeder Ecke, innerer Rahmen; Flächen
+  für die Occlusion (Flügel in drei, Kugel in vier Stücken plus Seiten).
+* `swvideo --dogfight --wave N` beginnt bei Welle N; `--wave -1..-3`
+  zeigt einen Gegner allein, langsam drehend (zum Ansehen der Modelle).
+
 ## Dogfight: Fadenkreuz geht mit dem Joch (2026-10-14)
 
 Rückmeldung: Fadenkreuz fest in der Mitte macht die Bewegungen zu nervös.
@@ -612,7 +640,7 @@ sobald das Menü neu startet (nach dem Verlassen des Spiels). Nicht geprüft
 am Gerät, auch nicht, ob der längere Titel des Testmenüs (jetzt Größe 90
 statt 110) in die Breite passt.
 
-Marquee erneuert (zweites Artwork des Besitzers, ohne die Streifen unten; auf die volle Breite 1920 gezogen, 17 % breiter als das Original), Version 0.2.1. **Noch nicht auf dem Automaten**, der war aus: beim nächsten Mal `sh tools/deploy.sh` und die neueste `dist/swenhanced-<version>.vpk` (jetzt 0.3.2, mit Dogfight Etappe 2) nach `/persistent/games/packages/` (dort liegt noch 0.2.0).
+Marquee erneuert (zweites Artwork des Besitzers, ohne die Streifen unten; auf die volle Breite 1920 gezogen, 17 % breiter als das Original), Version 0.2.1. **Noch nicht auf dem Automaten**, der war aus: beim nächsten Mal `sh tools/deploy.sh` und die neueste `dist/swenhanced-<version>.vpk` (jetzt 0.3.3, mit Dogfight Etappe 2) nach `/persistent/games/packages/` (dort liegt noch 0.2.0).
 
 Paketdatei: `sh tools/pack.sh` (in WSL, nach dem Pi-Build) schreibt
 `dist/swenhanced-<version>.vpk` mit dem `vp-pack` des SDK (dessen Skript und
