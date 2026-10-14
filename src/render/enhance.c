@@ -1397,6 +1397,9 @@ int sw_enhance_run(sw_enhance *e, const sw_machine *m, double now, const sw_line
     /* the cockpit wherever the game shows the X-wing's nose and guns */
     int plane = 0;
     for (int i = 0; i < n && !plane; i++) plane = SW_TAG_SECTION((unsigned)(in[i].id >> 48)) == SW_TAG_PLANE;
+    /* (choosing the Death Star shows the nose and guns too, but is no flight:
+     * seen as on the arcade machine) */
+    if (phase == SW_PHSSDS || phase == SW_PHSSDS + 1) plane = 0;
     e->plane_seen = plane;
     int cock = plane && e->view == SW_VIEW_COCKPIT, outs = plane && e->view == SW_VIEW_OUTSIDE;
     if (!ground && !logo && !trench && !clip && !falcon && !cock && !outs) {

@@ -351,6 +351,9 @@ dem Spielzustand (13 Hz): die Bewegung ist so glatt wie das Fadenkreuz.
 Rahmen und Flächen reichen dafür weit über den Bildschirm hinaus. Spiel,
 Fadenkreuz und Schüsse unverändert. Am Gerät nicht gesehen.
 
+Bei der Wahl des Todessterns (SDS) zeichnet das Spiel Nase und Kanonen
+auch; dort gilt jetzt immer die Arcade-Sicht, Cockpit und Außen erst im Flug.
+
 ## Keine Türme mehr am Ende der Oberfläche (2026-10-14)
 
 Am Ende der Oberfläche sah man noch ferne Türme. Das Original räumt in der
@@ -455,7 +458,7 @@ sobald das Menü neu startet (nach dem Verlassen des Spiels). Nicht geprüft
 am Gerät, auch nicht, ob der längere Titel des Testmenüs (jetzt Größe 90
 statt 110) in die Breite passt.
 
-Marquee erneuert (zweites Artwork des Besitzers, ohne die Streifen unten; auf die volle Breite 1920 gezogen, 17 % breiter als das Original), Version 0.2.1. **Noch nicht auf dem Automaten**, der war aus: beim nächsten Mal `sh tools/deploy.sh` und die neueste `dist/swenhanced-<version>.vpk` (jetzt 0.2.5, mit den drei Ansichten, dem Demo-Flug, F2 und dem mitbewegten Cockpit) nach `/persistent/games/packages/` (dort liegt noch 0.2.0).
+Marquee erneuert (zweites Artwork des Besitzers, ohne die Streifen unten; auf die volle Breite 1920 gezogen, 17 % breiter als das Original), Version 0.2.1. **Noch nicht auf dem Automaten**, der war aus: beim nächsten Mal `sh tools/deploy.sh` und die neueste `dist/swenhanced-<version>.vpk` (jetzt 0.2.6, mit den drei Ansichten, dem Demo-Flug, F2 und dem mitbewegten Cockpit) nach `/persistent/games/packages/` (dort liegt noch 0.2.0).
 
 Paketdatei: `sh tools/pack.sh` (in WSL, nach dem Pi-Build) schreibt
 `dist/swenhanced-<version>.vpk` mit dem `vp-pack` des SDK (dessen Skript und
