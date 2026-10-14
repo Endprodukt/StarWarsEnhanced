@@ -56,6 +56,10 @@ typedef struct sw_line {
      * v1: ahead, across, up; render/view.h), from which the line can be
      * drawn anew, cut where it leaves his sight. */
     uint8_t  d3;
+    /* own: a line of a part of a model the enhancement draws itself
+     * (render/enhance.c: its number, 0 none), which that part's own faces
+     * do not hide */
+    uint8_t  own;
     int16_t  v0[3], v1[3];
 } sw_line;
 
