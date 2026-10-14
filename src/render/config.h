@@ -76,6 +76,10 @@ typedef struct sw_display_cfg {
     /* Enhanced, in the trench: 1: shortly before the exhaust port the
      * Millennium Falcon flies over the player and on down the trench. */
     int enh_falcon;
+    /* Enhanced: 1: the view from inside the X-wing's cockpit (its canopy's
+     * frame and the instrument panel) in place of its nose and guns; the
+     * sight and the lasers as ever. 0 (the default): the arcade machine's. */
+    int enh_cockpit;
     /* Enhanced: 1: the camera's turns (the ship turning towards the enemy
      * it tracks, or the Death Star) gather speed and slow down, in place of
      * the arcade machine's turns at full rate from the first frame. */

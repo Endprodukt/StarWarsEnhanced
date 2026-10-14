@@ -842,6 +842,167 @@ static void falcon_fly(sw_enhance *e, const sw_machine *m, double now)
     falcon_draw(e, at, f, lb, ub, 300.0, lum);
 }
 
+/* --- the cockpit ------------------------------------------------------------------------------ */
+
+/* Seen from inside the X-wing's cockpit, in place of its nose and guns:
+ * the frame of the canopy, its two struts running up to the top corners,
+ * and the instrument panel below, in the screen's own units (x -127.5 to
+ * 127.5, y -153 to 150). What is behind them is not seen; the lasers come
+ * out from behind the panel, along the way they always take. The panel is
+ * kept low: the view ahead (and where the sight goes) stays free. */
+static const float COCKPIT[3][6][2] = {
+    { { -128, -154 }, { 128, -154 }, { 128, -128 }, { 44, -96 }, { -44, -96 }, { -128, -128 } },  /* the panel */
+    { { -128, 92 }, { -50, -98 }, { -38, -98 }, { -128, 122 } },                                   /* left strut */
+    { { 38, -98 }, { 50, -98 }, { 128, 92 }, { 128, 122 } },                                       /* right strut */
+};
+static const int COCKPIT_N[3] = { 6, 4, 4 };
+
+/* Where a line lies inside a convex shape, as the part [*t0, *t1] of it;
+ * 0 if no part does. */
+static int inside_part(const float (*p)[2], int n, float x0, float y0, float x1, float y1, float *t0, float *t1)
+{
+    float area = 0.0f;
+    for (int i = 0; i < n; i++) {
+        int j = (i + 1) % n;
+        area += p[i][0] * p[j][1] - p[j][0] * p[i][1];
+    }
+    float s = area > 0.0f ? 1.0f : -1.0f;
+    float a = 0.0f, b = 1.0f, dx = x1 - x0, dy = y1 - y0;
+    for (int i = 0; i < n; i++) {
+        int j = (i + 1) % n;
+        /* inward normal of the edge i-j */
+        float nx = -(p[j][1] - p[i][1]) * s, ny = (p[j][0] - p[i][0]) * s;
+        float num = nx * (x0 - p[i][0]) + ny * (y0 - p[i][1]), den = nx * dx + ny * dy;
+        if (den == 0.0f) { if (num < 0.0f) return 0; continue; }
+        float t = -num / den;
+        if (den > 0.0f) { if (t > a) a = t; }
+        else if (t < b) b = t;
+        if (a >= b) return 0;
+    }
+    *t0 = a;
+    *t1 = b;
+    return 1;
+}
+
+/* A line on the screen (x, y as the lines of the picture have them). */
+static void flat(sw_enhance *e, float x0, float y0, float x1, float y1, unsigned color, float lum)
+{
+    const double K = 1.0 / VG_SCALE;
+    line(e, vec3(PERSPECTIVE, x0 * K, y0 * K - VG_OFFY), vec3(PERSPECTIVE, x1 * K, y1 * K - VG_OFFY), color, lum, SW_TAG_NONE);
+}
+
+static void flat_box(sw_enhance *e, float x0, float y0, float x1, float y1, unsigned color, float lum)
+{
+    flat(e, x0, y0, x1, y0, color, lum);
+    flat(e, x1, y0, x1, y1, color, lum);
+    flat(e, x1, y1, x0, y1, color, lum);
+    flat(e, x0, y1, x0, y0, color, lum);
+}
+
+static void flat_ring(sw_enhance *e, float cx, float cy, float r, unsigned color, float lum)
+{
+    for (int i = 0; i < 8; i++) {
+        double a = i * 0.7853982, b = a + 0.7853982;
+        flat(e, cx + r * (float)cos(a), cy + r * (float)sin(a), cx + r * (float)cos(b), cy + r * (float)sin(b), color, lum);
+    }
+}
+
+/* The game's lines without what the cockpit hides, then the cockpit. */
+static void cockpit(sw_enhance *e)
+{
+    /* hidden: all but what is written on the screen and the sight */
+    int n = e->n;
+    if (e->cap_cock < 2 * n + 16) {
+        sw_line *o = (sw_line *)realloc(e->cock, (size_t)(2 * n + 2048) * sizeof *o);
+        if (!o) return;
+        e->cock = o;
+        e->cap_cock = 2 * n + 2048;
+    }
+    int k = 0;
+    for (int i = 0; i < n; i++) {
+        const sw_line *l = &e->out[i];
+        unsigned sec = SW_TAG_SECTION((unsigned)(l->id >> 48));
+        if (sec == SW_TAG_MESS || sec == SW_TAG_SCORE || sec == SW_TAG_SITE || sec == SW_TAG_COIN || sec == SW_TAG_COUNT) {
+            e->cock[k++] = *l;
+            continue;
+        }
+        /* the pieces of it left, shape by shape (each cuts at most one out) */
+        float piece[8][2] = { { 0.0f, 1.0f } };
+        int np = 1;
+        for (int s = 0; s < 3; s++) {
+            int m = np;
+            for (int q = 0; q < m; q++) {
+                float a = piece[q][0], b = piece[q][1], t0, t1;
+                float x0 = l->x0 + (l->x1 - l->x0) * a, y0 = l->y0 + (l->y1 - l->y0) * a;
+                float x1 = l->x0 + (l->x1 - l->x0) * b, y1 = l->y0 + (l->y1 - l->y0) * b;
+                if (!inside_part(COCKPIT[s], COCKPIT_N[s], x0, y0, x1, y1, &t0, &t1)) continue;
+                float c0 = a + (b - a) * t0, c1 = a + (b - a) * t1;
+                piece[q][1] = c0;                               /* before the shape */
+                if (np < 8) { piece[np][0] = c1; piece[np][1] = b; np++; }    /* after it */
+            }
+        }
+        for (int q = 0; q < np; q++) {
+            float a = piece[q][0], b = piece[q][1];
+            if (b - a < 1e-4f && !(a == 0.0f && b == 1.0f && l->x0 == l->x1 && l->y0 == l->y1)) continue;
+            sw_line c = *l;
+            c.x0 = l->x0 + (l->x1 - l->x0) * a; c.y0 = l->y0 + (l->y1 - l->y0) * a;
+            c.x1 = l->x0 + (l->x1 - l->x0) * b; c.y1 = l->y0 + (l->y1 - l->y0) * b;
+            c.w0 = (uint16_t)(l->w0 + ((float)l->w1 - (float)l->w0) * a);
+            c.w1 = (uint16_t)(l->w0 + ((float)l->w1 - (float)l->w0) * b);
+            e->cock[k++] = c;
+        }
+    }
+    /* (the two buffers change places: what is drawn next goes after these) */
+    sw_line *t = e->out;
+    int cap = e->cap;
+    e->out = e->cock;
+    e->cap = e->cap_cock;
+    e->cock = t;
+    e->cap_cock = cap;
+    e->n = k;
+
+    /* the cockpit itself */
+    uint16_t inst = e->inst;
+    e->inst = 0;
+    const float F = 150.0f, D = 100.0f, R = 170.0f;     /* frame, details, red lights */
+    /* the canopy's frame: the struts, with a rail along each, and its sill */
+    for (int s = -1; s <= 1; s += 2) {
+        flat(e, s * 128.0f, 92.0f, s * 50.0f, -98.0f, WHT, F);
+        flat(e, s * 128.0f, 122.0f, s * 38.0f, -98.0f, WHT, F);
+        flat(e, s * 128.0f, 107.0f, s * 44.0f, -98.0f, WHT, D * 0.6f);
+        flat(e, s * 128.0f, -128.0f, s * 44.0f, -96.0f, WHT, F);       /* the sill */
+        flat(e, s * 128.0f, -137.0f, s * 40.0f, -102.0f, WHT, F);      /* the side console's top */
+        flat(e, s * 40.0f, -102.0f, s * 36.0f, -154.0f, WHT, D);       /* the middle console's side */
+        /* the side console: a red frame along its slope, keys in it, two knobs */
+        flat(e, s * 110.0f, -141.0f, s * 76.0f, -126.0f, RED, R * 0.7f);
+        flat(e, s * 76.0f, -126.0f, s * 72.0f, -138.0f, RED, R * 0.7f);
+        flat(e, s * 72.0f, -138.0f, s * 106.0f, -152.0f, RED, R * 0.7f);
+        flat(e, s * 106.0f, -152.0f, s * 110.0f, -141.0f, RED, R * 0.7f);
+        for (int i = 0; i < 3; i++)
+            flat_box(e, s * (98.0f - i * 8.0f), -141.0f + i * 3.0f, s * (93.0f - i * 8.0f), -145.0f + i * 3.0f, WHT, D);
+        flat_ring(e, s * 120.0f, -148.0f, 3.0f, WHT, D);
+        flat_ring(e, s * 58.0f, -146.0f, 2.5f, WHT, D);
+    }
+    flat(e, -44.0f, -96.0f, 44.0f, -96.0f, WHT, F);            /* the panel's top */
+    flat(e, -40.0f, -102.0f, 40.0f, -102.0f, WHT, D);
+    for (int i = 0; i < 13; i++) {                              /* a row of red lights */
+        float x = -30.0f + i * 5.0f;
+        flat(e, x, -99.0f, x + 1.5f, -99.0f, RED, (i % 3) ? R : R * 0.6f);
+    }
+    flat_box(e, -18.0f, -107.0f, -5.0f, -124.0f, WHT, F);       /* the two targeting screens */
+    flat_box(e, 5.0f, -107.0f, 18.0f, -124.0f, WHT, F);
+    flat_box(e, -16.0f, -110.0f, -7.0f, -121.0f, WHT, D * 0.5f);
+    flat_box(e, 7.0f, -110.0f, 16.0f, -121.0f, WHT, D * 0.5f);
+    flat_ring(e, 4.0f, -133.0f, 2.5f, RED, R);                  /* the red button */
+    flat_ring(e, -20.0f, -141.0f, 3.5f, WHT, D);                /* dials */
+    flat_ring(e, -11.0f, -141.0f, 2.5f, WHT, D);
+    flat_box(e, -27.0f, -128.0f, -22.0f, -132.0f, RED, R * 0.7f);
+    flat_box(e, -27.0f, -135.0f, -22.0f, -139.0f, RED, R * 0.7f);
+    flat_box(e, 16.0f, -130.0f, 20.0f, -150.0f, WHT, D);         /* a lever */
+    for (int i = 0; i < 5; i++) flat(e, -6.0f, -129.0f - i * 4.0f, -4.5f, -129.0f - i * 4.0f, RED, R * 0.8f);
+    e->inst = inst;
+}
+
 /* --- all of it ----------------------------------------------------------------------------- */
 
 void sw_enhance_init(sw_enhance *e, const sw_machine *m)
@@ -881,6 +1042,7 @@ void sw_enhance_free(sw_enhance *e)
 {
     free(e->out);
     free(e->faces);
+    free(e->cock);
     memset(e, 0, sizeof *e);
 }
 
@@ -901,7 +1063,11 @@ int sw_enhance_run(sw_enhance *e, const sw_machine *m, double now, const sw_line
     int falcon = in_trench && e->falcon;
     int logo = e->logo && phase >= SW_PHSBNR && phase <= SW_PHSHIS + 1;     /* (the attract mode) */
     if (!in_trench) e->falcon_at = 0.0, e->falcon_done = 0;
-    if (!ground && !logo && !trench && !clip && !falcon) {
+    /* the cockpit wherever the game shows the X-wing's nose and guns */
+    int cock = 0;
+    for (int i = 0; e->cockpit && i < n && !cock; i++)
+        cock = SW_TAG_SECTION((unsigned)(in[i].id >> 48)) == SW_TAG_PLANE;
+    if (!ground && !logo && !trench && !clip && !falcon && !cock) {
         *out = in;
         return n;
     }
@@ -917,6 +1083,7 @@ int sw_enhance_run(sw_enhance *e, const sw_machine *m, double now, const sw_line
     for (int i = 0; i < n; i++) {
         unsigned tag = (unsigned)(in[i].id >> 48);
         if (ground && e->towers && SW_TAG_SECTION(tag) == SW_TAG_OBJECT && (tag & 0x3ff) >= 16) continue;
+        if (cock && SW_TAG_SECTION(tag) == SW_TAG_PLANE) continue;
         e->out[e->n] = in[i];
         if (logo && SW_TAG_SECTION(tag) == SW_TAG_BANNER) e->out[e->n].color = YLW;
         if (clip && in[i].d3) {
@@ -947,6 +1114,7 @@ int sw_enhance_run(sw_enhance *e, const sw_machine *m, double now, const sw_line
     }
     if (ground && e->towers) towers(e, m, now);
     if (ground && e->dogfights && e->tie_ready) dogfights(e, now);
+    if (cock) cockpit(e);
     *out = e->out;
     return e->n;
 }

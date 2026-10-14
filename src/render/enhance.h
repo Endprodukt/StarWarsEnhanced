@@ -25,6 +25,10 @@
  *              drawn anew from its points in space and cut.
  *   falcon     shortly before the exhaust port the Millennium Falcon comes
  *              over the player from behind and flies on down the trench
+ * Wherever the X-wing's nose and guns are drawn:
+ *   cockpit    the view from inside the cockpit instead: the canopy's
+ *              frame and the instrument panel, what is behind them hidden
+ *              (the lasers come out from behind the panel); off by default
  * And in the attract mode:
  *   logo       the STAR WARS logo is yellow, as in the films (the arcade
  *              machine has it blue)
@@ -49,9 +53,12 @@ typedef struct sw_enhance {
     int logo;                                   /* 1: the STAR WARS logo yellow */
     int clip;                                   /* 1: what stands in the trench is cut at the edge of the screen */
     int falcon;                                 /* 1: the Millennium Falcon flies over before the exhaust port */
+    int cockpit;                                /* 1: seen from inside the cockpit, not the nose and guns */
 
     sw_line *out;
     int      n, cap;
+    sw_line *cock;                              /* (the lines with what the cockpit hides cut out) */
+    int      cap_cock;
     sw_solid_extra *faces;                      /* of the towers: for render/solid.h */
     int      n_faces, cap_faces;
     uint16_t inst;                              /* things drawn so far in this picture */
