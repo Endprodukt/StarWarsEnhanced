@@ -337,6 +337,16 @@ wiederholt sich alle 8000h, jedes Gebäude wird auf dieser und der nächsten
 Runde betrachtet. Standbilder: am Start der Oberfläche nichts neben dem
 Spieler, am Horizont die kleinen dunklen Türme.
 
+## Keine Türme mehr am Ende der Oberfläche (2026-10-14)
+
+Am Ende der Oberfläche sah man noch ferne Türme. Das Original räumt in der
+fünften Runde ab (S1MVGD: GD.SEQ 5 setzt Q.KTW, und noch nicht gezeigte
+Gebäude werden nicht mehr aufgestellt); nur die schon sichtbaren fliegen
+noch vorbei. Die erweiterten Türme zeichneten jenseits der Reichweite
+(3C00h) aber weiter alle Gebäude der Karte und die der nächsten Runde.
+Jetzt: jenseits der Reichweite nichts mehr, sobald Q.KTW gesetzt ist, und
+nie etwas aus Runde 5 und später. Am Gerät nicht gesehen.
+
 ## Demo-Flug im Attract, Servicemenü auf F2 (2026-10-14)
 
 Der Attract-Modus des Originals hat keine Flugszenen (Highscores, Logo,
