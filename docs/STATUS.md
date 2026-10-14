@@ -373,8 +373,16 @@ gefilmt, **nicht auf dem Automaten**.
   Im Hintergrund laufen drei Verfolgungsjagden gleichzeitig, und alle 1–3 s
   explodiert in der Ferne ein Schiff. Explosionen in der Nähe blitzen mit
   dem Funkelbild auf.
-* Offen: abwägen, ob Flügelmänner zu viele Gegner abschießen; Sichtbarkeit
-  der Laser am Automaten prüfen.
+* **Zurückgenommen nach dem ersten Spielen am Automaten** ("die schießen
+  sich alle gegenseitig ab, völlig überladen mit den Schüssen", 0.3.10):
+  Die Flügelmänner fliegen nur noch an den Flügeln des Spielers mit und
+  kämpfen nicht, kein Gegner jagt sie. Gegner feuern einzeln (TIE 1,
+  Interceptor 2, Vader 3 je Salve), alle 2,6/2,2/1,8 s, nur bis 8500 und
+  genau vor der Nase. Höchstens 3 + Welle/3 Feuerbälle fliegen zugleich
+  (höchstens 6), höchstens 5 + Welle/3 Gegner (höchstens 8). Explosionen in
+  der Ferne nur alle 3–7 s.
+* Offen: Sichtbarkeit der Laser am Automaten prüfen; Bildrate im Dogfight
+  am Automaten messen.
 
 ## Dogfight: mehr Tempo, Formationen, Abprallen, neuer Interceptor (2026-10-14)
 
@@ -712,7 +720,7 @@ sobald das Menü neu startet (nach dem Verlassen des Spiels). Nicht geprüft
 am Gerät, auch nicht, ob der längere Titel des Testmenüs (jetzt Größe 90
 statt 110) in die Breite passt.
 
-Marquee erneuert (zweites Artwork des Besitzers, ohne die Streifen unten; auf die volle Breite 1920 gezogen, 17 % breiter als das Original), Version 0.2.1. **Noch nicht auf dem Automaten**, der war aus: beim nächsten Mal `sh tools/deploy.sh` und die neueste `dist/swenhanced-<version>.vpk` (jetzt 0.3.9, mit Dogfight Etappe 3; auf dem Automaten ist 0.3.8) nach `/persistent/games/packages/` (dort liegt noch 0.2.0).
+Marquee erneuert (zweites Artwork des Besitzers, ohne die Streifen unten; auf die volle Breite 1920 gezogen, 17 % breiter als das Original), Version 0.2.1. **Noch nicht auf dem Automaten**, der war aus: beim nächsten Mal `sh tools/deploy.sh` und die neueste `dist/swenhanced-<version>.vpk` (jetzt 0.3.10, mit Dogfight Etappe 3) nach `/persistent/games/packages/` (dort liegt noch 0.2.0).
 
 Paketdatei: `sh tools/pack.sh` (in WSL, nach dem Pi-Build) schreibt
 `dist/swenhanced-<version>.vpk` mit dem `vp-pack` des SDK (dessen Skript und

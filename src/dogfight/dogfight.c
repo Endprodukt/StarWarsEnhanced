@@ -608,8 +608,8 @@ static void spawn(sw_dogfight *d)
         if (d->enemy[i].kind) alive++;
         else if (slot < 0) slot = i;
     }
-    int most = 7 + d->wave / 2;
-    if (most > 11) most = 11;
+    int most = 5 + d->wave / 3;
+    if (most > 8) most = 8;
     if (slot < 0 || alive >= most) return;
     /* TIE fighters come three together in a V now and then, interceptors in pairs */
     int group = kind == K_TIE && d->pending[K_TIE] >= 3 && alive <= most - 3 && rnd(d) < 0.65 ? 3 :
@@ -631,13 +631,8 @@ static void spawn(sw_dogfight *d)
     if (hard > 1.6) hard = 1.6;
     e->speed = (kind == K_INTERCEPTOR ? 1650.0 : kind == K_VADER ? 1500.0 : 1350.0) * hard;
     e->turn = (kind == K_INTERCEPTOR ? 2.2 : kind == K_VADER ? 1.8 : 1.45) * hard;
-    e->fire_t = d->t + 0.8 + rnd(d) * 1.0;
-    e->prey = -1;
-    /* now and then one goes after a wingman instead */
-    if (rnd(d) < 0.25) {
-        int a = (int)(rnd(d) * SW_DF_ALLIES);
-        if (a < SW_DF_ALLIES && d->ally[a].live) e->prey = a;
-    }
+    e->fire_t = d->t + 1.5 + rnd(d) * 1.5;
+    e->prey = -1;                           /* (all after the player: the wingmen are only to be seen) */
     d->pending[kind]--;
     for (int w = 1; w < group; w++) {
         /* its wingmen: behind it, one to each side */
@@ -921,10 +916,15 @@ static void enemies_step(sw_dogfight *d, double dt)
             e->b.pos[k] += e->knock[k] * dt;
             e->knock[k] *= exp(-2.5 * dt);
         }
-        /* it fires, in bursts: its prey before its nose, not too far. At
-         * the player fireballs, as the game's TIE fighters fire; at a
-         * wingman green bolts. */
-        if (!d->over && e->mode != 1 && d->t > e->fire_t && ((far < 10000.0 && dot(e->b.f, to) > 0.9) || e->burst > 0)) {
+        /* it fires, the ship before its nose, not too far: fireballs, as
+         * the game's TIE fighters fire, a few in a burst. Only so many
+         * fly at once (the owner: too many came at the ship). */
+        int flying = 0;
+        for (int s = 0; s < SW_DF_SHOTS; s++) flying += d->shot[s].live && !d->shot[s].hurt;
+        int most_shots = 3 + d->wave / 3;
+        if (most_shots > 6) most_shots = 6;
+        if (!d->over && e->mode != 1 && d->t > e->fire_t && flying >= most_shots) e->fire_t = d->t + 0.3 + 0.4 * rnd(d);
+        if (!d->over && e->mode != 1 && d->t > e->fire_t && ((far < 8500.0 && dot(e->b.f, to) > 0.95) || e->burst > 0)) {
             if (pa) {
                 for (int s = 0; s < SW_DF_BOLTS; s++) {
                     sw_df_bolt *bo = &d->bolt[s];
@@ -951,11 +951,11 @@ static void enemies_step(sw_dogfight *d, double dt)
                 }
                 sound(d, S_AUDTC);
             }
-            if (e->burst <= 0) e->burst = e->kind == K_VADER ? 4 : e->kind == K_INTERCEPTOR ? 3 : 2;
+            if (e->burst <= 0) e->burst = e->kind == K_VADER ? 3 : e->kind == K_INTERCEPTOR ? 2 : 1;
             if (--e->burst > 0) {
-                e->fire_t = d->t + 0.22;            /* the next of the burst */
+                e->fire_t = d->t + 0.3;             /* the next of the burst */
             } else {
-                double every = (e->kind == K_VADER ? 1.0 : e->kind == K_INTERCEPTOR ? 1.3 : 1.6) / hard;
+                double every = (e->kind == K_VADER ? 1.8 : e->kind == K_INTERCEPTOR ? 2.2 : 2.6) / hard;
                 e->fire_t = d->t + every * (0.7 + 0.6 * rnd(d));
             }
         }
@@ -1141,16 +1141,10 @@ static void allies_step(sw_dogfight *d, double dt)
             continue;
         }
         if (a->target >= 0 && !d->enemy[a->target].kind) a->target = -1;
-        if (a->target < 0) {
-            /* the nearest enemy, one no other wingman is after if there is one */
-            double bd = 1e18;
-            for (int j = 0; j < SW_DF_ENEMIES; j++) {
-                if (!d->enemy[j].kind) continue;
-                double dd = dist(d->enemy[j].b.pos, a->b.pos);
-                for (int o = 0; o < SW_DF_ALLIES; o++) if (o != i && d->ally[o].live && d->ally[o].target == j) dd += 6000.0;
-                if (dd < bd) { bd = dd; a->target = j; }
-            }
-        }
+        /* (they fly with the player, off its wings, and leave the enemies to
+         * it: when they fought them too, it was all ships shooting each
+         * other down, said the owner) */
+        a->target = -1;
         double want[3], to[3] = { 0.0, 0.0, 0.0 }, far = 1e18, pace = a->speed;
         if (a->target >= 0) {
             const sw_df_enemy *e = &d->enemy[a->target];
@@ -1202,24 +1196,13 @@ static void allies_step(sw_dogfight *d, double dt)
             a->fire_t = d->t + 0.4 + rnd(d) * 0.5;
         }
     }
-    /* the bolts: red ones hurt the enemies (the wingmen hit one time in two), green ones the wingmen */
+    /* the bolts: green ones hurt the wingmen (red ones, theirs, no longer fly) */
     for (int s = 0; s < SW_DF_BOLTS; s++) {
         sw_df_bolt *bo = &d->bolt[s];
         if (!bo->live) continue;
         for (int k = 0; k < 3; k++) bo->pos[k] += bo->vel[k] * dt;
         if (d->t - bo->t > BOLT_LIFE) { bo->live = 0; continue; }
-        if (bo->red) {
-            for (int j = 0; j < SW_DF_ENEMIES; j++) {
-                sw_df_enemy *e = &d->enemy[j];
-                if (!e->kind || dist(e->b.pos, bo->pos) > BOLT_HITS) continue;
-                bo->live = 0;
-                if (rnd(d) < 0.5) {
-                    e->hit_t = d->t;
-                    if (--e->hp <= 0) kill_enemy(d, e, 0);
-                }
-                break;
-            }
-        } else {
+        if (!bo->red) {
             for (int j = 0; j < SW_DF_ALLIES; j++) {
                 sw_df_ally *a = &d->ally[j];
                 if (!a->live || dist(a->b.pos, bo->pos) > BOLT_HITS) continue;
@@ -1236,7 +1219,7 @@ static void allies_step(sw_dogfight *d, double dt)
     }
     /* far off, beyond the box, the battle goes on: now and then a ship blows up */
     if (d->t > d->far_blast_t) {
-        d->far_blast_t = d->t + 0.9 + rnd(d) * 2.2;
+        d->far_blast_t = d->t + 3.0 + rnd(d) * 4.0;
         double p[3];
         for (int k = 0; k < 3; k++) p[k] = d->f[k] * 0.9 + (rnd(d) - 0.5) * 1.6;
         norm(p);
