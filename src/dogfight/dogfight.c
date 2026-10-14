@@ -40,7 +40,7 @@
 #define SHOT_LIFE   6.0
 #define SHOT_HITS   130.0                   /* how near one has to come to hit the ship */
 #define SHIELDS     6
-#define SHIP_SIZE   0.6                     /* the enemies drawn smaller than the ROM has them: more room about them */
+#define SHIP_SIZE   1.0                     /* the enemies as large as the ROM has them */
 
 /* the Death Star, far off beyond the box */
 static const double DEATH_STAR[3] = { 70000.0, 18000.0, 9000.0 };
@@ -546,8 +546,8 @@ static void spawn(sw_dogfight *d)
         *g = *e;
         g->mode = 2;
         g->leader = slot;
-        g->slot_r = w == 1 ? -520.0 : 520.0;
-        g->slot_b = 450.0;
+        g->slot_r = w == 1 ? -850.0 : 850.0;
+        g->slot_b = 700.0;
         for (int k = 0; k < 3; k++) g->b.pos[k] = e->b.pos[k] + e->b.r[k] * g->slot_r - e->b.f[k] * g->slot_b;
         g->fire_t = d->t + 2.5 + rnd(d) * 1.5;
         d->pending[kind]--;
@@ -724,10 +724,11 @@ static void enemies_step(sw_dogfight *d, double dt)
             double dd = sqrt(dot(v, v));
             int mates = (e->mode == 2 && e->leader == j) || (o->mode == 2 && o->leader == i) ||
                         (e->mode == 2 && o->mode == 2 && e->leader == o->leader);
-            if (dd < 1e-6 || dd > (mates ? 280.0 : 900.0)) continue;
-            double k2 = (mates ? 280.0 : 900.0) / dd - 1.0;
-            for (int k = 0; k < 3; k++) want[k] += v[k] / dd * k2 * 1.5;
-            if (dd < 260.0) for (int k = 0; k < 3; k++) e->b.pos[k] += v[k] / dd * (260.0 - dd) * 0.5;
+            double keep = mates ? 600.0 : 1800.0;           /* (wingmen hold their places nearer) */
+            if (dd < 1e-6 || dd > keep) continue;
+            double k2 = keep / dd - 1.0;
+            for (int k = 0; k < 3; k++) want[k] += v[k] / dd * k2 * 2.0;
+            if (dd < 520.0) for (int k = 0; k < 3; k++) e->b.pos[k] += v[k] / dd * (520.0 - dd) * 0.5;
         }
         norm(want);
         if (e->mode == 0 && (far < 1800.0 || (far < 3000.0 && dot(e->b.f, to) < 0.0))) {
@@ -754,7 +755,7 @@ static void enemies_step(sw_dogfight *d, double dt)
         if (near < 700.0 && !e->passed) { e->passed = 1; sound(d, S_AUDPB); }
         if (near > 1500.0) e->passed = 0;
         /* it runs into the ship: both bounce off, both are hurt */
-        if (near < 170.0 && d->t - e->bump_t > 0.8) {
+        if (near < 230.0 && d->t - e->bump_t > 0.8) {
             double n[3] = { e->b.pos[0] - d->pos[0], e->b.pos[1] - d->pos[1], e->b.pos[2] - d->pos[2] };
             norm(n);
             for (int k = 0; k < 3; k++) {
