@@ -294,6 +294,7 @@ static void apply_enhanced(board *b, const sw_display_cfg *cfg)
     b->pic.enhance.logo = on && cfg->logo_yellow;
     b->pic.enhance.clip = on && cfg->enh_clip;
     b->pic.enhance.falcon = on && cfg->enh_falcon;
+    b->pic.enhance.cockpit = on && cfg->enh_cockpit;
     b->m.camera_ease = (uint8_t)(on && cfg->enh_camera);
     if (b->snd && b->snd->samples) b->snd->samples->enabled = on && cfg->sound_replace;
     /* the yoke: its rest as its middle, and passed through exactly (the

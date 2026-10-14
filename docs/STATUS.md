@@ -337,6 +337,24 @@ wiederholt sich alle 8000h, jedes Gebäude wird auf dieser und der nächsten
 Runde betrachtet. Standbilder: am Start der Oberfläche nichts neben dem
 Spieler, am Horizont die kleinen dunklen Türme.
 
+## Cockpit-Ansicht (2026-10-14)
+
+Wunsch des Besitzers nach einer Vorlage aus dem Film: Ego-Perspektive aus
+dem Cockpit statt Nase und Kanonen des X-Wings. `enh_cockpit` (Testmenü
+"Cockpit View", Standard aus), in `render/enhance.c` (`cockpit`): Wo das
+Spiel Nase und Kanonen zeichnet (SW_TAG_PLANE), fallen deren Linien weg, und
+im Bildraum steht ein Cockpit: zwei Kanzelstreben von den oberen Ecken
+(unter Score und Wave, die frei bleiben) zur Brüstung, ein flaches
+Armaturenbrett bis y = -96 von -153 (gut ein Fünftel des Schirms; der
+Grabenboden bleibt sichtbar) mit Leuchtenreihe, zwei Zielschirmen, Knopf,
+Hebel und Seitenkonsolen mit rotem Rahmen, ~110 Linien. Alles dahinter
+(Sterne, Gegner, Türme, Graben, Laser, Falcon) wird an drei konvexen
+Flächen abgeschnitten, unabhängig von der Occlusion-Einstellung; Texte,
+Score und Fadenkreuz nicht. Schüsse unverändert: die Laser laufen vom Ort
+der Kanonen zum Fadenkreuz und tauchen hinter Konsole und Streben auf.
+Nicht am Gerät gesehen: Helligkeit des Rahmens, Bildzeit (+110 Linien je
+Bild, beim Strahl ungefähr 10 % mehr), ob die Streben beim Zielen stören.
+
 ## Menüeintrag und Marquee (2026-10-13)
 
 Das Spiel hieß bis hierher nach der Plattform des Automaten (VectorPie)
@@ -358,7 +376,7 @@ sobald das Menü neu startet (nach dem Verlassen des Spiels). Nicht geprüft
 am Gerät, auch nicht, ob der längere Titel des Testmenüs (jetzt Größe 90
 statt 110) in die Breite passt.
 
-Marquee erneuert (zweites Artwork des Besitzers, ohne die Streifen unten; auf die volle Breite 1920 gezogen, 17 % breiter als das Original), Version 0.2.1. **Noch nicht auf dem Automaten**, der war aus: beim nächsten Mal `sh tools/deploy.sh` und `dist/swenhanced-0.2.1.vpk` nach `/persistent/games/packages/` (dort liegt noch 0.2.0).
+Marquee erneuert (zweites Artwork des Besitzers, ohne die Streifen unten; auf die volle Breite 1920 gezogen, 17 % breiter als das Original), Version 0.2.1. **Noch nicht auf dem Automaten**, der war aus: beim nächsten Mal `sh tools/deploy.sh` und die neueste `dist/swenhanced-<version>.vpk` (jetzt 0.2.2, mit der Cockpit-Ansicht) nach `/persistent/games/packages/` (dort liegt noch 0.2.0).
 
 Paketdatei: `sh tools/pack.sh` (in WSL, nach dem Pi-Build) schreibt
 `dist/swenhanced-<version>.vpk` mit dem `vp-pack` des SDK (dessen Skript und

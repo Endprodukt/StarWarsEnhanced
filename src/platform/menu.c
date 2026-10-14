@@ -20,7 +20,7 @@ enum {
     /* the pages, as lines of the main page */
     L_PAGE_GRAPHICS, L_PAGE_SOUND, L_PAGE_CONTROLS, L_PAGE_OPTIONS,
     /* graphics */
-    L_SMOOTH, L_CAMERA, L_STEADY, L_OCCLUSION, L_LOGO, L_SURFACE, L_TOWERS, L_DOGFIGHTS, L_STARS, L_CLIP, L_FALCON,
+    L_SMOOTH, L_CAMERA, L_STEADY, L_OCCLUSION, L_LOGO, L_SURFACE, L_TOWERS, L_DOGFIGHTS, L_STARS, L_CLIP, L_FALCON, L_COCKPIT,
     /* sound */
     L_SAMPLES, L_SOUND_TEST,
     /* controls and screen */
@@ -35,13 +35,13 @@ enum {
 
 enum { P_MAIN, P_GRAPHICS, P_SOUND, P_CONTROLS, P_OPTIONS, N_PAGES };
 
-#define PAGE_MAX 12
+#define PAGE_MAX 14
 
 /* The lines of each page, in order; 0 is a gap before the line that
  * follows. */
 static const struct { const char *title; uint8_t lines[PAGE_MAX + 4]; } PAGES[N_PAGES] = {
     { "TEST MENU", { L_PAGE_GRAPHICS, L_PAGE_SOUND, L_PAGE_CONTROLS, L_PAGE_OPTIONS, 0, L_OPERATOR, L_EXIT, N_LINES } },
-    { "GRAPHICS", { L_SMOOTH, L_CAMERA, L_STEADY, L_OCCLUSION, L_LOGO, 0, L_SURFACE, L_TOWERS, L_DOGFIGHTS, 0, L_STARS, L_CLIP, L_FALCON, 0, L_BACK, N_LINES } },
+    { "GRAPHICS", { L_SMOOTH, L_CAMERA, L_STEADY, L_OCCLUSION, L_LOGO, L_COCKPIT, 0, L_SURFACE, L_TOWERS, L_DOGFIGHTS, 0, L_STARS, L_CLIP, L_FALCON, 0, L_BACK, N_LINES } },
     { "SOUND", { L_SAMPLES, L_SOUND_TEST, 0, L_BACK, N_LINES } },
     { "CONTROLS AND SCREEN", { L_YOKE, L_CALIBRATE, 0, L_BACK, N_LINES } },
     { "GAME OPTIONS", { L_OPT0, L_OPT0 + 1, L_OPT0 + 2, L_OPT0 + 3, 0, L_OPT0 + 4, L_OPT0 + 5, L_OPT0 + 6, L_OPT0 + 7, 0, L_BACK, N_LINES } },
@@ -140,6 +140,7 @@ int sw_menu_update(sw_menu *u, sw_display_cfg *cfg, sw_machine *m, vp_input *in,
     case L_STARS:         return toggle(&cfg->enh_stars);
     case L_CLIP:          return toggle(&cfg->enh_clip);
     case L_FALCON:        return toggle(&cfg->enh_falcon);
+    case L_COCKPIT:       return toggle(&cfg->enh_cockpit);
     case L_CAMERA:        return toggle(&cfg->enh_camera);
     case L_SAMPLES:       return toggle(&cfg->sound_replace);
     case L_SOUND_TEST:
@@ -183,6 +184,7 @@ static void describe(int line, const sw_menu *u, const sw_display_cfg *cfg, cons
     case L_DOGFIGHTS:     *label = "DISTANT DOGFIGHTS"; snprintf(value, size, "%s", on_off(cfg->enh_dogfights)); break;
     case L_STARS:         *label = "STARS";             snprintf(value, size, "%s", on_off(cfg->enh_stars)); break;
     case L_CLIP:          *label = "TRENCH CLIPPING";   snprintf(value, size, "%s", on_off(cfg->enh_clip)); break;
+    case L_COCKPIT:       *label = "COCKPIT VIEW";      snprintf(value, size, "%s", on_off(cfg->enh_cockpit)); break;
     case L_FALCON:        *label = "FALCON FLY-OVER";   snprintf(value, size, "%s", on_off(cfg->enh_falcon)); break;
     case L_CAMERA:        *label = "SMOOTH CAMERA";     snprintf(value, size, "%s", on_off(cfg->enh_camera)); break;
     case L_SAMPLES:       *label = "REPLACED SOUNDS";   snprintf(value, size, "%s", on_off(cfg->sound_replace)); break;
