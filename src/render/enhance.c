@@ -1088,11 +1088,18 @@ static void outside(sw_enhance *e, const sw_machine *m)
  * out from behind the panel, along the way they always take. The panel is
  * kept low: the view ahead (and where the sight goes) stays free. */
 static const float COCKPIT[3][6][2] = {
-    { { -128, -154 }, { 128, -154 }, { 128, -128 }, { 44, -96 }, { -44, -96 }, { -128, -128 } },  /* the panel */
-    { { -128, 92 }, { -50, -98 }, { -38, -98 }, { -128, 122 } },                                   /* left strut */
-    { { 38, -98 }, { 50, -98 }, { 128, 92 }, { 128, 122 } },                                       /* right strut */
+    { { -400, -400 }, { 400, -400 }, { 400, -232 }, { 44, -96 }, { -44, -96 }, { -400, -232 } },  /* the panel */
+    { { -275, 450 }, { -50, -98 }, { -38, -98 }, { -262, 450 } },                                  /* left strut */
+    { { 38, -98 }, { 50, -98 }, { 275, 450 }, { 262, 450 } },                                      /* right strut */
 };
 static const int COCKPIT_N[3] = { 6, 4, 4 };
+/* The cockpit turns about the middle of the panel's top. */
+#define COCKPIT_PIVOT_X 0.0f
+#define COCKPIT_PIVOT_Y (-96.0f)
+/* How far it follows the sight (of the sight's own way), and how far it
+ * banks with it (radians, the sight at the side of the screen). */
+#define COCKPIT_FOLLOW 0.6f
+#define COCKPIT_BANK   0.22f
 
 /* Where a line lies inside a convex shape, as the part [*t0, *t1] of it;
  * 0 if no part does. */
@@ -1121,10 +1128,20 @@ static int inside_part(const float (*p)[2], int n, float x0, float y0, float x1,
     return 1;
 }
 
+/* Where a point of the cockpit is on the screen as the ship moves (e->ck_*). */
+static void cockpit_place(const sw_enhance *e, float *x, float *y)
+{
+    float dx = *x - COCKPIT_PIVOT_X, dy = *y - COCKPIT_PIVOT_Y;
+    *x = COCKPIT_PIVOT_X + e->ck_ox + dx * e->ck_c - dy * e->ck_s;
+    *y = COCKPIT_PIVOT_Y + e->ck_oy + dx * e->ck_s + dy * e->ck_c;
+}
+
 /* A line on the screen (x, y as the lines of the picture have them). */
 static void flat(sw_enhance *e, float x0, float y0, float x1, float y1, unsigned color, float lum)
 {
     const double K = 1.0 / VG_SCALE;
+    cockpit_place(e, &x0, &y0);
+    cockpit_place(e, &x1, &y1);
     line(e, vec3(PERSPECTIVE, x0 * K, y0 * K - VG_OFFY), vec3(PERSPECTIVE, x1 * K, y1 * K - VG_OFFY), color, lum, SW_TAG_NONE);
 }
 
@@ -1230,12 +1247,42 @@ static void hide(sw_enhance *e, int lasers)
 /* The game's lines without what the cockpit hides, then the cockpit. */
 static void cockpit(sw_enhance *e)
 {
+    /* The ship moves with the yoke: the cockpit follows the sight a good
+     * part of its way and banks a little with it, so that the sight stays
+     * in the window (it goes nearly to the edges of the screen). Only the
+     * picture: the game, its sight and its shots are as ever. The sight
+     * is taken from its lines in the picture (the interrupt draws it, 246
+     * times a second: the cockpit moves as smoothly). */
+    float sx = 0.0f, sy = 0.0f, x0 = 1e9f, x1 = -1e9f, y0 = 1e9f, y1 = -1e9f;
+    for (int i = 0; i < e->n; i++) {
+        const sw_line *l = &e->out[i];
+        if (SW_TAG_SECTION((unsigned)(l->id >> 48)) != SW_TAG_SITE) continue;
+        float xs[2] = { l->x0, l->x1 }, ys[2] = { l->y0, l->y1 };
+        for (int k = 0; k < 2; k++) {
+            if (xs[k] < x0) x0 = xs[k];
+            if (xs[k] > x1) x1 = xs[k];
+            if (ys[k] < y0) y0 = ys[k];
+            if (ys[k] > y1) y1 = ys[k];
+        }
+    }
+    if (x1 >= x0) { sx = (x0 + x1) * 0.5f; sy = (y0 + y1) * 0.5f; }
+    /* (smoothed a little: the ship has weight) */
+    e->ck_sx += (sx - e->ck_sx) * 0.35f;
+    e->ck_sy += (sy - e->ck_sy) * 0.35f;
+    e->ck_ox = COCKPIT_FOLLOW * e->ck_sx;
+    e->ck_oy = COCKPIT_FOLLOW * e->ck_sy;
+    float bank = -COCKPIT_BANK * e->ck_sx / 112.0f;
+    e->ck_c = cosf(bank);
+    e->ck_s = sinf(bank);
+
     /* hidden: all but what is written on the screen and the sight */
     e->n_hide = 0;
     for (int s = 0; s < 3; s++) {
         for (int c = 0; c < COCKPIT_N[s]; c++) {
-            e->hide_p[s][c][0] = COCKPIT[s][c][0];
-            e->hide_p[s][c][1] = COCKPIT[s][c][1];
+            float x = COCKPIT[s][c][0], y = COCKPIT[s][c][1];
+            cockpit_place(e, &x, &y);
+            e->hide_p[s][c][0] = x;
+            e->hide_p[s][c][1] = y;
         }
         e->hide_n[s] = COCKPIT_N[s];
     }
@@ -1248,12 +1295,12 @@ static void cockpit(sw_enhance *e)
     const float F = 150.0f, D = 100.0f, R = 170.0f;     /* frame, details, red lights */
     /* the canopy's frame: the struts, with a rail along each, and its sill */
     for (int s = -1; s <= 1; s += 2) {
-        flat(e, s * 128.0f, 92.0f, s * 50.0f, -98.0f, WHT, F);
-        flat(e, s * 128.0f, 122.0f, s * 38.0f, -98.0f, WHT, F);
-        flat(e, s * 128.0f, 107.0f, s * 44.0f, -98.0f, WHT, D * 0.6f);
-        flat(e, s * 128.0f, -128.0f, s * 44.0f, -96.0f, WHT, F);       /* the sill */
-        flat(e, s * 128.0f, -137.0f, s * 40.0f, -102.0f, WHT, F);      /* the side console's top */
-        flat(e, s * 40.0f, -102.0f, s * 36.0f, -154.0f, WHT, D);       /* the middle console's side */
+        flat(e, s * 275.0f, 450.0f, s * 50.0f, -98.0f, WHT, F);
+        flat(e, s * 262.0f, 450.0f, s * 38.0f, -98.0f, WHT, F);
+        flat(e, s * 269.0f, 450.0f, s * 44.0f, -98.0f, WHT, D * 0.6f);
+        flat(e, s * 400.0f, -232.0f, s * 44.0f, -96.0f, WHT, F);       /* the sill */
+        flat(e, s * 400.0f, -245.0f, s * 40.0f, -102.0f, WHT, F);      /* the side console's top */
+        flat(e, s * 40.0f, -102.0f, s * 17.0f, -400.0f, WHT, D);       /* the middle console's side */
         /* the side console: a red frame along its slope, keys in it, two knobs */
         flat(e, s * 110.0f, -141.0f, s * 76.0f, -126.0f, RED, R * 0.7f);
         flat(e, s * 76.0f, -126.0f, s * 72.0f, -138.0f, RED, R * 0.7f);
@@ -1281,6 +1328,8 @@ static void cockpit(sw_enhance *e)
     flat_box(e, -27.0f, -135.0f, -22.0f, -139.0f, RED, R * 0.7f);
     flat_box(e, 16.0f, -130.0f, 20.0f, -150.0f, WHT, D);         /* a lever */
     for (int i = 0; i < 5; i++) flat(e, -6.0f, -129.0f - i * 4.0f, -4.5f, -129.0f - i * 4.0f, RED, R * 0.8f);
+    e->ck_ox = e->ck_oy = e->ck_s = 0.0f;
+    e->ck_c = 1.0f;
     e->inst = inst;
 }
 

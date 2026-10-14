@@ -73,6 +73,8 @@ typedef struct sw_enhance {
     int      cap_cock;
     float    hide_p[SW_ENHANCE_HIDE][6][2];     /* shapes on the screen that hide what is behind them */
     int      hide_n[SW_ENHANCE_HIDE], n_hide;
+    float    ck_sx, ck_sy;                      /* the cockpit: where the sight is (smoothed), */
+    float    ck_ox, ck_oy, ck_c, ck_s;          /* and how it is moved and turned on the screen */
     sw_solid_extra *faces;                      /* of the towers: for render/solid.h */
     int      n_faces, cap_faces;
     uint16_t inst;                              /* things drawn so far in this picture */

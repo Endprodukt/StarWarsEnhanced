@@ -337,6 +337,20 @@ wiederholt sich alle 8000h, jedes Gebäude wird auf dieser und der nächsten
 Runde betrachtet. Standbilder: am Start der Oberfläche nichts neben dem
 Spieler, am Horizont die kleinen dunklen Türme.
 
+## Cockpit bewegt sich mit dem Schiff (2026-10-14)
+
+Das Fadenkreuz lief über Streben und Armaturenbrett: Es reicht im Original
+bis x +-112 (von +-127,5) und y -104 nach unten (gemessen, Joch in allen
+Ecken), also bis in die Konsole; kein Cockpit mit sichtbaren Streben passt
+darum herum. Wunsch des Besitzers: das Schiff bewegt sich mit. Jetzt folgt
+das Cockpit dem Fadenkreuz zu 60 % seines Wegs und legt sich mit ihm bis
+0,22 rad in die Kurve (um die Mitte der Brüstung), leicht geglättet; das
+Fadenkreuz bleibt so im Fenster. Die Lage des Fadenkreuzes kommt aus seinen
+Linien im Bild (vom Interrupt gezeichnet, 246-mal je Sekunde), nicht aus
+dem Spielzustand (13 Hz): die Bewegung ist so glatt wie das Fadenkreuz.
+Rahmen und Flächen reichen dafür weit über den Bildschirm hinaus. Spiel,
+Fadenkreuz und Schüsse unverändert. Am Gerät nicht gesehen.
+
 ## Keine Türme mehr am Ende der Oberfläche (2026-10-14)
 
 Am Ende der Oberfläche sah man noch ferne Türme. Das Original räumt in der
@@ -441,7 +455,7 @@ sobald das Menü neu startet (nach dem Verlassen des Spiels). Nicht geprüft
 am Gerät, auch nicht, ob der längere Titel des Testmenüs (jetzt Größe 90
 statt 110) in die Breite passt.
 
-Marquee erneuert (zweites Artwork des Besitzers, ohne die Streifen unten; auf die volle Breite 1920 gezogen, 17 % breiter als das Original), Version 0.2.1. **Noch nicht auf dem Automaten**, der war aus: beim nächsten Mal `sh tools/deploy.sh` und die neueste `dist/swenhanced-<version>.vpk` (jetzt 0.2.4, mit den drei Ansichten, dem Demo-Flug und F2) nach `/persistent/games/packages/` (dort liegt noch 0.2.0).
+Marquee erneuert (zweites Artwork des Besitzers, ohne die Streifen unten; auf die volle Breite 1920 gezogen, 17 % breiter als das Original), Version 0.2.1. **Noch nicht auf dem Automaten**, der war aus: beim nächsten Mal `sh tools/deploy.sh` und die neueste `dist/swenhanced-<version>.vpk` (jetzt 0.2.5, mit den drei Ansichten, dem Demo-Flug, F2 und dem mitbewegten Cockpit) nach `/persistent/games/packages/` (dort liegt noch 0.2.0).
 
 Paketdatei: `sh tools/pack.sh` (in WSL, nach dem Pi-Build) schreibt
 `dist/swenhanced-<version>.vpk` mit dem `vp-pack` des SDK (dessen Skript und
