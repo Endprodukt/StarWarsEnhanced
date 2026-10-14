@@ -54,7 +54,7 @@ enum { SW_VIEW_ARCADE, SW_VIEW_COCKPIT, SW_VIEW_OUTSIDE, SW_VIEWS };
 
 /* Shapes on the screen that may hide what is behind them (the cockpit's,
  * the faces of the X-wing seen from outside). */
-#define SW_ENHANCE_HIDE 128
+#define SW_ENHANCE_HIDE 160
 
 /* Stars of the sky (many: over the trench only a strip of it shows). */
 #define SW_ENHANCE_STARS 420
@@ -66,13 +66,24 @@ typedef struct sw_enhance {
     int falcon;                                 /* 1: the Millennium Falcon flies over before the exhaust port */
     int view;                                   /* SW_VIEW_...: from where the player sees */
     int plane_seen;                             /* the last picture had the X-wing's nose and guns (in flight) */
+    /* the dogfight's picture (dogfight/dogfight.h): a flight whatever the
+     * game's phase; the ship's bank and pitch (-1..1) and its throttle
+     * (-1..1) as the dogfight has them, for the view from outside */
+    int   dogfight;
+    float df_bank, df_pitch, df_throttle;
 
     sw_line *out;
     int      n, cap;
     sw_line *cock;                              /* (the lines with what the cockpit hides cut out) */
     int      cap_cock;
-    float    hide_p[SW_ENHANCE_HIDE][6][2];     /* shapes on the screen that hide what is behind them */
+    float    hide_p[SW_ENHANCE_HIDE][6][2];     /* shapes on the screen that hide what is behind them, */
     int      hide_n[SW_ENHANCE_HIDE], n_hide;
+    float    hide_w[SW_ENHANCE_HIDE][3];        /* how near (1/X) across them: w = a x + b y + c */
+    uint8_t  hide_part[SW_ENHANCE_HIDE];        /* the part of a model each belongs to (0: none) */
+    uint8_t  own;                               /* the part being drawn now */
+    float    foil_open;                         /* the X-wing's S-foils: 1 open, 0 closed */
+    double   foil_at;
+    double   now;                               /* the time of the picture being made */
     float    ck_sx, ck_sy;                      /* the cockpit: where the sight is (smoothed), */
     float    ck_ox, ck_oy, ck_c, ck_s;          /* and how it is moved and turned on the screen */
     sw_solid_extra *faces;                      /* of the towers: for render/solid.h */

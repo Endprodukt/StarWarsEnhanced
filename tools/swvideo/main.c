@@ -15,6 +15,9 @@
  *   or from behind the X-wing (2); --views-every S: each in turn, S seconds.
  * --demo: the attract mode's demo flight (platform/demo.h); with a long
  *   --attract, so that no coin of the script ends it.
+ * --dogfight: the dogfight (dogfight/dogfight.h) from the start, flown by
+ *   itself (the yoke weaving, the throttle up and down, a roll now and
+ *   then); no sound yet.
  * --aim 80,4c: the first game starts on the Death Star in the middle (wave
  * 3, which has the surface).
  * --every N: only every Nth picture is written (stills to look at).
@@ -31,6 +34,7 @@
 #include "core/sched.h"
 #include "core/sw_symbols.h"
 #include "game/game.h"
+#include "dogfight/dogfight.h"
 #include "platform/demo.h"
 #include "render/picture.h"
 #include "rom/romset.h"
@@ -259,6 +263,9 @@ int main(int argc, char **argv)
     static sw_demo demo;
     demo.enabled = arg_flag(argc, argv, "--demo");
     int base_view = pic.enhance.view;
+    static sw_dogfight df;
+    int dogfight = arg_flag(argc, argv, "--dogfight");
+    if (dogfight) sw_dogfight_start(&df, &m);
     if (!arg_flag(argc, argv, "--plain")) {
         pic.enhance.surface = pic.enhance.stars = pic.enhance.towers = pic.enhance.dogfights = 1;
         pic.enhance.logo = 1;
@@ -277,6 +284,36 @@ int main(int argc, char **argv)
     long start = (long)(attract * SW_IRQ_HZ);      /* the interrupt the first coin drops at */
     for (long f = 0; f < frames; f++) {
         double now = (double)f / fps;
+        if (dogfight) {
+            /* the dogfight's own pilot */
+            double t = now;
+            sw_dogfight_input in = { 0 };
+            in.yaw = (float)(0.55 * sin(t * 0.37) + 0.25 * sin(t * 1.3));
+            in.pitch = (float)(0.35 * sin(t * 0.23 + 1.0));
+            in.faster = fmod(t, 14.0) > 4.0 && fmod(t, 14.0) < 8.0;
+            in.slower = fmod(t, 14.0) > 10.0 && fmod(t, 14.0) < 12.0;
+            if (fmod(t, 23.0) > 19.0 && fmod(t, 23.0) < 21.0) { in.faster = in.slower = 1; in.yaw = 0.8f; }
+            sw_dogfight_step(&df, &in, 1.0 / fps);
+            uint32_t want = (uint32_t)((f + 1) * (double)SW_SOUND_RATE / fps);
+            static const int16_t quiet[2048];
+            while (samples < want) {
+                uint32_t k = want - samples > 2048 ? 2048 : want - samples;
+                fwrite(quiet, 2, k, wav);
+                samples += k;
+            }
+            const sw_line *dl;
+            int dn = sw_dogfight_lines(&df, &m, &dl);
+            if (views_every > 0.0) pic.enhance.view = (int)(now / views_every) % SW_VIEWS;
+            pic.enhance.dogfight = 1;
+            sw_dogfight_attitude(&df, &pic.enhance.df_bank, &pic.enhance.df_pitch);
+            pic.enhance.df_throttle = df.throttle;
+            int count = sw_enhance_run(&pic.enhance, &m, now, dl, dn, &dl);
+            if (f % every != 0 || now < from) continue;
+            if (every > 1) memset(after, 0, (size_t)W * H * 3 * sizeof *after);
+            picture(dl, count);
+            if (fwrite(rgb, 3, (size_t)W * H, stdout) != (size_t)W * H) return 1;
+            continue;
+        }
         while ((double)irqs / SW_IRQ_HZ < now) {
             long i = (long)irqs - start;
             uint8_t in0 = 0xff;
@@ -325,6 +362,17 @@ int main(int argc, char **argv)
         clock_t t0 = clock();
         if (views_every > 0.0) pic.enhance.view = (int)(now / views_every) % SW_VIEWS;   /* (--views-every: each view in turn) */
         int count = sw_picture_lines(&pic, now, 3, &lines);
+        if (m.ram[SW_PHASE - 0x4800] == SW_PHSSDS + 1) {
+            /* the dogfight as a fourth choice of Death Star */
+            static sw_line more[8192];
+            static sw_dogfight choice;
+            int k = count < 6000 ? count : 6000;
+            memcpy(more, lines, (size_t)k * sizeof *more);
+            sw_avg_list l = { more, k, 8192, 0, 0 };
+            sw_dogfight_choice_lines(&choice, &m, &l);
+            lines = more;
+            count = l.count;
+        }
         if (check) {
             unsigned ph = m.ram[SW_PHASE - 0x4800] >> 1;
             if (ph > 63) ph = 63;

@@ -337,7 +337,56 @@ wiederholt sich alle 8000h, jedes Gebäude wird auf dieser und der nächsten
 Runde betrachtet. Standbilder: am Start der Oberfläche nichts neben dem
 Spieler, am Horizont die kleinen dunklen Türme.
 
-## Geplant: Dogfight-Modus (besprochen 2026-10-14, nicht gebaut)
+## Dogfight, Etappe 1: Fliegen in der Box (2026-10-14)
+
+Gebaut (`src/dogfight/dogfight.c`), Plan siehe nächster Abschnitt:
+
+* **Einstieg:** Auf der Seite "Select a Death Star" steht unten rechts ein
+  vierter Todesstern, "DOGFIGHT / ENDLESS" (am Platz der Tabelle TDTH des
+  Originals, x 400, y -300); Fadenkreuz darauf (dieselbe Trefferprüfung wie
+  PHESDS) und Feuer startet den Modus. Das Spiel von 1983 steht solange still
+  (wie im Menü), die Soundplatine läuft weiter. F2 verlässt den Dogfight in
+  dieser Etappe zurück in den Attract (später: Spielende durch Tod).
+* **Bild:** eine eigene Anzeigeliste für den Vektorgenerator, die die
+  Routinen des Vektor-ROMs aufruft: Schrift (Tabelle VGMSGA wie MESOUT),
+  Nase und Kanonen (VJSTBM usw. wie VWPLAN), Fadenkreuz (VGSITE, fest in der
+  Mitte des Blicks), Sterne (VGSTAR), der Todesstern (die Stempel von DTHVW,
+  ohne die Stadtlichter, die in diesem Maßstab als Linie quer laufen).
+  Ausgeführt von `avg` wie die Listen des Spiels, mit Tags; darum gelten
+  Cockpit- und Außenansicht (render/enhance, Flag `dogfight`), Start schaltet.
+* **Fliegen:** Box +-8000, Todesstern weit außerhalb bei (70000, 18000,
+  9000). Joch giert (1,3 rad/s) und nickt (1,1 rad/s), weich nachgezogen;
+  beide Daumentasten plus Joch zur Seite rollen (2,6 rad/s). Schub wie Time
+  Pilot 3D: die gehaltene Taste zieht ihn ihre Richtung, doppelt so schnell
+  jenseits der Mitte, losgelassen wandert er zurück; Tempo 450 bis 1500,
+  Mitte 900, kein Strömungsabriss. Am Rand der Box dreht das Schiff selbst
+  zur Mitte (1,6 rad/s, Joch ohne Wirkung), "WHERE ARE YOU GOING" blinkt,
+  bis es innen ist und zur Mitte zeigt. Schubanzeige oben rechts, "DOGFIGHT"
+  die ersten 4 s. Staubpunkte um das Schiff zeigen die Fahrt.
+* **Cockpit im Dogfight** schwingt mit dem Kurven und Nicken wie im
+  Original-Modus mit dem Fadenkreuz.
+* `swvideo --dogfight` fliegt ihn selbst (ohne Ton).
+* Tasten am Automaten: Laut Time Pilot 3D legt `advmame.rc` alle vier
+  Joch-Tasten auf `p1_button1`; die Daumentasten (`p1_button2/3`) kommen
+  dann nicht an. Time Pilot 3D liest das Joch deshalb selbst
+  (`src/controls.c` dort); das muss für den Dogfight übernommen werden.
+  Am Gerät nicht geprüft.
+
+X-Wing (Außenansicht, im Spiel und im Dogfight), auf Wunsch des Besitzers:
+
+* **Occlusion:** Die Teile des Modells verdecken einander jetzt richtig.
+  Jede Fläche trägt ihre Tiefe (1/X als Ebene über den Bildschirm) und ihr
+  Teil (`sw_line.own`, `hide_part`); `hide()` schneidet nur, was hinter der
+  Fläche liegt, und kein Teil seine eigenen Linien. Das gilt auch für das
+  Cockpit (seine Flächen liegen vor allem).
+* **Triebwerke:** hinten zwei blaue Ringe (Glühen), im Dogfight beim
+  Beschleunigen ein flackernder blauer Strahl je Triebwerk mit weißem Kern,
+  Länge mit dem Schub.
+* **S-Foils:** Im Dogfight fahren die Flügel mit dem Schub zusammen (flach
+  bei vollem Schub, gut eine Sekunde), beim Langsamwerden wieder in X-Stellung;
+  die Kanonenspitzen (Laserstart) wandern mit. Auf den Schienen offen.
+
+## Geplant: Dogfight-Modus (besprochen 2026-10-14, Etappe 1 gebaut)
 
 Idee des Besitzers: ein weiteres Level, endlos bis zum Tod. Frei im
 Weltall fliegen statt auf Schienen, endlose Wellen von Gegnern, im
@@ -370,7 +419,7 @@ Start schaltet die Ansicht. Treffer, bis ein Gegner fällt (Laser): TIE
 Fighter 1, ein neuer TIE Interceptor (Abfangjäger, eigenes Modell, nicht
 im ROM) 2, Vaders TIE 3. Vorschläge noch ohne Antwort: Aufladezeit der
 Torpedos etwa 8 s; ein Torpedo zerstört jeden Gegner mit einem Treffer.
-Noch nicht freigegeben: Bauen erst auf "los"; Plan in Etappen (Fliegen
+Freigegeben am 2026-10-14 ("Bau mal ein"); Plan in Etappen (Fliegen
 in der Box mit Todesstern; Wellen und Laser; Torpedos; Anleitungsseite;
 Highscores und Feinschliff), nach jeder Bilder oder Video. Technisch: ein eigener Spielteil in C neben dem Programm von 1983
 (das kennt nur Schienen), mit dessen Modellen, Sounds und Sprache und dem
@@ -497,7 +546,7 @@ sobald das Menü neu startet (nach dem Verlassen des Spiels). Nicht geprüft
 am Gerät, auch nicht, ob der längere Titel des Testmenüs (jetzt Größe 90
 statt 110) in die Breite passt.
 
-Marquee erneuert (zweites Artwork des Besitzers, ohne die Streifen unten; auf die volle Breite 1920 gezogen, 17 % breiter als das Original), Version 0.2.1. **Noch nicht auf dem Automaten**, der war aus: beim nächsten Mal `sh tools/deploy.sh` und die neueste `dist/swenhanced-<version>.vpk` (jetzt 0.2.6, mit den drei Ansichten, dem Demo-Flug, F2 und dem mitbewegten Cockpit) nach `/persistent/games/packages/` (dort liegt noch 0.2.0).
+Marquee erneuert (zweites Artwork des Besitzers, ohne die Streifen unten; auf die volle Breite 1920 gezogen, 17 % breiter als das Original), Version 0.2.1. **Noch nicht auf dem Automaten**, der war aus: beim nächsten Mal `sh tools/deploy.sh` und die neueste `dist/swenhanced-<version>.vpk` (jetzt 0.3.0, mit Dogfight Etappe 1) nach `/persistent/games/packages/` (dort liegt noch 0.2.0).
 
 Paketdatei: `sh tools/pack.sh` (in WSL, nach dem Pi-Build) schreibt
 `dist/swenhanced-<version>.vpk` mit dem `vp-pack` des SDK (dessen Skript und

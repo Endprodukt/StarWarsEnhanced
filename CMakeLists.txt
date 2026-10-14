@@ -88,6 +88,7 @@ add_library(swcore STATIC
     src/sound/sndprog.c
     src/sound/samples.c
     src/platform/demo.c
+    src/dogfight/dogfight.c
 )
 target_include_directories(swcore PUBLIC src)
 target_link_libraries(swcore PUBLIC miniz)

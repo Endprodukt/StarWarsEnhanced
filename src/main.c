@@ -21,6 +21,7 @@
 #include "platform/controls.h"
 #include "platform/app.h"
 #include "platform/audio.h"
+#include "dogfight/dogfight.h"
 #include "platform/demo.h"
 #include "platform/menu.h"
 #include "render/config.h"
@@ -196,6 +197,7 @@ typedef struct board {
     sw_sndboard *snd;                          /* the sound board (its chips; its program in C too), NULL: none */
     int         original;                      /* --original: the whole original program on the 6809 */
     sw_demo     demo;                          /* the demo flight of the attract mode */
+    sw_dogfight df;                            /* the dogfight (a fourth Death Star to choose) */
 } board;
 
 static float vg13(uint16_t v) { return (float)((int16_t)(uint16_t)(v << 3) >> 3); }
@@ -281,7 +283,28 @@ static void draw_controls_test(sw_app *app, const sw_display_cfg *cfg, board *b,
 static void draw_game(sw_app *app, const sw_display_cfg *cfg, board *b, double now)
 {
     const sw_line *lines;
+    if (b->df.active) {
+        /* the dogfight's picture, in the view chosen */
+        int n = sw_dogfight_lines(&b->df, &b->m, &lines);
+        b->pic.enhance.dogfight = 1;
+        sw_dogfight_attitude(&b->df, &b->pic.enhance.df_bank, &b->pic.enhance.df_pitch);
+        b->pic.enhance.df_throttle = b->df.throttle;
+        n = sw_enhance_run(&b->pic.enhance, &b->m, now, lines, n, &lines);
+        sw_draw_lines(app->dvg, cfg, lines, n);
+        return;
+    }
+    b->pic.enhance.dogfight = 0;
     int n = sw_picture_lines(&b->pic, now, cfg->smooth, &lines);
+    if (b->native && b->m.ram[SW_PHASE - 0x4800] == SW_PHSSDS + 1) {
+        /* the dogfight as a fourth Death Star to choose */
+        static sw_line more[8192];
+        int k = n < 6000 ? n : 6000;
+        memcpy(more, lines, (size_t)k * sizeof *more);
+        sw_avg_list l = { more, k, 8192, 0, 0 };
+        sw_dogfight_choice_lines(&b->df, &b->m, &l);
+        lines = more;
+        n = l.count;
+    }
     sw_draw_lines(app->dvg, cfg, lines, n);
 }
 
@@ -449,7 +472,7 @@ int main(int argc, char **argv)
         brd.ctl.learn = RAM8(&brd.m, SW_PHASE) >= SW_PHSBNR && RAM8(&brd.m, SW_PHASE) <= SW_PHSHIS + 1;
         /* In flight (the X-wing's nose and guns in the picture) the start
          * button steps through the views; else it fires, to start a game. */
-        int in_flight = brd.native && brd.pic.enhance.plane_seen && !menu.open && !brd.demo.active;
+        int in_flight = brd.native && (brd.pic.enhance.plane_seen || brd.df.active) && !menu.open && !brd.demo.active;
         brd.ctl.start_fires = !in_flight;
         sw_controls_read(&brd.ctl, app.in);
         /* A coin or a button ends a demo flight: the attract mode is back
@@ -459,6 +482,21 @@ int main(int argc, char **argv)
                                                 "start1", "start2", "coin1", "coin2" };
             for (size_t i = 0; i < sizeof keys / sizeof keys[0]; i++)
                 if (vp_input_pressed(app.in, keys[i])) brd.demo.interrupt = 1;
+        }
+        /* The dogfight: chosen as a fourth Death Star, by firing at it; flown
+         * with the yoke, the thumb buttons faster and slower. */
+        if (brd.native && !brd.df.active && !menu.open && sw_dogfight_chosen(&brd.m) &&
+            (vp_input_pressed(app.in, "p1_button1") || vp_input_pressed(app.in, "p1_button4") || vp_input_pressed(app.in, "start1")))
+            sw_dogfight_start(&brd.df, &brd.m);
+        if (brd.df.active) {
+            sw_dogfight_input din;
+            din.yaw = ((float)brd.ctl.adc_x - 128.0f) / 127.0f;
+            din.pitch = ((float)brd.ctl.adc_y - 128.0f) / 127.0f;
+            din.faster = vp_input_held(app.in, "p1_button2");
+            din.slower = vp_input_held(app.in, "p1_button3");
+            din.fire = vp_input_held(app.in, "p1_button1");
+            din.torpedo = vp_input_held(app.in, "p1_button4");
+            sw_dogfight_step(&brd.df, &din, dt);
         }
         if (in_flight && vp_input_pressed(app.in, "start1")) {
             cfg.enh_view = (cfg.enh_view % SW_VIEWS + 1) % SW_VIEWS;
@@ -485,7 +523,12 @@ int main(int argc, char **argv)
         int f2_is = SDL_GetKeyboardState(NULL)[SDL_SCANCODE_F2] != 0;
         int f2 = f2_is && !f2_was;
         f2_was = f2_is;
-        if (roms_ok && !calibrate && (vp_input_pressed(app.in, "p1_button6") || f2)) {
+        if (brd.df.active && (vp_input_pressed(app.in, "p1_button6") || f2)) {
+            /* (stage 1: the service key leaves the dogfight, back to the attract mode) */
+            brd.df.active = 0;
+            brd.m.ram[SW_PHASE - 0x4800] = SW_PHSBNR;
+            f2 = 0;
+        } else if (roms_ok && !calibrate && (vp_input_pressed(app.in, "p1_button6") || f2)) {
             if (brd.ctl.self_test) brd.ctl.self_test = 0;
             else if (menu_calibrate) menu_calibrate = 0;
             else if (menu.open) menu_left = 1;
@@ -523,8 +566,9 @@ int main(int argc, char **argv)
             if (sw_display_cfg_save(&cfg, cfg_path) == 0) printf("swenhanced: saved %s\n", cfg_path);
             else fprintf(stderr, "swenhanced: cannot write %s\n", cfg_path);
         }
-        if (menu.open) {
-            /* the game stands still; the sound board goes on, for the sound test */
+        if (menu.open || brd.df.active) {
+            /* the game stands still (in the menu, in the dogfight); the sound
+             * board goes on, for the sound test */
             if (brd.snd) sw_sndboard_run(brd.snd, (int)((dt > 0.1 ? 0.1 : dt) * SW_IRQ_HZ * SW_CPU_CYCLES_PER_IRQ));
         } else {
             sw_sched_advance(&sched, dt, roms_ok ? &hooks : NULL);

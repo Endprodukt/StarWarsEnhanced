@@ -125,6 +125,7 @@ static void line(sw_enhance *e, vec a, vec b, unsigned color, float lum, unsigne
     l->w0 = (uint16_t)(wa > 65535.0f ? 65535.0f : wa < 1.0f ? 1.0f : wa);
     l->w1 = (uint16_t)(wb > 65535.0f ? 65535.0f : wb < 1.0f ? 1.0f : wb);
     l->inst = e->inst;
+    l->own = e->own;
 }
 
 /* A face of n corners (V, up to 6), for what is behind it not to show. */
@@ -555,9 +556,9 @@ static void dogfights(sw_enhance *e, double now)
  * faces it lies on (none, one or two): it is drawn when one of them is
  * towards the viewer, so that the far side of the hull does not show
  * through the near one. */
-typedef struct mline { float a[3], b[3], n[2][3]; uint8_t nn, color; } mline;
+typedef struct mline { float a[3], b[3], n[2][3]; uint8_t nn, color, part; } mline;
 /* A face of the model, for what is behind the ship not to show. */
-typedef struct mface { float p[6][3]; uint8_t n; } mface;
+typedef struct mface { float p[6][3]; uint8_t n, part; } mface;
 
 /* A model: its lines and faces. The ships made here are built into one
  * at a time (`building`). */
@@ -565,6 +566,7 @@ typedef struct mface { float p[6][3]; uint8_t n; } mface;
 #define MODEL_FACES 96
 typedef struct model { mline line[MODEL_LINES]; mface face[MODEL_FACES]; int lines, faces; } model;
 static model falcon, xwing, *building;
+static int building_part;                       /* the part of it being built (its lines and faces carry it) */
 
 static void set3(float *o, vec v) { o[0] = (float)v.x; o[1] = (float)v.y; o[2] = (float)v.z; }
 
@@ -578,6 +580,7 @@ static void mline_add(vec a, vec b, vec n1, vec n2, int nn, unsigned color)
     set3(l->n[1], n2);
     l->nn = (uint8_t)nn;
     l->color = (uint8_t)color;
+    l->part = (uint8_t)building_part;
 }
 
 static void mface_add(const vec *p, int n)
@@ -586,6 +589,7 @@ static void mface_add(const vec *p, int n)
     mface *f = &building->face[building->faces++];
     for (int i = 0; i < n; i++) set3(f->p[i], p[i]);
     f->n = (uint8_t)n;
+    f->part = (uint8_t)building_part;
 }
 
 /* A box, its edges with the normals of the two faces each lies on. */
@@ -754,7 +758,7 @@ static void falcon_build(void)
  * turned as the player is), or in the view's own (world 0: x ahead, y to
  * the right on the screen, z up). With `hide`, the faces also go where
  * what is behind them is cut away by the enhancement itself (hide()). */
-static void hide_face(sw_enhance *e, const vec *c, int n);
+static void hide_face(sw_enhance *e, const vec *c, int n, int part);
 static void hide(sw_enhance *e, int lasers);
 static void model_draw(sw_enhance *e, const model *md, vec at, vec f, vec l, vec u, double size, float lum,
                        int world, int hide)
@@ -779,7 +783,11 @@ static void model_draw(sw_enhance *e, const model *md, vec at, vec f, vec l, vec
         }
         float lm = ml->color == BLU ? lum * 1.2f : ml->color == TRQ ? lum * 0.9f : ml->color == RED ? lum * 0.85f : lum;
         if (world) line(e, turn(e, p[0]), turn(e, p[1]), ml->color, lm, SW_TAG_OBJECT);
-        else line(e, p[0], p[1], ml->color, lm, hide ? SW_TAG_NONE : SW_TAG_OBJECT);
+        else {
+            e->own = hide ? ml->part : 0;
+            line(e, p[0], p[1], ml->color, lm, SW_TAG_OBJECT);
+            e->own = 0;
+        }
     }
     for (int i = 0; i < md->faces; i++) {
         const mface *mf = &md->face[i];
@@ -788,7 +796,7 @@ static void model_draw(sw_enhance *e, const model *md, vec at, vec f, vec l, vec
             c[k] = add(at, add(scaled(f, mf->p[k][0] * size), add(scaled(l, mf->p[k][1] * size), scaled(u, mf->p[k][2] * size))));
             if (world) c[k] = turn(e, c[k]);
         }
-        if (hide) hide_face(e, c, mf->n);
+        if (hide) hide_face(e, c, mf->n, mf->part);
         else face_n(e, c, mf->n);
     }
 }
@@ -868,6 +876,7 @@ typedef struct poly { vec p[6]; int n; } poly;
  * (outwards, from the solid's middle), and the faces themselves. */
 static void msolid(const poly *f, int nf, unsigned color)
 {
+    building_part++;                            /* (each solid a part of its own) */
     vec c = vec3(0.0, 0.0, 0.0);
     int np = 0;
     for (int i = 0; i < nf; i++)
@@ -921,6 +930,8 @@ static void mbox_solid(double x0, double x1, double y0, double y1, double z0, do
 #define XWING_GUN_X 0.86
 #define XWING_GUN_Y 0.95
 #define XWING_GUN_Z 0.28
+static double xwing_open = 1.0;                 /* its S-foils: 1 open (in an X), 0 closed (flat) */
+static double gun_z(void) { return 0.045 + (XWING_GUN_Z - 0.045) * xwing_open; }
 static void xwing_build(void)
 {
     const double PI = 3.14159265358979;
@@ -956,6 +967,7 @@ static void xwing_build(void)
         msolid(f, 5, TRQ);
     }
     /* the astromech behind it: a dome */
+    building_part++;
     for (int i = 0; i < 8; i++) {
         double a = i * PI / 4.0, b = a + PI / 4.0;
         mline_add(vec3(-0.14 + 0.05 * cos(a), 0.05 * sin(a), H + 0.01), vec3(-0.14 + 0.05 * cos(b), 0.05 * sin(b), H + 0.01), UP, UP, 1, BLU);
@@ -964,7 +976,8 @@ static void xwing_build(void)
      * roots, the guns at their tips */
     for (int sy = -1; sy <= 1; sy += 2)
         for (int sz = -1; sz <= 1; sz += 2) {
-            double rz = sz * 0.04, tz = sz * XWING_GUN_Z;
+            double rz = sz * 0.04, tz = sz * gun_z();
+            building_part++;                    /* the wing */
             vec r0 = vec3(-0.56, sy * W, rz), r1 = vec3(-0.06, sy * W, rz);
             vec t0 = vec3(-0.52, sy * XWING_GUN_Y, tz), t1 = vec3(-0.30, sy * XWING_GUN_Y, tz);
             mline_add(r0, t0, NONE, NONE, 0, WHT);
@@ -1001,7 +1014,10 @@ static void xwing_build(void)
                     int j = (i + 1) % 6;
                     vec a = vec3(X0 - 0.001, cy + (ring0[i].y - cy) * 0.6, cz + (ring0[i].z - cz) * 0.6);
                     vec b = vec3(X0 - 0.001, cy + (ring0[j].y - cy) * 0.6, cz + (ring0[j].z - cz) * 0.6);
-                    mline_add(a, b, BACK, BACK, 1, RED);
+                    mline_add(a, b, BACK, BACK, 1, BLU);       /* its blue glow */
+                    a = vec3(X0 - 0.001, cy + (ring0[i].y - cy) * 0.3, cz + (ring0[i].z - cz) * 0.3);
+                    b = vec3(X0 - 0.001, cy + (ring0[j].y - cy) * 0.3, cz + (ring0[j].z - cz) * 0.3);
+                    mline_add(a, b, BACK, BACK, 1, BLU);
                 }
             }
             /* the gun: its housing on the tip, the barrel ahead of it */
@@ -1023,6 +1039,7 @@ static void outside(sw_enhance *e, const sw_machine *m)
 {
     const double D = 1000.0, SIZE = 340.0;
     double sx = (int8_t)ram8(m, SW_SI_RSX) / 128.0, sy = (int8_t)ram8(m, SW_SI_RSY) / 128.0;
+    if (e->dogfight) { sx = e->df_bank; sy = e->df_pitch; }  /* (the dogfight: as the ship turns) */
     double yaw = 0.22 * sx, pitch = 0.12 * sy, roll = 0.55 * sx;
     /* its axes in the view's: ahead, to the right, up */
     vec f = vec3(cos(yaw), sin(yaw), 0.0), r = vec3(-sin(yaw), cos(yaw), 0.0), u = vec3(0.0, 0.0, 1.0);
@@ -1035,11 +1052,33 @@ static void outside(sw_enhance *e, const sw_machine *m)
     vec l = scaled(r, -1.0);
     vec at = vec3(D, 150.0 * sx, -400.0 + 60.0 * sy);
 
+    /* The S-foils: in the dogfight they close as it speeds up, and open
+     * again as it slows (a second or so); on the rails they stay open. */
+    {
+        double thr = e->dogfight && e->df_throttle > 0.0f ? e->df_throttle : 0.0;
+        float want = (float)(1.0 - thr);
+        double dt = e->now - e->foil_at;
+        if (dt < 0.0 || dt > 0.2) dt = 0.0;
+        e->foil_at = e->now;
+        if (e->foil_open <= 0.0f && e->foil_at == e->now && !e->dogfight) e->foil_open = 1.0f;
+        float step = (float)(dt * 1.2);
+        if (e->foil_open < want) e->foil_open = e->foil_open + step > want ? want : e->foil_open + step;
+        else e->foil_open = e->foil_open - step < want ? want : e->foil_open - step;
+        if (!e->dogfight) e->foil_open = 1.0f;
+        if (fabs(e->foil_open - xwing_open) > 0.01) {
+            xwing_open = e->foil_open;
+            memset(&xwing, 0, sizeof xwing);
+            building = &xwing;
+            building_part = 0;
+            xwing_build();
+        }
+    }
+
     /* the lasers from the guns: the beams' keys 0 to 3 are the upper left,
      * lower left, lower right and upper right gun */
     float tip[4][2];
     for (int k = 0; k < 4; k++) {
-        double gy = (k < 2 ? 1.0 : -1.0) * XWING_GUN_Y, gz = (k == 0 || k == 3 ? 1.0 : -1.0) * XWING_GUN_Z;
+        double gy = (k < 2 ? 1.0 : -1.0) * XWING_GUN_Y, gz = (k == 0 || k == 3 ? 1.0 : -1.0) * gun_z();
         vec p = add(at, add(scaled(f, XWING_GUN_X * SIZE), add(scaled(l, gy * SIZE), scaled(u, gz * SIZE))));
         tip[k][0] = (float)(PERSPECTIVE * p.y / p.x) * VG_SCALE;
         tip[k][1] = ((float)(PERSPECTIVE * p.z / p.x) + VG_OFFY) * VG_SCALE;
@@ -1075,6 +1114,22 @@ static void outside(sw_enhance *e, const sw_machine *m)
     uint16_t inst = e->inst;
     e->n_hide = 0;
     model_draw(e, &xwing, at, f, l, u, SIZE, 170.0f, 0, 1);
+    /* in the dogfight, speeding up: a beam out of each engine, flickering */
+    if (e->dogfight && e->df_throttle > 0.05f) {
+        double thr = e->df_throttle;
+        for (int k = 0; k < 4; k++) {
+            double cy = (k & 1 ? 1.0 : -1.0) * 0.19, cz = (k & 2 ? 1.0 : -1.0) * 0.12;
+            double flick = 0.85 + 0.15 * sin(e->now * 41.0 + k * 1.7) + 0.08 * sin(e->now * 97.0 + k);
+            vec c = add(at, add(scaled(f, -0.69 * SIZE), add(scaled(l, cy * SIZE), scaled(u, cz * SIZE))));
+            vec tail = add(c, scaled(f, -SIZE * (0.12 + 0.75 * thr) * flick));
+            for (int i = 0; i < 6; i++) {
+                double a = i * 1.0471976;
+                vec p = add(c, add(scaled(l, 0.045 * SIZE * cos(a)), scaled(u, 0.045 * SIZE * sin(a))));
+                line(e, p, tail, BLU, (float)(150.0 + 80.0 * thr), SW_TAG_OBJECT);
+            }
+            line(e, c, add(c, scaled(f, -SIZE * (0.07 + 0.45 * thr) * flick)), WHT, (float)(130.0 + 100.0 * thr), SW_TAG_OBJECT);
+        }
+    }
     hide(e, 0);
     e->inst = inst;
 }
@@ -1162,14 +1217,42 @@ static void flat_ring(sw_enhance *e, float cx, float cy, float r, unsigned color
 }
 
 /* A face (corners in V) for what is behind it to be cut away by hide(). */
-static void hide_face(sw_enhance *e, const vec *c, int n)
+static void hide_face(sw_enhance *e, const vec *c, int n, int part)
 {
     if (e->n_hide == SW_ENHANCE_HIDE || n < 3 || n > 6) return;
     for (int i = 0; i < n; i++) if (c[i].x < NEAR) return;
+    int s = e->n_hide;
+    float w[6];
     for (int i = 0; i < n; i++) {
-        e->hide_p[e->n_hide][i][0] = (float)(PERSPECTIVE * c[i].y / c[i].x) * VG_SCALE;
-        e->hide_p[e->n_hide][i][1] = ((float)(PERSPECTIVE * c[i].z / c[i].x) + VG_OFFY) * VG_SCALE;
+        e->hide_p[s][i][0] = (float)(PERSPECTIVE * c[i].y / c[i].x) * VG_SCALE;
+        e->hide_p[s][i][1] = ((float)(PERSPECTIVE * c[i].z / c[i].x) + VG_OFFY) * VG_SCALE;
+        w[i] = (float)(W_UNIT / c[i].x);
     }
+    /* how near it is across the screen (1/X is a plane over the screen for
+     * a flat face): from its widest corners */
+    int best = -1;
+    float bestd = 0.0f, A = 0.0f, B = 0.0f, C = w[0];
+    for (int i = 1; i + 1 < n; i++) {
+        float x0 = e->hide_p[s][0][0], y0 = e->hide_p[s][0][1];
+        float x1 = e->hide_p[s][i][0] - x0, y1 = e->hide_p[s][i][1] - y0;
+        float x2 = e->hide_p[s][i + 1][0] - x0, y2 = e->hide_p[s][i + 1][1] - y0;
+        float d = x1 * y2 - x2 * y1;
+        if (fabsf(d) > fabsf(bestd)) { bestd = d; best = i; }
+    }
+    if (best < 0 || fabsf(bestd) < 1e-4f) return;       /* (seen edge on: it hides nothing) */
+    {
+        int i = best;
+        float x0 = e->hide_p[s][0][0], y0 = e->hide_p[s][0][1];
+        float x1 = e->hide_p[s][i][0] - x0, y1 = e->hide_p[s][i][1] - y0, w1 = w[i] - w[0];
+        float x2 = e->hide_p[s][i + 1][0] - x0, y2 = e->hide_p[s][i + 1][1] - y0, w2 = w[i + 1] - w[0];
+        A = (w1 * y2 - w2 * y1) / bestd;
+        B = (x1 * w2 - x2 * w1) / bestd;
+        C = w[0] - A * x0 - B * y0;
+    }
+    e->hide_w[s][0] = A;
+    e->hide_w[s][1] = B;
+    e->hide_w[s][2] = C;
+    e->hide_part[s] = (uint8_t)part;
     e->hide_n[e->n_hide++] = n;
 }
 
@@ -1197,6 +1280,7 @@ static void hide(sw_enhance *e, int lasers)
         }
         /* the pieces of it left, shape by shape (each cuts at most one out) */
         float piece[16][2] = { { 0.0f, 1.0f } };
+        float lw0 = (float)l->w0, lw1 = (float)l->w1;       /* how near its ends are (0: not known, far) */
         int np = 1;
         float bx0 = l->x0 < l->x1 ? l->x0 : l->x1, bx1 = l->x0 < l->x1 ? l->x1 : l->x0;
         float by0 = l->y0 < l->y1 ? l->y0 : l->y1, by1 = l->y0 < l->y1 ? l->y1 : l->y0;
@@ -1211,6 +1295,7 @@ static void hide(sw_enhance *e, int lasers)
                 if (y > py1) py1 = y;
             }
             if (bx1 < px0 || bx0 > px1 || by1 < py0 || by0 > py1) continue;
+            if (l->own && l->own == e->hide_part[s]) continue;     /* (a part does not hide its own lines) */
             int m = np;
             for (int q = 0; q < m; q++) {
                 float a = piece[q][0], b = piece[q][1], t0, t1;
@@ -1219,6 +1304,22 @@ static void hide(sw_enhance *e, int lasers)
                 float x1 = l->x0 + (l->x1 - l->x0) * b, y1 = l->y0 + (l->y1 - l->y0) * b;
                 if (!inside_part((const float (*)[2])e->hide_p[s], e->hide_n[s], x0, y0, x1, y1, &t0, &t1)) continue;
                 float c0 = a + (b - a) * t0, c1 = a + (b - a) * t1;
+                /* and of that, where the line is behind the face */
+                float h[2] = { c0, c1 }, dd[2], eps = 0.0f;
+                for (int k2 = 0; k2 < 2; k2++) {
+                    float tt = h[k2], x = l->x0 + (l->x1 - l->x0) * tt, y = l->y0 + (l->y1 - l->y0) * tt;
+                    float wf = e->hide_w[s][0] * x + e->hide_w[s][1] * y + e->hide_w[s][2];
+                    dd[k2] = lw0 + (lw1 - lw0) * tt - wf;
+                    if (wf * 0.02f > eps) eps = wf * 0.02f;
+                }
+                dd[0] += eps;
+                dd[1] += eps;
+                if (dd[0] >= 0.0f && dd[1] >= 0.0f) continue;              /* in front of it */
+                if (dd[0] >= 0.0f || dd[1] >= 0.0f) {
+                    float r = c0 + (c1 - c0) * (dd[0] / (dd[0] - dd[1]));
+                    if (dd[0] < 0.0f) c1 = r;
+                    else c0 = r;
+                }
                 piece[q][1] = c0;                               /* before the shape */
                 if (np < 16) { piece[np][0] = c1; piece[np][1] = b; np++; }   /* after it */
             }
@@ -1266,6 +1367,9 @@ static void cockpit(sw_enhance *e)
         }
     }
     if (x1 >= x0) { sx = (x0 + x1) * 0.5f; sy = (y0 + y1) * 0.5f; }
+    /* (the dogfight: its sight stays in the middle; the cockpit swings
+     * with the ship's turning instead, as it would with the sight) */
+    if (e->dogfight) { sx = e->df_bank * 75.0f; sy = e->df_pitch * 55.0f; }
     /* (smoothed a little: the ship has weight) */
     e->ck_sx += (sx - e->ck_sx) * 0.35f;
     e->ck_sy += (sy - e->ck_sy) * 0.35f;
@@ -1285,6 +1389,9 @@ static void cockpit(sw_enhance *e)
             e->hide_p[s][c][1] = y;
         }
         e->hide_n[s] = COCKPIT_N[s];
+        e->hide_w[s][0] = e->hide_w[s][1] = 0.0f;
+        e->hide_w[s][2] = 1e9f;                 /* (nearer than all) */
+        e->hide_part[s] = 0;
     }
     e->n_hide = 3;
     hide(e, 1);
@@ -1338,7 +1445,8 @@ static void cockpit(sw_enhance *e)
 void sw_enhance_init(sw_enhance *e, const sw_machine *m)
 {
     if (!falcon.lines) { building = &falcon; falcon_build(); }
-    if (!xwing.lines) { building = &xwing; xwing_build(); }
+    if (!xwing.lines) { building = &xwing; building_part = 0; xwing_build(); }
+    e->foil_open = 1.0f;
     /* the stars: the same sky every time, none below the horizon */
     int n = (int)(sizeof e->star / sizeof e->star[0]);
     for (int i = 0; i < n; i++) {
@@ -1385,6 +1493,7 @@ int sw_enhance_run(sw_enhance *e, const sw_machine *m, double now, const sw_line
     e->spin_c = 1.0;
     e->spin_s = 0.0;
     e->shrink = 1.0f;
+    e->now = now;
     uint8_t phase = m->view_phase;          /* (the view that drew the picture, not the phase of the moment) */
     int ground = (phase == SW_PHSGD + 1 || phase == SW_PHSG0D + 1) &&
                  (e->surface || e->stars || e->towers || e->dogfights);
@@ -1399,7 +1508,7 @@ int sw_enhance_run(sw_enhance *e, const sw_machine *m, double now, const sw_line
     for (int i = 0; i < n && !plane; i++) plane = SW_TAG_SECTION((unsigned)(in[i].id >> 48)) == SW_TAG_PLANE;
     /* (choosing the Death Star shows the nose and guns too, but is no flight:
      * seen as on the arcade machine) */
-    if (phase == SW_PHSSDS || phase == SW_PHSSDS + 1) plane = 0;
+    if (!e->dogfight && (phase == SW_PHSSDS || phase == SW_PHSSDS + 1)) plane = 0;
     e->plane_seen = plane;
     int cock = plane && e->view == SW_VIEW_COCKPIT, outs = plane && e->view == SW_VIEW_OUTSIDE;
     if (!ground && !logo && !trench && !clip && !falcon && !cock && !outs) {
