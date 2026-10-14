@@ -225,4 +225,9 @@ int  sw_dogfight_chosen(const sw_machine *m);
  * (-1..1, as the sight would be): for render/enhance.h. */
 void sw_dogfight_attitude(const sw_dogfight *d, float *bank, float *pitch);
 
+/* How fast the ship is, -1 (slowest) .. 0 (its middle speed) .. 1 (fastest):
+ * as it really flies, not as the buttons are held (its wings close as it
+ * goes fast, its engines burn). */
+float sw_dogfight_thrust(const sw_dogfight *d);
+
 #endif

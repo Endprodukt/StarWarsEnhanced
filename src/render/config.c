@@ -36,6 +36,7 @@ void sw_display_cfg_defaults(sw_display_cfg *c)
     c->logo_yellow = 1;
     c->enh_clip = 1;
     c->enh_falcon = 1;
+    c->enh_blast = 1;
     c->enh_camera = 1;
     c->enh_demo = 1;
     c->sound_replace = 1;
@@ -67,7 +68,7 @@ static int set(sw_display_cfg *c, const char *key, const char *val)
         { "occlusion", &c->occlusion },
         { "enh_surface", &c->enh_surface }, { "enh_stars", &c->enh_stars },
         { "enh_towers", &c->enh_towers }, { "enh_dogfights", &c->enh_dogfights },
-        { "enh_clip", &c->enh_clip }, { "enh_falcon", &c->enh_falcon }, { "enh_camera", &c->enh_camera },
+        { "enh_clip", &c->enh_clip }, { "enh_falcon", &c->enh_falcon }, { "enh_blast", &c->enh_blast }, { "enh_camera", &c->enh_camera },
         { "enh_view", &c->enh_view }, { "enh_demo", &c->enh_demo },
         { "logo_yellow", &c->logo_yellow }, { "sound_replace", &c->sound_replace },
     };
@@ -156,6 +157,8 @@ int sw_display_cfg_save(const sw_display_cfg *c, const char *path)
     fprintf(f, "\n; enhanced, in the trench: shortly before the exhaust port the Millennium Falcon\n"
                "; flies over the player\n"
                "enh_falcon = %d\n", c->enh_falcon);
+    fprintf(f, "\n; enhanced: the player's X-wing blows up when it is lost\n"
+               "enh_blast = %d\n", c->enh_blast);
     fprintf(f, "\n; enhanced: the camera's turns towards the enemy it tracks gather speed and slow\n"
                "; down (0: at full rate from the first frame, as the arcade machine)\n"
                "enh_camera = %d\n", c->enh_camera);

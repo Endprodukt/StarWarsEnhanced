@@ -71,6 +71,14 @@ typedef struct sw_enhance {
      * (-1..1) as the dogfight has them, for the view from outside */
     int   dogfight;
     float df_bank, df_pitch, df_throttle;
+    int   df_over;                              /* the dogfight's ship is lost */
+    /* blast: 1: the player's X-wing blows up when it is lost (rays out of
+     * it, seen from outside its pieces flying apart), in the dogfight and on
+     * the arcade game's own flights */
+    int    blast;
+    int    dead_was;
+    double blast_at;                            /* when it blew up */
+    float  blast_x, blast_y;                    /* where on the screen (the view from outside: the ship) */
 
     sw_line *out;
     int      n, cap;

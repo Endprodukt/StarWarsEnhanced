@@ -165,7 +165,7 @@ Seite; BACK führt zur Hauptseite, F2 speichert und kehrt ins Spiel zurück.
 
 | Seite | Zeilen |
 |---|---|
-| Graphics | Smooth Motion, Smooth Camera, Frame Pace, Occlusion, Yellow Logo, View, Attract Demo; Surface Plating, Detailed Towers, Distant Dogfights; Stars, Trench Clipping, Falcon Fly-Over (wie `smooth`, `enh_camera`, `steady_frames`, `occlusion`, `logo_yellow`, `enh_*` unten) |
+| Graphics | Smooth Motion, Smooth Camera, Frame Pace, Occlusion, Yellow Logo, View, Attract Demo, Ship Explosion; Surface Plating, Detailed Towers, Distant Dogfights; Stars, Trench Clipping, Falcon Fly-Over (wie `smooth`, `enh_camera`, `steady_frames`, `occlusion`, `logo_yellow`, `enh_*` unten) |
 | Sound | Replaced Sounds; Sound Test (Joch links/rechts wählt eine der 59 Anforderungen aus [docs/SOUNDS.md](docs/SOUNDS.md), Feuer spielt sie) |
 | Controls and Screen | Yoke Auto Center; Screen Calibration (das Testbild von `--calibrate`; Feuer wechselt Größe, Lage, Gamma, Helligkeit, das Joch stellt ein) |
 | Game Options | Coin Value, Left Mech, Right Mech, Bonus Adder; Starting Shields, Difficulty, Bonus Shields, Music in Attract: die Optionen des Spiels, dieselben wie auf der Optionsseite des Automaten; sie liegen in dessen NOVRAM (`save/nvram.bin`) und gelten sofort. Coin Value = FREE PLAY: kein Münzeinwurf, Feuer startet das Spiel, und im Attract steht nur "PRESS FIRE TO START" ohne Credit-Zeile |

@@ -801,6 +801,33 @@ static void model_draw(sw_enhance *e, const model *md, vec at, vec f, vec l, vec
     }
 }
 
+/* The ship blown apart, `age` seconds after: each part of the model (its
+ * wings, its body, its astromech) flies off its own way, each line drifting
+ * a little on its own, fading. */
+#define BLAST_LONG 2.6
+static void model_pieces(sw_enhance *e, const model *md, vec at, vec f, vec l, vec u, double size, float lum, double age)
+{
+    if (++e->inst == 0) e->inst = 0x8000;
+    double k = age / BLAST_LONG;
+    if (k > 1.0) return;
+    for (int i = 0; i < md->lines; i++) {
+        const mline *ml = &md->line[i];
+        uint32_t h = (uint32_t)(ml->part + 1) * 2654435761u, g = (uint32_t)(i + 7) * 2246822519u;
+        h ^= h >> 15; g ^= g >> 13; g *= 0x85ebca6bu; g ^= g >> 16;
+        double dx = ((h & 0xff) / 255.0 - 0.5) * 2.0, dy = (((h >> 8) & 0xff) / 255.0 - 0.5) * 2.0, dz = (((h >> 16) & 0xff) / 255.0 - 0.5) * 2.0;
+        double ex = ((g & 0xff) / 255.0 - 0.5) * 0.5, ey = (((g >> 8) & 0xff) / 255.0 - 0.5) * 0.5, ez = (((g >> 16) & 0xff) / 255.0 - 0.5) * 0.5;
+        double s = 1.6 * age, s2 = 0.9 * age;
+        vec p[2];
+        for (int j = 0; j < 2; j++) {
+            const float *q = j ? ml->b : ml->a;
+            double x = q[0] + dx * s + ex * s2, y = q[1] + dy * s + ey * s2, z = q[2] + dz * s + ez * s2;
+            p[j] = add(at, add(scaled(f, x * size), add(scaled(l, y * size), scaled(u, z * size))));
+        }
+        float lm = (float)(lum * (1.0 - k) * (age < 0.2 ? 1.5 : 1.0));
+        line(e, p[0], p[1], age < 0.3 ? WHT : ml->color, lm, SW_TAG_OBJECT);
+    }
+}
+
 /* A byte of the game's memory, RAM or ROM (the trench's tables lie in both). */
 static uint8_t any8(const sw_machine *m, unsigned a)
 {
@@ -1113,6 +1140,14 @@ static void outside(sw_enhance *e, const sw_machine *m)
     /* the ship, and what it covers */
     uint16_t inst = e->inst;
     e->n_hide = 0;
+    e->blast_x = (float)(PERSPECTIVE * at.y / at.x) * VG_SCALE;
+    e->blast_y = ((float)(PERSPECTIVE * at.z / at.x) + VG_OFFY) * VG_SCALE;
+    if (e->blast && e->dead_was) {
+        /* lost: blown apart */
+        model_pieces(e, &xwing, at, f, l, u, SIZE, 200.0f, e->now - e->blast_at);
+        e->inst = inst;
+        return;
+    }
     model_draw(e, &xwing, at, f, l, u, SIZE, 170.0f, 0, 1);
     /* in the dogfight, speeding up: a beam out of each engine, flickering */
     if (e->dogfight && e->df_throttle > 0.05f) {
@@ -1213,6 +1248,27 @@ static void flat_ring(sw_enhance *e, float cx, float cy, float r, unsigned color
     for (int i = 0; i < 8; i++) {
         double a = i * 0.7853982, b = a + 0.7853982;
         flat(e, cx + r * (float)cos(a), cy + r * (float)sin(a), cx + r * (float)cos(b), cy + r * (float)sin(b), color, lum);
+    }
+}
+
+/* The player's X-wing blowing up, `age` seconds after, about (cx, cy) on
+ * the screen: rays flying out of it, white at first, then white, yellow and
+ * red, fading; before everything else (near the eye). */
+static void own_blast(sw_enhance *e, float cx, float cy, float size, double age)
+{
+    const double D = 60.0, K = 1.0 / VG_SCALE, Y = 303.0 / 255.0 * 4.0 / 3.0;   /* (the lines' units are not square) */
+    double k = age / BLAST_LONG;
+    if (k > 1.0 || k < 0.0) return;
+    for (int i = 0; i < 44; i++) {
+        uint32_t h = (uint32_t)(i + 1) * 2654435761u;
+        h ^= h >> 15; h *= 0x2c1b3c6du; h ^= h >> 12;
+        double a = (h & 0xffff) / 65536.0 * 6.2831853, sp = 0.35 + ((h >> 16) & 0xff) / 255.0;
+        double r1 = size * sp * (0.12 + 1.5 * sqrt(age)), r0 = r1 * (0.45 + 0.4 * ((h >> 24) & 0x0f) / 15.0);
+        float x0 = cx + (float)(cos(a) * r0), y0 = cy + (float)(sin(a) * r0 * Y), x1 = cx + (float)(cos(a) * r1), y1 = cy + (float)(sin(a) * r1 * Y);
+        unsigned c = age < 0.25 ? WHT : i % 3 == 0 ? RED : i % 3 == 1 ? YLW : WHT;
+        float lum = (float)(255.0 * (1.0 - k) * (1.0 - k) + 30.0);
+        line(e, vec3(D, x0 * K * D / PERSPECTIVE, (y0 * K - VG_OFFY) * D / PERSPECTIVE),
+             vec3(D, x1 * K * D / PERSPECTIVE, (y1 * K - VG_OFFY) * D / PERSPECTIVE), c, lum, SW_TAG_NONE);
     }
 }
 
@@ -1510,8 +1566,18 @@ int sw_enhance_run(sw_enhance *e, const sw_machine *m, double now, const sw_line
      * seen as on the arcade machine) */
     if (!e->dogfight && (phase == SW_PHSSDS || phase == SW_PHSSDS + 1)) plane = 0;
     e->plane_seen = plane;
+    /* The player's X-wing lost (in the dogfight; on the game's own flights
+     * when its shields are gone, S.GAS 80): it blows up, a while. */
+    int attract = phase >= SW_PHSBNR && phase <= SW_PHSHIS + 1;
+    int dead = e->dogfight ? e->df_over
+                           : !attract && phase != SW_PHSSDS && phase != SW_PHSSDS + 1 && phase != SW_PHSENT && phase != SW_PHSENT + 1 &&
+                             phase != SW_PHSEGM && phase != SW_PHSEGM + 1 && (ram8(m, SW_S_GAS) & 0x80);
+    if (dead && !e->dead_was) e->blast_at = now;
+    e->dead_was = dead;
+    int boom = e->blast && dead && now - e->blast_at >= 0.0 && now - e->blast_at < BLAST_LONG;
+    if (boom) plane = 1;                    /* (its views go on while it blows up) */
     int cock = plane && e->view == SW_VIEW_COCKPIT, outs = plane && e->view == SW_VIEW_OUTSIDE;
-    if (!ground && !logo && !trench && !clip && !falcon && !cock && !outs) {
+    if (!ground && !logo && !trench && !clip && !falcon && !cock && !outs && !boom) {
         *out = in;
         return n;
     }
@@ -1559,7 +1625,10 @@ int sw_enhance_run(sw_enhance *e, const sw_machine *m, double now, const sw_line
     if (ground && e->towers) towers(e, m, now);
     if (ground && e->dogfights && e->tie_ready) dogfights(e, now);
     if (cock) cockpit(e);
+    e->blast_x = 0.0f;
+    e->blast_y = (float)(VG_OFFY * VG_SCALE);   /* (from the arcade's or the cockpit's view: in the middle of it) */
     if (outs) outside(e, m);
+    if (boom) own_blast(e, e->blast_x, e->blast_y, outs ? 70.0f : 150.0f, now - e->blast_at);
     *out = e->out;
     return e->n;
 }
