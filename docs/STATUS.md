@@ -337,6 +337,32 @@ wiederholt sich alle 8000h, jedes Gebäude wird auf dieser und der nächsten
 Runde betrachtet. Standbilder: am Start der Oberfläche nichts neben dem
 Spieler, am Horizont die kleinen dunklen Türme.
 
+## Geplant: Dogfight-Modus (besprochen 2026-10-14, nicht gebaut)
+
+Idee des Besitzers: ein weiteres Level, endlos bis zum Tod. Frei im
+Weltall fliegen statt auf Schienen, endlose Wellen von Gegnern, im
+Hintergrund der Todesstern. Eine Box als Spielfeld: Wer an die Grenze
+fliegt, wird automatisch umgedreht ("WHERE ARE YOU GOING?"). Steuerung wie
+Time Pilot 3D (`F:\Time Pilot 3D`, STATUS.md dort): Joch nickt und kurvt,
+Daumentasten schneller/langsamer mit Rückkehr des Schubs zur Mitte, beide
+zusammen plus Joch zur Seite rollen um die Längsachse, Trigger feuern.
+
+Entschieden: Im Cockpit und in der Original-Ansicht steht das Fadenkreuz
+fest in der Bildmitte (man zielt mit der Nase, wie in Time Pilot 3D).
+Der Besitzer fand die übrigen Vorschläge gut: Gegner aus dem ROM (TIE
+Fighter, Vaders TIE als Boss-Welle mit seinen Sprüchen, Feuerbälle zum
+Abschießen), Schilde wie im Original mit Reparatur durch R2 nach jeder
+Welle, Radar und Zielpfeil, der Falcon als Helfer alle paar Wellen,
+Todesstern-Countdown als Option, eigene Highscores mit Kombo, alle drei
+Ansichten mit Start umschaltbar.
+
+Offen (beim Besitzer): Einstieg (vierte Wahl bei "Select a Death Star",
+eigener Startpunkt oder zweiter Eintrag im Menü des Automaten); rein
+endlos oder mit Countdown als Ziel; wie schnell die Schwierigkeit
+anzieht. Technisch: ein eigener Spielteil in C neben dem Programm von 1983
+(das kennt nur Schienen), mit dessen Modellen, Sounds und Sprache und dem
+Bildweg von render/ (Occlusion, Ansichten).
+
 ## Cockpit bewegt sich mit dem Schiff (2026-10-14)
 
 Das Fadenkreuz lief über Streben und Armaturenbrett: Es reicht im Original
@@ -448,8 +474,8 @@ ROM-Fehlermeldung, Fenstertitel), das Programm selbst und die Paket-Id
 die Einstellungsdatei (`swenhanced.ini`), die Umgebungsvariable für die
 ROMs (`SWE_ROMS`), die Doku. Auf dem Automaten ist der Ordner mit seinem
 `save/` (NOVRAM, Einstellungen) nach `/persistent/games/swenhanced/`
-umgezogen. Nicht umbenannt: das GitHub-Repo `Endprodukt/StarWarsVP` und
-der lokale Ordner.
+umgezogen. Das GitHub-Repo heißt seit 2026-10-14 `Endprodukt/StarWarsEnhanced`
+(privat; die alte Adresse leitet weiter). Nicht umbenannt: der lokale Ordner.
 
 Das Menü zeigte außerdem kein Marquee: in `game.ini` fehlte `marquee =
 marquee.png` (Tempest 2000 daneben hat den Schlüssel). Version 0.2.0,
