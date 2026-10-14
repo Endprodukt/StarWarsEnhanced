@@ -22,7 +22,7 @@
 #define SIGHT_REACH_Y 32.0
 
 /* the box, and how fast the ship is (units a second) */
-#define BOX         9000.0
+#define BOX         11000.0
 #define SPEED_MIN   700.0
 #define SPEED_MID   1350.0
 #define SPEED_MAX   2300.0
@@ -32,7 +32,7 @@
 #define ROLL_RATE   3.3
 #define BACK_RATE   2.2                     /* turning back at a wall */
 /* the lasers */
-#define LASER_RANGE 11000.0
+#define LASER_RANGE 14000.0
 #define LASER_SHOW  0.15                    /* seconds a shot is seen */
 #define LASER_EVERY 0.18                    /* the trigger held fires again */
 /* the fireballs */
@@ -40,6 +40,7 @@
 #define SHOT_LIFE   6.0
 #define SHOT_HITS   130.0                   /* how near one has to come to hit the ship */
 #define SHIELDS     6
+#define SHIP_SIZE   0.6                     /* the enemies drawn smaller than the ROM has them: more room about them */
 
 /* the Death Star, far off beyond the box */
 static const double DEATH_STAR[3] = { 70000.0, 18000.0, 9000.0 };
@@ -413,7 +414,7 @@ static void draw_interceptor(sw_dogfight *d, const sw_df_body *b, float lum)
     double tie[64][3];
     for (int i = 0; i < d->mnp[k] && i < 64; i++) {
         double q[3] = { d->mp[k][i][0], d->mp[k][i][1], d->mp[k][i][2] };
-        place(b, q, 1.0, tie[i]);
+        place(b, q, SHIP_SIZE, tie[i]);
     }
     /* the ball, the pylons, the hubs: the TIE fighter's own */
     for (int i = 0; i < d->mne[k]; i++) {
@@ -427,9 +428,9 @@ static void draw_interceptor(sw_dogfight *d, const sw_df_body *b, float lum)
         for (int c = 0; c < 7; c++) {
             double q[3];
             int_wing_pt(s, c, 0, q);
-            place(b, q, 1.0, out[c]);
+            place(b, q, SHIP_SIZE, out[c]);
             int_wing_pt(s, c, 1, q);
-            place(b, q, 1.0, in[c]);
+            place(b, q, SHIP_SIZE, in[c]);
         }
         int hub = s ? 12 : 0;                   /* (the hubs: 7-12 on the TIE's -208 side, 19-24 on its +208) */
         for (int c = 0; c < 7; c++) {
@@ -523,7 +524,7 @@ static void spawn(sw_dogfight *d)
         pos[0] = BOX * 0.95 * cos(el) * cos(az);
         pos[1] = BOX * 0.95 * cos(el) * sin(az);
         pos[2] = BOX * 0.6 * sin(el);
-        if (dist(pos, d->pos) > 5000.0) break;
+        if (dist(pos, d->pos) > 7000.0) break;
     }
     sw_df_enemy *e = &d->enemy[slot];
     memset(e, 0, sizeof *e);
@@ -545,8 +546,8 @@ static void spawn(sw_dogfight *d)
         *g = *e;
         g->mode = 2;
         g->leader = slot;
-        g->slot_r = w == 1 ? -420.0 : 420.0;
-        g->slot_b = 380.0;
+        g->slot_r = w == 1 ? -520.0 : 520.0;
+        g->slot_b = 450.0;
         for (int k = 0; k < 3; k++) g->b.pos[k] = e->b.pos[k] + e->b.r[k] * g->slot_r - e->b.f[k] * g->slot_b;
         g->fire_t = d->t + 2.5 + rnd(d) * 1.5;
         d->pending[kind]--;
@@ -638,7 +639,7 @@ static void shoot(sw_dogfight *d)
         sw_df_enemy *e = &d->enemy[i];
         double x, y, z;
         if (!e->kind || !project(d, e->b.pos, &x, &y, &z) || z > best) continue;
-        double r = PERSPECTIVE * KIND_SIZE[e->kind] / z * VG_SCALE;
+        double r = PERSPECTIVE * KIND_SIZE[e->kind] * SHIP_SIZE / z * VG_SCALE;
         if (r < 3.0) r = 3.0;
         if (hypot(x - SIGHT_X, y - SIGHT_Y) < r) { best = z; hit_enemy = i; hit_shot = -1; }
     }
@@ -703,7 +704,7 @@ static void enemies_step(sw_dogfight *d, double dt)
             /* in formation: its place by the leader; it breaks off when the
              * leader is gone or near the ship */
             sw_df_enemy *l = &d->enemy[e->leader];
-            if (!l->kind || l->mode == 2 || dist(l->b.pos, d->pos) < 2600.0) {
+            if (!l->kind || l->mode == 2 || dist(l->b.pos, d->pos) < 3500.0) {
                 e->mode = 0;
             } else {
                 double at[3];
@@ -729,7 +730,7 @@ static void enemies_step(sw_dogfight *d, double dt)
             if (dd < 260.0) for (int k = 0; k < 3; k++) e->b.pos[k] += v[k] / dd * (260.0 - dd) * 0.5;
         }
         norm(want);
-        if (e->mode == 0 && (far < 1300.0 || (far < 2200.0 && dot(e->b.f, to) < 0.0))) {
+        if (e->mode == 0 && (far < 1800.0 || (far < 3000.0 && dot(e->b.f, to) < 0.0))) {
             /* close in: break away, somewhere aside */
             e->mode = 1;
             e->mode_t = d->t + 1.5 + rnd(d) * 1.5;
@@ -753,7 +754,7 @@ static void enemies_step(sw_dogfight *d, double dt)
         if (near < 700.0 && !e->passed) { e->passed = 1; sound(d, S_AUDPB); }
         if (near > 1500.0) e->passed = 0;
         /* it runs into the ship: both bounce off, both are hurt */
-        if (near < 230.0 && d->t - e->bump_t > 0.8) {
+        if (near < 170.0 && d->t - e->bump_t > 0.8) {
             double n[3] = { e->b.pos[0] - d->pos[0], e->b.pos[1] - d->pos[1], e->b.pos[2] - d->pos[2] };
             norm(n);
             for (int k = 0; k < 3; k++) {
@@ -780,7 +781,7 @@ static void enemies_step(sw_dogfight *d, double dt)
             e->knock[k] *= exp(-2.5 * dt);
         }
         /* it fires: the ship before its nose, not too far */
-        if (!d->over && e->mode != 1 && d->t > e->fire_t && far < 6500.0 && dot(e->b.f, to) > 0.93) {
+        if (!d->over && e->mode != 1 && d->t > e->fire_t && far < 8500.0 && dot(e->b.f, to) > 0.95) {
             for (int s = 0; s < SW_DF_SHOTS; s++) {
                 sw_df_shot *sh = &d->shot[s];
                 if (sh->live) continue;
@@ -1172,6 +1173,37 @@ int sw_dogfight_lines(sw_dogfight *d, const sw_machine *m, const sw_line **out)
     emit(d, 0x2000);                        /* HALT */
     sw_avg_run_tagged(d->space, 0, d->tags, NULL, &d->list, 60000);
 
+    /* The Death Star hides the stars behind it: none in its disc (the
+     * specks near the ship are before it). Its disc from its own lines. */
+    {
+        float x0 = 1e9f, x1 = -1e9f, y0 = 1e9f, y1 = -1e9f;
+        for (int i = 0; i < d->list.count; i++) {
+            const sw_line *l = &d->list.lines[i];
+            if (SW_TAG_SECTION((unsigned)(l->id >> 48)) != SW_TAG_DSTAR) continue;
+            if (l->x0 < x0) x0 = l->x0;
+            if (l->x0 > x1) x1 = l->x0;
+            if (l->x1 < x0) x0 = l->x1;
+            if (l->x1 > x1) x1 = l->x1;
+            if (l->y0 < y0) y0 = l->y0;
+            if (l->y0 > y1) y1 = l->y0;
+            if (l->y1 < y0) y0 = l->y1;
+            if (l->y1 > y1) y1 = l->y1;
+        }
+        if (x1 > x0) {
+            float cx = (x0 + x1) * 0.5f, cy = (y0 + y1) * 0.5f;
+            float r = ((x1 - x0) > (y1 - y0) ? (x1 - x0) : (y1 - y0)) * 0.5f;
+            int k = 0;
+            for (int i = 0; i < d->list.count; i++) {
+                const sw_line *l = &d->list.lines[i];
+                unsigned tag = (unsigned)(l->id >> 48);
+                int star = SW_TAG_SECTION(tag) == SW_TAG_STAR && (tag & 0x3ff) < 160;
+                if (star && hypotf(l->x0 - cx, l->y0 - cy) < r * 0.97f) continue;
+                d->list.lines[k++] = *l;
+            }
+            d->list.count = k;
+        }
+    }
+
     /* the ships, in true perspective (after the list: their lines are added) */
     chase(d);
     for (int i = 0; i < SW_DF_ENEMIES; i++) {
@@ -1180,14 +1212,14 @@ int sw_dogfight_lines(sw_dogfight *d, const sw_machine *m, const sw_line **out)
         int flash = d->t - e->hit_t < 0.12 && e->hit_t > 0.0;
         float lum = flash ? 255.0f : e->kind == K_VADER ? 210.0f : 180.0f;
         if (e->kind == K_INTERCEPTOR) draw_interceptor(d, &e->b, lum);
-        else if (e->kind == K_VADER) draw_model(d, M_VADER, &e->b, 1.0, flash ? WHT : GRN, lum, SW_TDSRTH);
-        else draw_model(d, M_TIE, &e->b, 1.0, GRN, lum, SW_TDSTIE);
+        else if (e->kind == K_VADER) draw_model(d, M_VADER, &e->b, SHIP_SIZE, flash ? WHT : GRN, lum, SW_TDSRTH);
+        else draw_model(d, M_TIE, &e->b, SHIP_SIZE, GRN, lum, SW_TDSTIE);
     }
     for (int i = 0; i < SW_DF_PIECES; i++) {
         sw_df_piece *p = &d->piece[i];
         if (!p->live) continue;
         static const int rom[4] = { 0, SW_TDSTI1, SW_TDSTI2, SW_TDSTI3 };
-        draw_model(d, p->model, &p->b, 1.0, GRN, (float)(200.0 * (1.0 - (d->t - p->t) / 2.5)), rom[p->model]);
+        draw_model(d, p->model, &p->b, SHIP_SIZE, GRN, (float)(200.0 * (1.0 - (d->t - p->t) / 2.5)), rom[p->model]);
     }
     *out = d->list.lines;
     return d->list.count;

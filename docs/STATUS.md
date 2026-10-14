@@ -362,6 +362,13 @@ Rückmeldungen des Besitzers und was daraus wurde:
   lange schmale Dolche mit tiefer Kerbe bis zur Nabe, Ecken 62 nach innen
   geknickt, Speichen von der Nabe zu jeder Ecke, innerer Rahmen; Flächen
   für die Occlusion (Flügel in drei, Kugel in vier Stücken plus Seiten).
+* **Weitläufiger** ("wirkt gedrungen, sehr nah"): Gegner und Trümmer zu 60 %
+  der ROM-Größe gezeichnet (Trefferzone mit), Box 11000, Gegner erscheinen
+  ab 7000 Abstand, drehen unter 1800 ab, schießen bis 8500, Formationen
+  520 seitlich und 450 dahinter, lösen sich unter 3500; Laser bis 14000.
+* **Todesstern verdeckt Sterne:** Nach dem Lauf der Liste wird seine Scheibe
+  aus seinen eigenen Linien bestimmt, Hintergrundsterne darin fallen weg
+  (die nahen Staubpunkte bleiben, sie liegen davor). Gilt auch ohne Occlusion.
 * `swvideo --dogfight --wave N` beginnt bei Welle N; `--wave -1..-3`
   zeigt einen Gegner allein, langsam drehend (zum Ansehen der Modelle).
 
@@ -640,7 +647,7 @@ sobald das Menü neu startet (nach dem Verlassen des Spiels). Nicht geprüft
 am Gerät, auch nicht, ob der längere Titel des Testmenüs (jetzt Größe 90
 statt 110) in die Breite passt.
 
-Marquee erneuert (zweites Artwork des Besitzers, ohne die Streifen unten; auf die volle Breite 1920 gezogen, 17 % breiter als das Original), Version 0.2.1. **Noch nicht auf dem Automaten**, der war aus: beim nächsten Mal `sh tools/deploy.sh` und die neueste `dist/swenhanced-<version>.vpk` (jetzt 0.3.3, mit Dogfight Etappe 2) nach `/persistent/games/packages/` (dort liegt noch 0.2.0).
+Marquee erneuert (zweites Artwork des Besitzers, ohne die Streifen unten; auf die volle Breite 1920 gezogen, 17 % breiter als das Original), Version 0.2.1. **Noch nicht auf dem Automaten**, der war aus: beim nächsten Mal `sh tools/deploy.sh` und die neueste `dist/swenhanced-<version>.vpk` (jetzt 0.3.4, mit Dogfight Etappe 2) nach `/persistent/games/packages/` (dort liegt noch 0.2.0).
 
 Paketdatei: `sh tools/pack.sh` (in WSL, nach dem Pi-Build) schreibt
 `dist/swenhanced-<version>.vpk` mit dem `vp-pack` des SDK (dessen Skript und
