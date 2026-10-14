@@ -369,6 +369,12 @@ Rückmeldungen des Besitzers und was daraus wurde:
   11000, Gegner erscheinen ab 7000 Abstand, drehen unter 1800 ab, schießen
   bis 8500; Formationen 850 seitlich und 700 dahinter, lösen sich unter
   3500; Laser bis 14000.
+* **Todesstern wandert sauber aus dem Bild** ("bewegt sich zu schnell raus, wirkt klein"):
+  er wurde ausgeblendet, sobald sein Mittelpunkt 60 über dem Rand war, obwohl
+  da noch die halbe Scheibe (Radius rund 100) im Bild lag. Jetzt bleibt er,
+  solange etwas von ihm zu sehen ist; alle Linien des Dogfights werden am
+  Bildrand abgeschnitten (die Listen des Spiels reichen nie darüber, die
+  Ausgabe schneidet nicht).
 * **Todesstern verdeckt Sterne:** Nach dem Lauf der Liste wird seine Scheibe
   aus seinen eigenen Linien bestimmt, Hintergrundsterne darin fallen weg
   (die nahen Staubpunkte bleiben, sie liegen davor). Gilt auch ohne Occlusion.
@@ -650,7 +656,7 @@ sobald das Menü neu startet (nach dem Verlassen des Spiels). Nicht geprüft
 am Gerät, auch nicht, ob der längere Titel des Testmenüs (jetzt Größe 90
 statt 110) in die Breite passt.
 
-Marquee erneuert (zweites Artwork des Besitzers, ohne die Streifen unten; auf die volle Breite 1920 gezogen, 17 % breiter als das Original), Version 0.2.1. **Noch nicht auf dem Automaten**, der war aus: beim nächsten Mal `sh tools/deploy.sh` und die neueste `dist/swenhanced-<version>.vpk` (jetzt 0.3.5, mit Dogfight Etappe 2) nach `/persistent/games/packages/` (dort liegt noch 0.2.0).
+Marquee erneuert (zweites Artwork des Besitzers, ohne die Streifen unten; auf die volle Breite 1920 gezogen, 17 % breiter als das Original), Version 0.2.1. **Noch nicht auf dem Automaten**, der war aus: beim nächsten Mal `sh tools/deploy.sh` und die neueste `dist/swenhanced-<version>.vpk` (jetzt 0.3.6, mit Dogfight Etappe 2) nach `/persistent/games/packages/` (dort liegt noch 0.2.0).
 
 Paketdatei: `sh tools/pack.sh` (in WSL, nach dem Pi-Build) schreibt
 `dist/swenhanced-<version>.vpk` mit dem `vp-pack` des SDK (dessen Skript und
