@@ -25,10 +25,9 @@ static const uint8_t *rndvec(sw_machine *m)
     return &TSPLSH[(sw_rd8(m, SW_P_RND) & 0x0f) * 6];
 }
 
-/* One random stroke at u, mirrored as the quadrant needs. */
-static uint16_t quad(sw_machine *m, uint16_t u, int neg_x, int neg_y)
+/* The stroke x at u of the VG RAM vg, mirrored as the quadrant needs. */
+static uint16_t quad_put(uint8_t *vg, uint16_t u, const uint8_t *x, int neg_x, int neg_y)
 {
-    const uint8_t *x = rndvec(m);
     for (int i = 0; i < 3; i++) {
         uint8_t a = x[i * 2], b = x[i * 2 + 1];
         if (neg_y) a = (uint8_t)(((uint8_t)-a & 0x1f) | 0x40);   /* negative Y, still SVEC */
@@ -36,10 +35,17 @@ static uint16_t quad(sw_machine *m, uint16_t u, int neg_x, int neg_y)
             b = (uint8_t)-b;
             b = (i == 1) ? (uint8_t)(b | 0xe0) : (uint8_t)(b & 0x1f);   /* Z 7 on the line */
         }
-        sw_vg_wr16(m, u, (uint16_t)((a << 8) | b));
+        vg[u % 0x3000] = a;
+        vg[(u + 1) % 0x3000] = b;
         u += 2;
     }
     return u;
+}
+
+/* One random stroke at u, mirrored as the quadrant needs. */
+static uint16_t quad(sw_machine *m, uint16_t u, int neg_x, int neg_y)
+{
+    return quad_put(m->vgram, u, rndvec(m), neg_x, neg_y);
 }
 
 void sw_splash(sw_machine *m)
@@ -51,6 +57,19 @@ void sw_splash(sw_machine *m)
         uint16_t u = quad(m, Q[q].at, Q[q].nx, Q[q].ny);
         u = quad(m, u, Q[q].nx, Q[q].ny);
         sw_vg_wr16(m, u, SW_VGRTSL);
+    }
+}
+
+void sw_splash_into(uint8_t *vgram, const uint8_t pick[8])
+{
+    static const struct { uint16_t at; int nx, ny; } Q[4] = {
+        { SW_VRSPUR, 0, 0 }, { SW_VRSPUL, 1, 0 }, { SW_VRSPDL, 1, 1 }, { SW_VRSPDR, 0, 1 },
+    };
+    for (int q = 0; q < 4; q++) {
+        uint16_t u = quad_put(vgram, Q[q].at, &TSPLSH[(pick[q * 2] & 0x0f) * 6], Q[q].nx, Q[q].ny);
+        u = quad_put(vgram, u, &TSPLSH[(pick[q * 2 + 1] & 0x0f) * 6], Q[q].nx, Q[q].ny);
+        vgram[u % 0x3000] = (uint8_t)(SW_VGRTSL >> 8);
+        vgram[(u + 1) % 0x3000] = (uint8_t)SW_VGRTSL;
     }
 }
 

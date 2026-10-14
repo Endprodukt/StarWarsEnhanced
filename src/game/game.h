@@ -213,6 +213,10 @@ void sw_vwsitc(sw_machine *m);
 /* TCSPLS.MAC SPLASH: four random laser splash pictures into VG RAM. */
 void sw_splash(sw_machine *m);
 
+/* The same into another VG RAM (the dogfight's own), its eight strokes
+ * chosen by `pick` (each 0..15, as P.RND's low four bits). */
+void sw_splash_into(uint8_t *vgram, const uint8_t pick[8]);
+
 /* The splash vector table (TSPLSH) as the source defines it; 0 if the
  * same 96 bytes are found in the program ROM, as they should be. */
 int sw_splash_verify(const sw_machine *m);

@@ -11,7 +11,10 @@
  * small aims need no turn of the whole ship; the thumb buttons
  * make it faster and slower, the throttle going back to the middle when
  * they are let go; both together and the yoke to a side roll it about its
- * own axis. The right trigger fires the lasers.
+ * own axis. The right trigger fires the lasers (drawn as the game's own,
+ * VWLAZ); the left one, once charged, two proton torpedoes, each homing on
+ * an enemy of its own and destroying it. Three wingmen fight beside the
+ * player; far off the battle goes on.
  *
  * The enemies, each brought down by so many laser hits: TIE fighters (1),
  * TIE interceptors (2; a model of its own, the ROM has none), Darth
@@ -44,8 +47,11 @@ typedef struct sw_dogfight_input {
     int   fire, torpedo;        /* the triggers held */
 } sw_dogfight_input;
 
-#define SW_DF_ENEMIES 12
-#define SW_DF_SHOTS   32
+#define SW_DF_ENEMIES 14
+#define SW_DF_SHOTS   48
+#define SW_DF_TORPS   2
+#define SW_DF_ALLIES  3
+#define SW_DF_BOLTS   16
 #define SW_DF_PIECES  48
 #define SW_DF_MODELS  6         /* TIE fighter, its three pieces, Vader's TIE, the X-wing */
 #define SW_DF_FACES   96
@@ -64,9 +70,29 @@ typedef struct sw_df_enemy {
     double     away[3];
     double     knock[3], bump_t;     /* a bounce off the ship, and when */
     int        passed;          /* (its pass-by sound has been heard) */
+    int        burst;           /* fireballs still to come in this burst */
+    int        prey;            /* -1 the player, else the wingman it is after */
 } sw_df_enemy;
 
-typedef struct sw_df_shot { int live; double pos[3], vel[3], t; } sw_df_shot;
+/* A fireball. hurt 0: flying; 1: shot down, dissolving where it was
+ * (purple, as GN1DRW shows a hurt shell); 2: on the shields, glowing at
+ * (gx, gy) on the screen (GLOWVW). tmr: the game's fade timer, 15..0. */
+typedef struct sw_df_shot { int live, hurt, tmr; double pos[3], vel[3], t; float gx, gy; } sw_df_shot;
+
+/* A proton torpedo: a ball as the fireballs are, after its own enemy. */
+typedef struct sw_df_torp { int live, target; double pos[3], vel[3], t; } sw_df_torp;
+
+/* A wingman: another X-wing of the squadron, fighting the same enemies. */
+typedef struct sw_df_ally {
+    int        live, target, hp;
+    sw_df_body b;
+    double     speed, fire_t, dead_t, mode_t;
+    int        mode;            /* 0 after its target, 1 turning away */
+    double     away[3];
+} sw_df_ally;
+
+/* A bolt of a wingman's lasers, or of an enemy firing at a wingman, flying. */
+typedef struct sw_df_bolt { int live, red; double pos[3], vel[3], t; } sw_df_bolt;
 
 typedef struct sw_df_piece {
     int        live, model;
@@ -99,11 +125,28 @@ typedef struct sw_dogfight {
     double wave_t;              /* when the wave began (its name is shown a while) */
     double hit_t, mend_t;       /* when a shield was lost, mended */
     double laser_t, fire_next;  /* the last shot, when the trigger held fires again */
-    int    laser_side;
+    /* the lasers as the game has them (WSLAZR): frames of fire left
+     * (LZ.EDG), of the hit shown (LZ.HIT), which pair (LZ.ALT), and the
+     * sight where it was when they fired (LZ.CX, LZ.CY: VG units) */
+    int    lz_edg, lz_hit, lz_alt, lz_hit_next;
+    int    lz_cx, lz_cy;
+    /* the game's two clocks (sched.h): the vector generator's 41 Hz, the game's 20.5 Hz */
+    double vg_clock, game_clock;
+    uint8_t vg_ix[6];           /* where each animation table of VG RAM is (VG.LZF .. VG.MFL) */
+    int    vf_gnb;
+    /* the proton torpedoes: charged, they go two at once */
+    double torp_charge;         /* 0 .. 1 */
+    int    torp_held;
+    sw_df_torp torp[SW_DF_TORPS];
+    sw_df_ally ally[SW_DF_ALLIES];
+    sw_df_bolt bolt[SW_DF_BOLTS];
     sw_df_enemy enemy[SW_DF_ENEMIES];
     sw_df_shot  shot[SW_DF_SHOTS];
     sw_df_piece piece[SW_DF_PIECES];
     double chase_t;             /* the chase far off began */
+    double blast_t[8];          /* ships blowing up, near or in the battle beyond (when, where) */
+    double blast_at[8][3];
+    double far_blast_t;         /* the next far off */
     double ds_x, ds_y;          /* where the Death Star is on the screen this picture */
     int    ds_shown;
     uint32_t rng;

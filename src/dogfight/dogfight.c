@@ -34,8 +34,25 @@
 #define BACK_RATE   2.2                     /* turning back at a wall */
 /* the lasers */
 #define LASER_RANGE 14000.0
-#define LASER_SHOW  0.15                    /* seconds a shot is seen */
 #define LASER_EVERY 0.18                    /* the trigger held fires again */
+/* the game's clocks (core/sched.h): the VG restarts, the game's frames */
+#define VG_HZ       41.02
+#define GAME_HZ     20.51
+#define TLZFR       0xB04F                  /* the lasers' colors (WSLAZR's LDU): JSRLs to VRLZF0.. */
+/* the proton torpedoes */
+#define TORP_CHARGE 7.0                     /* seconds to charge */
+#define TORP_SPEED  3400.0                  /* faster than the ship */
+#define TORP_TURN   4.0                     /* how hard they home */
+#define TORP_LIFE   5.0
+#define TORP_HITS   260.0
+/* the wingmen and the bolts of the battle */
+#define ALLY_SPEED  1700.0
+#define ALLY_TURN   1.7
+#define ALLY_BACK   14.0                    /* seconds until a lost wingman is replaced */
+#define BOLT_SPEED  7000.0
+#define BOLT_LIFE   1.4
+#define BOLT_LEN    260.0
+#define BOLT_HITS   200.0
 /* the fireballs */
 #define SHOT_SPEED  2300.0
 #define SHOT_LIFE   6.0
@@ -57,8 +74,8 @@ enum { K_NONE, K_TIE, K_INTERCEPTOR, K_VADER };
 /* requests for the sound board (docs/SOUNDS.md) */
 enum {
     S_SPKFOA = 0x05, S_SPKHAV = 0x08, S_SPKHIT = 0x09, S_SPKR2T = 0x0f, S_SPKRED = 0x10,
-    S_PMDAR = 0x1d, S_PMTH5 = 0x24, S_AUDPB = 0x2a, S_AUDRY = 0x32, S_AUDSH = 0x33,
-    S_AUDSS = 0x34, S_AUDSX = 0x35, S_AUDTC = 0x36, S_AUDXL = 0x3a,
+    S_PMDAR = 0x1d, S_PMTH5 = 0x24, S_AUDPB = 0x2a, S_AUDPH = 0x2d, S_AUDRY = 0x32, S_AUDSH = 0x33,
+    S_AUDSS = 0x34, S_AUDSX = 0x35, S_AUDTC = 0x36, S_AUDTCZ = 0x37, S_AUDXL = 0x3a,
 };
 
 static const int KIND_HP[4] = { 0, 1, 2, 3 };
@@ -170,7 +187,7 @@ static uint16_t rom16(const sw_machine *m, uint16_t a)
 
 static void emit(sw_dogfight *d, uint16_t w)
 {
-    if (d->at >= 0x2ffc) return;            /* (VG RAM is full: the rest is left out) */
+    if (d->at >= SW_VGPSRO - 4) return;     /* (VG RAM is full: the rest is left out; above it the fake ROM) */
     d->space[d->at] = (uint8_t)(w >> 8);
     d->space[d->at + 1] = (uint8_t)w;
     d->tags[d->at >> 1] = d->tag;
@@ -194,6 +211,81 @@ static void move_to(sw_dogfight *d, double x, double y)
 }
 
 static void color(sw_dogfight *d, unsigned c, unsigned lum) { emit(d, (uint16_t)(0x6000 | (c << 8) | (lum & 0xff))); }
+
+/* --- the routines in VG RAM ------------------------------------------------------------------ */
+
+/* The game's pictures of its lasers and shots call routines that the
+ * interrupt keeps at the bottom of VG RAM and changes at each restart of
+ * the vector generator (DOVG, src/game/irq.c): the lasers' colors turned
+ * round by one, so that the bolts travel; the splash; the fireballs'
+ * sparkle (every fourth) and fuse; the flashes. The same here, in the
+ * dogfight's own VG RAM, at the restarts' rate; its list begins above them
+ * (VGVARB). */
+static void vg_put(sw_dogfight *d, uint16_t a, uint16_t w)
+{
+    d->space[a] = (uint8_t)(w >> 8);
+    d->space[a + 1] = (uint8_t)w;
+}
+
+static uint8_t step_ix(uint8_t b, uint8_t size)
+{
+    b = (uint8_t)(b + 2);
+    return b >= size ? 0 : b;
+}
+
+static void vg_restart(sw_dogfight *d, const sw_machine *m, uint32_t n)
+{
+    uint8_t *ix = d->vg_ix;
+    /* LAZAR FIRE: the 16 words of VTLZF, a new start each restart */
+    uint8_t b = ix[0] = step_ix(ix[0], (uint8_t)(SW_VRLZFZ - SW_VRLZF));
+    uint16_t x = (uint16_t)(SW_VRLZF + 2 + b), u = SW_VTLZF;
+    do {
+        x -= 2;
+        vg_put(d, x, sw_rom16(m, u));
+        u += 2;
+    } while ((int16_t)x > (int16_t)SW_VRLZF);
+    x = SW_VRLZFZ;
+    while (u < SW_VTLZFZ) {
+        x -= 2;
+        vg_put(d, x, sw_rom16(m, u));
+        u += 2;
+    }
+    /* LAZAR SPLASH */
+    b = ix[1] = step_ix(ix[1], (uint8_t)(SW_VTLZSZ - SW_VTLZS));
+    vg_put(d, SW_VRLZS, sw_rom16(m, (uint16_t)(SW_VTLZS + b)));
+    /* the shots' sparkle, every fourth; their explosion with it */
+    if (--d->vf_gnb <= 0) {
+        d->vf_gnb = 4;
+        b = ix[2] = step_ix(ix[2], (uint8_t)(SW_VTGNBZ - SW_VTGNB));
+        vg_put(d, SW_VRGNB, sw_rom16(m, (uint16_t)(SW_VTGNB + b)));
+        vg_put(d, SW_VRGNX, sw_rom16(m, (uint16_t)(SW_VTGNX + b)));
+    }
+    /* their fuse, every time */
+    b = ix[3] = step_ix(ix[3], (uint8_t)(SW_VTGNTZ - SW_VTGNT));
+    vg_put(d, SW_VRGNT, sw_rom16(m, (uint16_t)(SW_VTGNT + b)));
+    /* the flashes */
+    b = ix[4] = step_ix(ix[4], (uint8_t)(SW_VTFLSZ - SW_VTFLS));
+    vg_put(d, SW_VRFLS, sw_rom16(m, (uint16_t)(SW_VTFLS + b)));
+    vg_put(d, SW_VRFLS + 2, SW_VGRTSL);
+    b = ix[5] = step_ix(ix[5], (uint8_t)(SW_VTMFLZ - SW_VTMFL));
+    vg_put(d, SW_VRMFL, sw_rom16(m, (uint16_t)(SW_VTMFL + b)));
+    vg_put(d, SW_VRMFL + 2, SW_VGRTSL);
+    vg_put(d, SW_VRSITE, SW_VGRTSL);        /* (the sight is drawn from the ROM here) */
+    /* the splash's strokes (as P.RND would choose them) */
+    uint8_t pick[8];
+    for (int i = 0; i < 8; i++) pick[i] = (uint8_t)(hash(n * 8u + (uint32_t)i + 5u) & 0x0f);
+    sw_splash_into(d->space, pick);
+}
+
+/* The restarts due by the time of the picture. */
+static void vg_catch_up(sw_dogfight *d, const sw_machine *m)
+{
+    if (d->vg_clock > d->t + 1.0 || d->vg_clock < d->t - 0.5) d->vg_clock = d->t;   /* (a jump: not caught up) */
+    while (d->vg_clock <= d->t) {
+        vg_restart(d, m, (uint32_t)lrint(d->vg_clock * VG_HZ));
+        d->vg_clock += 1.0 / VG_HZ;
+    }
+}
 
 /* Lettering in the game's own font (MESOUT's table of letter routines). */
 static void text(sw_dogfight *d, const sw_machine *m, double x, double y, unsigned c, unsigned lum, uint16_t scale, const char *s)
@@ -490,10 +582,10 @@ static void begin_wave(sw_dogfight *d)
 {
     d->wave++;
     d->wave_t = d->t;
-    int n = 2 + d->wave;
-    if (n > 14) n = 14;
+    int n = 4 + 2 * d->wave;
+    if (n > 30) n = 30;
     int vader = d->wave % 5 == 0 ? 1 : 0;
-    int inter = d->wave >= 3 ? (d->wave - 1) / 2 : 0;
+    int inter = d->wave >= 2 ? d->wave - 1 : 0;
     if (inter > n - 1 - vader) inter = n - 1 - vader;
     d->pending[K_VADER] = vader;
     d->pending[K_INTERCEPTOR] = inter;
@@ -516,9 +608,12 @@ static void spawn(sw_dogfight *d)
         if (d->enemy[i].kind) alive++;
         else if (slot < 0) slot = i;
     }
-    if (slot < 0 || alive >= 8) return;
-    /* TIE fighters come three together in a V now and then */
-    int group = kind == K_TIE && d->pending[K_TIE] >= 3 && alive <= 5 && rnd(d) < 0.55 ? 3 : 1;
+    int most = 7 + d->wave / 2;
+    if (most > 11) most = 11;
+    if (slot < 0 || alive >= most) return;
+    /* TIE fighters come three together in a V now and then, interceptors in pairs */
+    int group = kind == K_TIE && d->pending[K_TIE] >= 3 && alive <= most - 3 && rnd(d) < 0.65 ? 3 :
+                kind == K_INTERCEPTOR && d->pending[K_INTERCEPTOR] >= 2 && alive <= most - 2 && rnd(d) < 0.5 ? 2 : 1;
     double pos[3] = { BOX * 0.95, 0.0, 0.0 };
     for (int tries = 0; tries < 20; tries++) {
         double az = rnd(d) * 6.2831853, el = (rnd(d) - 0.5) * 1.2;
@@ -536,7 +631,13 @@ static void spawn(sw_dogfight *d)
     if (hard > 1.6) hard = 1.6;
     e->speed = (kind == K_INTERCEPTOR ? 1650.0 : kind == K_VADER ? 1500.0 : 1350.0) * hard;
     e->turn = (kind == K_INTERCEPTOR ? 2.2 : kind == K_VADER ? 1.8 : 1.45) * hard;
-    e->fire_t = d->t + 1.5 + rnd(d) * 1.5;
+    e->fire_t = d->t + 0.8 + rnd(d) * 1.0;
+    e->prey = -1;
+    /* now and then one goes after a wingman instead */
+    if (rnd(d) < 0.25) {
+        int a = (int)(rnd(d) * SW_DF_ALLIES);
+        if (a < SW_DF_ALLIES && d->ally[a].live) e->prey = a;
+    }
     d->pending[kind]--;
     for (int w = 1; w < group; w++) {
         /* its wingmen: behind it, one to each side */
@@ -550,13 +651,23 @@ static void spawn(sw_dogfight *d)
         g->slot_r = w == 1 ? -850.0 : 850.0;
         g->slot_b = 700.0;
         for (int k = 0; k < 3; k++) g->b.pos[k] = e->b.pos[k] + e->b.r[k] * g->slot_r - e->b.f[k] * g->slot_b;
-        g->fire_t = d->t + 2.5 + rnd(d) * 1.5;
+        g->fire_t = d->t + 1.2 + rnd(d) * 1.0;
         d->pending[kind]--;
     }
 }
 
+/* a ship blows up at p: its flash (the oldest one's place is taken) */
+static void add_blast(sw_dogfight *d, const double *p)
+{
+    int k = 0;
+    for (int i = 1; i < 8; i++) if (d->blast_t[i] < d->blast_t[k]) k = i;
+    d->blast_t[k] = d->t;
+    memcpy(d->blast_at[k], p, sizeof d->blast_at[k]);
+}
+
 static void explode(sw_dogfight *d, const sw_df_body *b, double speed)
 {
+    add_blast(d, b->pos);
     static const int parts[6] = { M_TI1, M_TI2, M_TI3, M_TI1, M_TI2, M_TI3 };
     for (int k = 0; k < 6; k++) {
         for (int i = 0; i < SW_DF_PIECES; i++) {
@@ -576,6 +687,8 @@ static void explode(sw_dogfight *d, const sw_df_body *b, double speed)
     sound(d, S_AUDSX);
 }
 
+static void ally_place(sw_dogfight *d, int i, int beside);
+
 void sw_dogfight_start(sw_dogfight *d, const sw_machine *m, int wave)
 {
     sw_line *keep = d->list.lines;
@@ -583,7 +696,12 @@ void sw_dogfight_start(sw_dogfight *d, const sw_machine *m, int wave)
     memset(d, 0, sizeof *d);
     d->list.lines = keep;
     d->list.cap = cap;
-    if (m->rom) memcpy(d->space + 0x3000, m->rom->vrom, sizeof m->rom->vrom);
+    if (m->rom) {
+        memcpy(d->space + 0x3000, m->rom->vrom, sizeof m->rom->vrom);
+        /* DOWNVG: the "fake VG ROM" of the program ROM (the shots' sparkle
+         * pictures among it) into the top of VG RAM, as the game has it */
+        for (uint16_t x = SW_FAKEVG, u = SW_VGPSRO; u < SW_VGRROM; x += 2, u += 2) vg_put(d, u, sw_rom16(m, x));
+    }
     static const unsigned ids[SW_DF_MODELS] = { SW_TDSTIE, SW_TDSTI1, SW_TDSTI2, SW_TDSTI3, SW_TDSRTH, SW_TDSXW };
     for (int k = 0; k < SW_DF_MODELS; k++) {
         int ne = 0;
@@ -619,6 +737,9 @@ void sw_dogfight_start(sw_dogfight *d, const sw_machine *m, int wave)
         return;
     }
     d->wave = wave > 1 ? wave - 1 : 0;
+    d->torp_charge = 0.6;                   /* (the first two soon) */
+    d->far_blast_t = 2.5;
+    for (int i = 0; i < SW_DF_ALLIES; i++) ally_place(d, i, 1);
     begin_wave(d);
 }
 
@@ -632,7 +753,13 @@ static float ease(float v, float to, double k)
 static void shoot(sw_dogfight *d)
 {
     d->laser_t = d->t;
-    d->laser_side ^= 1;
+    /* as TSTLAZ: eight frames of fire, the other pair, the sight latched */
+    d->lz_alt++;
+    d->lz_hit = 0;
+    d->lz_hit_next = 0;
+    d->lz_edg = 8;
+    d->lz_cx = vg(SIGHT_X);
+    d->lz_cy = vg(d->sight_y);
     sound(d, S_AUDXL);
     double best = LASER_RANGE;
     int hit_enemy = -1, hit_shot = -1;
@@ -647,18 +774,25 @@ static void shoot(sw_dogfight *d)
     for (int i = 0; i < SW_DF_SHOTS; i++) {
         sw_df_shot *s = &d->shot[i];
         double x, y, z;
-        if (!s->live || !project(d, s->pos, &x, &y, &z) || z > best) continue;
+        if (!s->live || s->hurt || !project(d, s->pos, &x, &y, &z) || z > best) continue;
         double r = PERSPECTIVE * 90.0 / z * VG_SCALE;
         if (r < 4.0) r = 4.0;
         if (hypot(x - SIGHT_X, y - SIGHT_Y) < r) { best = z; hit_shot = i; hit_enemy = -1; }
     }
     if (hit_shot >= 0) {
-        d->shot[hit_shot].live = 0;
+        /* GNHTSG: it stays where it is and dissolves */
+        sw_df_shot *s = &d->shot[hit_shot];
+        s->hurt = 1;
+        s->tmr = 0x0f;
+        s->vel[0] = s->vel[1] = s->vel[2] = 0.0;
+        d->lz_hit_next = 1;
         d->score += 33;
+        sound(d, S_AUDTCZ);
         sound(d, S_AUDSS);
     }
     if (hit_enemy >= 0) {
         sw_df_enemy *e = &d->enemy[hit_enemy];
+        d->lz_hit_next = 1;
         e->hit_t = d->t;
         if (--e->hp <= 0) {
             d->score += KIND_SCORE[e->kind];
@@ -695,8 +829,13 @@ static void enemies_step(sw_dogfight *d, double dt)
         sw_df_enemy *e = &d->enemy[i];
         if (!e->kind) continue;
         alive++;
+        /* what it is after: the player, or a wingman */
+        if (e->prey >= 0 && !d->ally[e->prey].live) e->prey = -1;
+        const sw_df_ally *pa = e->prey >= 0 ? &d->ally[e->prey] : NULL;
+        const double *tp = pa ? pa->b.pos : d->pos, *tf = pa ? pa->b.f : d->f;
+        double tspeed = pa ? pa->speed : d->speed;
         double to[3];
-        for (int k = 0; k < 3; k++) to[k] = d->pos[k] + d->f[k] * d->speed * 0.6 - e->b.pos[k];
+        for (int k = 0; k < 3; k++) to[k] = tp[k] + tf[k] * tspeed * 0.6 - e->b.pos[k];
         double far = sqrt(dot(to, to));
         norm(to);
         double want[3] = { to[0], to[1], to[2] };
@@ -705,7 +844,7 @@ static void enemies_step(sw_dogfight *d, double dt)
             /* in formation: its place by the leader; it breaks off when the
              * leader is gone or near the ship */
             sw_df_enemy *l = &d->enemy[e->leader];
-            if (!l->kind || l->mode == 2 || dist(l->b.pos, d->pos) < 3500.0) {
+            if (!l->kind || l->mode == 2 || dist(l->b.pos, tp) < 3500.0) {
                 e->mode = 0;
             } else {
                 double at[3];
@@ -732,10 +871,10 @@ static void enemies_step(sw_dogfight *d, double dt)
             if (dd < 520.0) for (int k = 0; k < 3; k++) e->b.pos[k] += v[k] / dd * (520.0 - dd) * 0.5;
         }
         norm(want);
-        if (e->mode == 0 && (far < 1800.0 || (far < 3000.0 && dot(e->b.f, to) < 0.0))) {
-            /* close in: break away, somewhere aside */
+        if (e->mode == 0 && (far < 1100.0 || (far < 2200.0 && dot(e->b.f, to) < 0.0))) {
+            /* close in: break away, somewhere aside, and soon come round again */
             e->mode = 1;
-            e->mode_t = d->t + 1.5 + rnd(d) * 1.5;
+            e->mode_t = d->t + 0.9 + rnd(d) * 1.0;
             double side[3] = { rnd(d) - 0.5, rnd(d) - 0.5, rnd(d) - 0.5 };
             for (int k = 0; k < 3; k++) e->away[k] = e->b.f[k] + side[k] * 1.6;
             norm(e->away);
@@ -782,32 +921,61 @@ static void enemies_step(sw_dogfight *d, double dt)
             e->b.pos[k] += e->knock[k] * dt;
             e->knock[k] *= exp(-2.5 * dt);
         }
-        /* it fires: the ship before its nose, not too far */
-        if (!d->over && e->mode != 1 && d->t > e->fire_t && far < 8500.0 && dot(e->b.f, to) > 0.95) {
-            for (int s = 0; s < SW_DF_SHOTS; s++) {
-                sw_df_shot *sh = &d->shot[s];
-                if (sh->live) continue;
-                sh->live = 1;
-                sh->t = d->t;
-                double lead = far / SHOT_SPEED, at[3];
-                for (int k = 0; k < 3; k++) at[k] = d->pos[k] + d->f[k] * d->speed * lead;
-                for (int k = 0; k < 3; k++) { sh->pos[k] = e->b.pos[k] + e->b.f[k] * 120.0; sh->vel[k] = at[k] - sh->pos[k]; }
-                norm(sh->vel);
-                for (int k = 0; k < 3; k++) sh->vel[k] *= SHOT_SPEED;
-                break;
+        /* it fires, in bursts: its prey before its nose, not too far. At
+         * the player fireballs, as the game's TIE fighters fire; at a
+         * wingman green bolts. */
+        if (!d->over && e->mode != 1 && d->t > e->fire_t && ((far < 10000.0 && dot(e->b.f, to) > 0.9) || e->burst > 0)) {
+            if (pa) {
+                for (int s = 0; s < SW_DF_BOLTS; s++) {
+                    sw_df_bolt *bo = &d->bolt[s];
+                    if (bo->live) continue;
+                    bo->live = 1;
+                    bo->red = 0;
+                    bo->t = d->t;
+                    for (int k = 0; k < 3; k++) { bo->pos[k] = e->b.pos[k] + e->b.f[k] * 150.0; bo->vel[k] = to[k] * BOLT_SPEED; }
+                    break;
+                }
+            } else {
+                for (int s = 0; s < SW_DF_SHOTS; s++) {
+                    sw_df_shot *sh = &d->shot[s];
+                    if (sh->live) continue;
+                    memset(sh, 0, sizeof *sh);
+                    sh->live = 1;
+                    sh->t = d->t;
+                    double lead = far / SHOT_SPEED, at[3];
+                    for (int k = 0; k < 3; k++) at[k] = d->pos[k] + d->f[k] * d->speed * lead;
+                    for (int k = 0; k < 3; k++) { sh->pos[k] = e->b.pos[k] + e->b.f[k] * 120.0; sh->vel[k] = at[k] - sh->pos[k]; }
+                    norm(sh->vel);
+                    for (int k = 0; k < 3; k++) sh->vel[k] *= SHOT_SPEED;
+                    break;
+                }
+                sound(d, S_AUDTC);
             }
-            sound(d, S_AUDTC);
-            double every = (e->kind == K_VADER ? 1.3 : e->kind == K_INTERCEPTOR ? 1.8 : 2.3) / hard;
-            e->fire_t = d->t + every * (0.7 + 0.6 * rnd(d));
+            if (e->burst <= 0) e->burst = e->kind == K_VADER ? 4 : e->kind == K_INTERCEPTOR ? 3 : 2;
+            if (--e->burst > 0) {
+                e->fire_t = d->t + 0.22;            /* the next of the burst */
+            } else {
+                double every = (e->kind == K_VADER ? 1.0 : e->kind == K_INTERCEPTOR ? 1.3 : 1.6) / hard;
+                e->fire_t = d->t + every * (0.7 + 0.6 * rnd(d));
+            }
         }
     }
     /* the fireballs */
     for (int s = 0; s < SW_DF_SHOTS; s++) {
         sw_df_shot *sh = &d->shot[s];
-        if (!sh->live) continue;
+        if (!sh->live || sh->hurt) continue;        /* (the hurt dissolve by the game's frames) */
         for (int k = 0; k < 3; k++) sh->pos[k] += sh->vel[k] * dt;
         if (d->t - sh->t > SHOT_LIFE) { sh->live = 0; continue; }
-        if (dist(sh->pos, d->pos) < SHOT_HITS) { sh->live = 0; lose_shield(d); }
+        if (dist(sh->pos, d->pos) < SHOT_HITS) {
+            /* on the shields: it glows there where it struck (GNAHIT, GLOWVW) */
+            double x, y, z;
+            if (!project(d, sh->pos, &x, &y, &z)) { x = SIGHT_X; y = SIGHT_Y; }
+            sh->hurt = 2;
+            sh->tmr = 0x0f;
+            sh->gx = (float)(x < -100.0 ? -100.0 : x > 100.0 ? 100.0 : x);
+            sh->gy = (float)(y < -130.0 ? -130.0 : y > 120.0 ? 120.0 : y);
+            lose_shield(d);
+        }
     }
     /* the pieces of what blew up */
     for (int i = 0; i < SW_DF_PIECES; i++) {
@@ -830,6 +998,251 @@ static void enemies_step(sw_dogfight *d, double dt)
             sound(d, S_AUDRY);
         }
         begin_wave(d);
+    }
+}
+
+/* A frame of the game's (20.5 Hz): the lasers as TSTLAZ times them, the
+ * shots dissolving by their timers. */
+static void game_frame(sw_dogfight *d)
+{
+    if (d->lz_hit_next) {                   /* a hit: the beam stays on it a while */
+        d->lz_hit_next = 0;
+        d->lz_hit = 4;
+        d->lz_edg = 0;
+    } else if (d->lz_hit > 0) {
+        d->lz_hit--;
+    } else if (d->lz_edg > 0) {
+        d->lz_edg--;
+    }
+    for (int s = 0; s < SW_DF_SHOTS; s++) {
+        sw_df_shot *sh = &d->shot[s];
+        if (sh->live && sh->hurt && --sh->tmr <= 0) sh->live = 0;
+    }
+}
+
+/* --- the proton torpedoes ------------------------------------------------------------------ */
+
+/* The enemy a torpedo goes after: the one nearest the sight's way ahead,
+ * another than `other` if there is one. */
+static int torp_target(const sw_dogfight *d, int other)
+{
+    int best = -1;
+    double bs = -1e18;
+    for (int i = 0; i < SW_DF_ENEMIES; i++) {
+        const sw_df_enemy *e = &d->enemy[i];
+        if (!e->kind) continue;
+        double v[3];
+        view_of(d, e->b.pos, v);
+        double s = v[0] > 100.0 ? -4.0 * hypot(v[1], v[2]) / v[0] - v[0] / 20000.0 : -50.0 - sqrt(dot(v, v)) / 20000.0;
+        if (i == other) s -= 100.0;
+        if (s > bs) { bs = s; best = i; }
+    }
+    return best;
+}
+
+static void kill_enemy(sw_dogfight *d, sw_df_enemy *e, int scored)
+{
+    if (scored) d->score += KIND_SCORE[e->kind];
+    explode(d, &e->b, e->speed);
+    e->kind = K_NONE;
+}
+
+static void torps_step(sw_dogfight *d, const sw_dogfight_input *in, double dt)
+{
+    if (d->torp_charge < 1.0) {
+        d->torp_charge += dt / TORP_CHARGE;
+        if (d->torp_charge >= 1.0) { d->torp_charge = 1.0; sound(d, S_AUDRY); }   /* (charged: R2's beeps) */
+    }
+    int press = in->torpedo && !d->torp_held;
+    d->torp_held = in->torpedo;
+    if (press && d->torp_charge >= 1.0 && !d->over) {
+        /* two at once, from below the guns, each after its own enemy */
+        int t0 = torp_target(d, -1), t1 = torp_target(d, t0);
+        for (int i = 0; i < SW_DF_TORPS; i++) {
+            sw_df_torp *tp = &d->torp[i];
+            double side = i ? 1.0 : -1.0;
+            tp->live = 1;
+            tp->target = i ? t1 : t0;
+            tp->t = d->t;
+            for (int k = 0; k < 3; k++) {
+                tp->pos[k] = d->pos[k] + d->f[k] * 60.0 + d->r[k] * side * 110.0 - d->u[k] * 70.0;
+                tp->vel[k] = d->f[k] * (d->speed + TORP_SPEED);
+            }
+        }
+        d->torp_charge = 0.0;
+        sound(d, S_AUDPH);
+    }
+    for (int i = 0; i < SW_DF_TORPS; i++) {
+        sw_df_torp *tp = &d->torp[i];
+        if (!tp->live) continue;
+        if (d->t - tp->t > TORP_LIFE) { tp->live = 0; continue; }
+        if (tp->target >= 0 && !d->enemy[tp->target].kind) tp->target = torp_target(d, d->torp[i ^ 1].live ? d->torp[i ^ 1].target : -1);
+        double speed = sqrt(dot(tp->vel, tp->vel)), dir[3] = { tp->vel[0], tp->vel[1], tp->vel[2] };
+        norm(dir);
+        if (tp->target >= 0 && d->t - tp->t > 0.12) {
+            /* it homes: its way turned towards its enemy */
+            double want[3];
+            for (int k = 0; k < 3; k++) want[k] = d->enemy[tp->target].b.pos[k] - tp->pos[k];
+            norm(want);
+            for (int k = 0; k < 3; k++) dir[k] += want[k] * TORP_TURN * dt;
+            norm(dir);
+        }
+        for (int k = 0; k < 3; k++) {
+            tp->vel[k] = dir[k] * speed;
+            tp->pos[k] += tp->vel[k] * dt;
+        }
+        /* one torpedo is enough for any of them */
+        for (int j = 0; j < SW_DF_ENEMIES; j++) {
+            sw_df_enemy *e = &d->enemy[j];
+            if (!e->kind || dist(e->b.pos, tp->pos) > TORP_HITS) continue;
+            kill_enemy(d, e, 1);
+            tp->live = 0;
+            break;
+        }
+    }
+}
+
+/* --- the wingmen and the battle -------------------------------------------------------------- */
+
+/* A wingman: beside the player as it begins, else coming in at a wall. */
+static void ally_place(sw_dogfight *d, int i, int beside)
+{
+    sw_df_ally *a = &d->ally[i];
+    memset(a, 0, sizeof *a);
+    a->live = 1;
+    a->hp = 3;
+    a->target = -1;
+    a->speed = ALLY_SPEED;
+    double p[3], to[3];
+    if (beside) {
+        static const double R[SW_DF_ALLIES] = { -1100.0, 1100.0, 0.0 }, U[SW_DF_ALLIES] = { 150.0, 150.0, 800.0 },
+                            B[SW_DF_ALLIES] = { 500.0, 500.0, 1200.0 };
+        for (int k = 0; k < 3; k++) {
+            p[k] = d->pos[k] + d->r[k] * R[i] + d->u[k] * U[i] - d->f[k] * B[i];
+            to[k] = p[k] + d->f[k];
+        }
+    } else {
+        double az = rnd(d) * 6.2831853;
+        p[0] = BOX * 0.9 * cos(az);
+        p[1] = BOX * 0.9 * sin(az);
+        p[2] = BOX * 0.2 * (rnd(d) - 0.5);
+        to[0] = to[1] = to[2] = 0.0;
+    }
+    body_facing(&a->b, p, to);
+    a->fire_t = d->t + 1.0 + rnd(d);
+}
+
+static void allies_step(sw_dogfight *d, double dt)
+{
+    for (int i = 0; i < SW_DF_ALLIES; i++) {
+        sw_df_ally *a = &d->ally[i];
+        if (!a->live) {
+            if (a->dead_t > 0.0 && d->t - a->dead_t > ALLY_BACK && !d->over) ally_place(d, i, 0);
+            continue;
+        }
+        if (a->target >= 0 && !d->enemy[a->target].kind) a->target = -1;
+        if (a->target < 0) {
+            /* the nearest enemy, one no other wingman is after if there is one */
+            double bd = 1e18;
+            for (int j = 0; j < SW_DF_ENEMIES; j++) {
+                if (!d->enemy[j].kind) continue;
+                double dd = dist(d->enemy[j].b.pos, a->b.pos);
+                for (int o = 0; o < SW_DF_ALLIES; o++) if (o != i && d->ally[o].live && d->ally[o].target == j) dd += 6000.0;
+                if (dd < bd) { bd = dd; a->target = j; }
+            }
+        }
+        double want[3], to[3] = { 0.0, 0.0, 0.0 }, far = 1e18, pace = a->speed;
+        if (a->target >= 0) {
+            const sw_df_enemy *e = &d->enemy[a->target];
+            for (int k = 0; k < 3; k++) to[k] = e->b.pos[k] + e->b.f[k] * e->speed * 0.4 - a->b.pos[k];
+            far = sqrt(dot(to, to));
+            norm(to);
+            memcpy(want, to, sizeof want);
+            if (a->mode == 0 && far < 900.0) {
+                a->mode = 1;
+                a->mode_t = d->t + 1.0 + rnd(d);
+                for (int k = 0; k < 3; k++) a->away[k] = a->b.f[k] + (rnd(d) - 0.5) * 1.6;
+                norm(a->away);
+            }
+        } else {
+            /* none left: off the player's wing */
+            static const double R[SW_DF_ALLIES] = { -1100.0, 1100.0, 0.0 }, U[SW_DF_ALLIES] = { 0.0, 0.0, 900.0 };
+            double at[3];
+            for (int k = 0; k < 3; k++) at[k] = d->pos[k] + d->r[k] * R[i] + d->u[k] * U[i] - d->f[k] * 700.0 - a->b.pos[k];
+            double gap = sqrt(dot(at, at));
+            for (int k = 0; k < 3; k++) want[k] = d->f[k] * 900.0 + at[k] * 1.5;
+            norm(want);
+            pace = d->speed + (gap > 80.0 ? gap * 0.6 : 0.0);
+            if (pace > d->speed * 1.6 + 400.0) pace = d->speed * 1.6 + 400.0;
+        }
+        if (a->mode == 1) {
+            memcpy(want, a->away, sizeof want);
+            if (d->t > a->mode_t) a->mode = 0;
+        }
+        /* not into the player */
+        double v[3] = { a->b.pos[0] - d->pos[0], a->b.pos[1] - d->pos[1], a->b.pos[2] - d->pos[2] };
+        double dd = sqrt(dot(v, v));
+        if (dd > 1e-6 && dd < 800.0) for (int k = 0; k < 3; k++) want[k] += v[k] / dd * (800.0 / dd - 1.0) * 2.0;
+        if (fabs(a->b.pos[0]) > BOX * 1.1 || fabs(a->b.pos[1]) > BOX * 1.1 || fabs(a->b.pos[2]) > BOX * 1.1)
+            for (int k = 0; k < 3; k++) want[k] = -a->b.pos[k];
+        norm(want);
+        aim(a->b.f, a->b.r, a->b.u, want, ALLY_TURN * dt);
+        for (int k = 0; k < 3; k++) a->b.pos[k] += a->b.f[k] * pace * dt;
+        /* it fires red bolts at its enemy before its nose */
+        if (a->target >= 0 && a->mode == 0 && d->t > a->fire_t && far < 7000.0 && dot(a->b.f, to) > 0.96) {
+            for (int s = 0; s < SW_DF_BOLTS; s++) {
+                sw_df_bolt *bo = &d->bolt[s];
+                if (bo->live) continue;
+                bo->live = 1;
+                bo->red = 1;
+                bo->t = d->t;
+                for (int k = 0; k < 3; k++) { bo->pos[k] = a->b.pos[k] + a->b.f[k] * 150.0; bo->vel[k] = to[k] * BOLT_SPEED; }
+                break;
+            }
+            a->fire_t = d->t + 0.4 + rnd(d) * 0.5;
+        }
+    }
+    /* the bolts: red ones hurt the enemies (the wingmen hit one time in two), green ones the wingmen */
+    for (int s = 0; s < SW_DF_BOLTS; s++) {
+        sw_df_bolt *bo = &d->bolt[s];
+        if (!bo->live) continue;
+        for (int k = 0; k < 3; k++) bo->pos[k] += bo->vel[k] * dt;
+        if (d->t - bo->t > BOLT_LIFE) { bo->live = 0; continue; }
+        if (bo->red) {
+            for (int j = 0; j < SW_DF_ENEMIES; j++) {
+                sw_df_enemy *e = &d->enemy[j];
+                if (!e->kind || dist(e->b.pos, bo->pos) > BOLT_HITS) continue;
+                bo->live = 0;
+                if (rnd(d) < 0.5) {
+                    e->hit_t = d->t;
+                    if (--e->hp <= 0) kill_enemy(d, e, 0);
+                }
+                break;
+            }
+        } else {
+            for (int j = 0; j < SW_DF_ALLIES; j++) {
+                sw_df_ally *a = &d->ally[j];
+                if (!a->live || dist(a->b.pos, bo->pos) > BOLT_HITS) continue;
+                bo->live = 0;
+                if (--a->hp <= 0) {
+                    add_blast(d, a->b.pos);
+                    if (dist(a->b.pos, d->pos) < 9000.0) sound(d, S_AUDSX);
+                    a->live = 0;
+                    a->dead_t = d->t;
+                }
+                break;
+            }
+        }
+    }
+    /* far off, beyond the box, the battle goes on: now and then a ship blows up */
+    if (d->t > d->far_blast_t) {
+        d->far_blast_t = d->t + 0.9 + rnd(d) * 2.2;
+        double p[3];
+        for (int k = 0; k < 3; k++) p[k] = d->f[k] * 0.9 + (rnd(d) - 0.5) * 1.6;
+        norm(p);
+        double r = 20000.0 + rnd(d) * 14000.0;
+        for (int k = 0; k < 3; k++) p[k] = d->pos[k] + p[k] * r;
+        add_blast(d, p);
     }
 }
 
@@ -908,7 +1321,15 @@ void sw_dogfight_step(sw_dogfight *d, const sw_dogfight_input *in, double dt)
         d->fire_next = d->t + LASER_EVERY;
     }
     if (!in->fire) d->fire_next = 0.0;
+    torps_step(d, in, dt);
     enemies_step(d, dt);
+    allies_step(d, dt);
+    /* the game's frames due */
+    if (d->game_clock > d->t + 1.0 || d->game_clock < d->t - 0.5) d->game_clock = d->t;
+    while (d->game_clock <= d->t) {
+        game_frame(d);
+        d->game_clock += 1.0 / GAME_HZ;
+    }
 }
 
 void sw_dogfight_attitude(const sw_dogfight *d, float *bank, float *pitch)
@@ -939,16 +1360,24 @@ static void chase_at(double t, uint32_t h, double *p, double *fw)
     norm(fw);
 }
 
+static void chase_one(sw_dogfight *d, double t, uint32_t h);
+
+/* Three of them, each in its own time, so that the battle beyond goes on. */
 static void chase(sw_dogfight *d)
 {
-    const double RUN = 11.0, EVERY = 19.0;
-    double t = (d->t - d->chase_t) / RUN;
-    if (t < 0.0) return;
-    if (t > 1.0) {
-        if (d->t - d->chase_t > EVERY) d->chase_t = d->t;
-        return;
+    const double RUN = 11.0;
+    static const double EVERY[3] = { 14.0, 17.0, 21.0 }, LAG[3] = { 0.0, 6.5, 12.0 };
+    for (int c = 0; c < 3; c++) {
+        double s = d->t - d->chase_t - LAG[c];
+        if (s < 0.0) continue;
+        double n = floor(s / EVERY[c]), t = (s - n * EVERY[c]) / RUN;
+        if (t > 1.0) continue;
+        chase_one(d, t, hash((uint32_t)n * 977u + (uint32_t)c * 7919u + 17u));
     }
-    uint32_t h = hash((uint32_t)(d->chase_t * 10.0) + 17u);
+}
+
+static void chase_one(sw_dogfight *d, double t, uint32_t h)
+{
     float lum = 120.0f;
     if (t < 0.1) lum *= (float)(t / 0.1);
     if (t > 0.9) lum *= (float)((1.0 - t) / 0.1);
@@ -981,21 +1410,137 @@ static void chase(sw_dogfight *d)
     }
 }
 
-/* A fireball: a sparkle of spokes, white about a red heart, turning and
- * flickering, as large as it is near. (The game's own, VJGNB, takes its
- * sparkle from patterns the game keeps in VG RAM each frame: not to be had
- * here.) */
-static void fireball(sw_dogfight *d, double x, double y, double z, int n)
+/* The scale GN1DRW gives a shot at the depth z: a binary scale, one step
+ * smaller for each doubling of its distance (M.XT, half the game's units),
+ * and the linear scale between. */
+static void shot_scale(double z, uint8_t *bin_out, uint8_t *lin_out)
 {
-    double r = PERSPECTIVE * 80.0 / z * VG_SCALE;
-    if (r < 1.5) r = 1.5;
-    if (r > 14.0) r = 14.0;
-    double spin = d->t * 7.0 + n * 1.3, flick = 0.75 + 0.25 * sin(d->t * 31.0 + n * 2.1);
-    for (int k = 0; k < 8; k++) {
-        double a = spin + k * 0.7853982, len = r * (k & 1 ? 0.6 : 1.0) * flick;
-        move_to(d, x, y);
-        color(d, k & 1 ? RED : WHT, k & 1 ? 0xc0 : 0xe0);
-        vctr(d, vg(cos(a) * len), vg(sin(a) * len), 7);
+    double xt = z * 0.5;
+    uint16_t dd = (uint16_t)(xt > 32767.0 ? 32767.0 : xt < 1.0 ? 1.0 : xt);
+    uint8_t bin = 8, lin;
+    for (;;) {
+        --bin;
+        if (bin == 0) { lin = (uint8_t)(dd >> 8); break; }
+        dd = (uint16_t)(dd << 1);
+        if (dd & 0x8000) { lin = (uint8_t)(dd >> 8) & 0x7f; break; }
+    }
+    *bin_out = bin;
+    *lin_out = lin;
+}
+
+/* A fireball (an enemy's, or a proton torpedo) at (x, y), z away, as
+ * GN1DRW draws it: the sparkler VJGNB at its scale. Shot down (hurt), it
+ * dissolves: purple, its scale held between 3 and 6, fading with its
+ * timer, the sparkler without its centre lines (VJGNX). */
+static void fireball(sw_dogfight *d, double x, double y, double z, int hurt, int tmr)
+{
+    uint8_t bin, lin;
+    shot_scale(z, &bin, &lin);
+    move_to(d, x, y);
+    if (!hurt) {
+        emit(d, (uint16_t)(((bin | ((SW_VGSCAL & 0xf000) >> 8)) << 8) | lin));
+        emit(d, SW_VJGNB);                  /* JSR TO THE SPARKLER */
+    } else {
+        uint8_t a = (uint8_t)(bin + 1), b = lin;
+        if (a < 3) { a = 3; b = 0; }        /* DON'T LET IT GET TOO LARGE */
+        else if (a >= 6) { a = 6; b = 0; }  /* BUT MAKE SURE ITS VISIBLE FAR AWAY */
+        emit(d, (uint16_t)(((a | ((SW_VGSCAL & 0xf000) >> 8)) << 8) | b));
+        emit(d, (uint16_t)((((SW_VGCOLR >> 8) + SW_VGCPRP) << 8) | (uint8_t)((tmr << 4) | 0x0f)));
+        emit(d, SW_VJGNX);                  /* EXPLOSION SPARKLER */
+    }
+    emit(d, SW_VGSCAL);                     /* RESTORE SCALE */
+}
+
+/* A fireball that hit the ship, dissolving on its shields where it struck
+ * (GLOWVW): white, growing as its timer runs out. */
+static void glow(sw_dogfight *d, double x, double y, int tmr)
+{
+    move_to(d, x, y);
+    emit(d, (uint16_t)((SW_VGSCAL & 0xf000) | (uint8_t)(tmr * (0xf0 / 0x0f))));
+    emit(d, (uint16_t)((((SW_VGCOLR >> 8) + SW_VGCWHT) << 8) | (uint8_t)(tmr << 4)));
+    emit(d, SW_VJGNX);
+    emit(d, SW_VGSCAL);
+}
+
+/* A ship blowing up, z away: the explosion sparkler, larger, purple to
+ * white, fading over its time k (1 .. 0). */
+static void blast(sw_dogfight *d, double x, double y, double z, double k)
+{
+    uint8_t bin, lin;
+    shot_scale(z * 0.7, &bin, &lin);       /* (a ship's, larger than a shot's) */
+    uint8_t a = bin;
+    if (a < 3) { a = 3; lin = 0; }          /* (as large as a hurt shell at most) */
+    move_to(d, x, y);
+    emit(d, (uint16_t)(((a | ((SW_VGSCAL & 0xf000) >> 8)) << 8) | lin));
+    unsigned tmr = (unsigned)(k * 15.0);
+    emit(d, (uint16_t)((((SW_VGCOLR >> 8) + (k > 0.6 ? SW_VGCWHT : k > 0.3 ? YLW : RED)) << 8) | (uint8_t)((tmr << 4) | 0x0f)));
+    emit(d, SW_VJGNX);
+    emit(d, SW_VGSCAL);
+}
+
+/* Half of what is left to the sight, rounded up when positive (WSLAZR's
+ * LAZVW); the rest stays. */
+static int16_t half_step(int16_t *left)
+{
+    uint16_t v = (uint16_t)*left;
+    if (!(v & 0x8000)) v++;                 /* ROUND POSITIVE UP */
+    int16_t h = (int16_t)((int16_t)v >> 1); /* DIVIDE BY 2 */
+    *left = (int16_t)(*left - h);
+    return h;
+}
+
+static int far_off(int16_t left)
+{
+    int32_t s = left + 8;
+    if (s < 0) return 1;
+    return (int16_t)(uint16_t)s - 16 > 0;
+}
+
+/* LAZVW: the beam from where it begins to the sight, in halving steps,
+ * each in the next of its colors (VRLZF0..: they travel), the rest of it
+ * bright; on a hit, the beam in one, turquoise, fading, and the splash. */
+static void lazvw(sw_dogfight *d, const sw_machine *m, uint8_t b, int16_t dx, int16_t dy)
+{
+    uint16_t u = (uint16_t)(TLZFR + b);     /* FULL FIRE COLORS */
+    if (d->lz_hit > 0) {
+        emit(d, (uint16_t)(((((SW_VGCTRQ << 8) + SW_VGCOPC) >> 8) << 8) | (uint8_t)(d->lz_hit * 0x3f)));
+    } else {
+        do {
+            emit(d, sw_rom16(m, u));
+            u += 2;
+            emit(d, (uint16_t)(half_step(&dy) & 0x1fff));
+            emit(d, (uint16_t)((uint16_t)half_step(&dx) | 0xe000));
+        } while (far_off(dx) || far_off(dy));
+        emit(d, sw_rom16(m, u));
+    }
+    emit(d, (uint16_t)((uint16_t)dy & 0x1fff));
+    emit(d, (uint16_t)((uint16_t)dx | 0xe000));
+    if (d->lz_hit > 0) emit(d, SW_VJLZS);   /* SHOW LAZAR SPLASH */
+    emit(d, SW_VGSCAL);
+    emit(d, SW_VGCNTR);
+}
+
+/* One beam, from the gun at (x0, y0) (VG units) */
+static void beam(sw_dogfight *d, const sw_machine *m, uint16_t y0, uint16_t dy_base, uint16_t x0, uint8_t colors, int key)
+{
+    d->tag = SW_TAG(SW_TAG_LASER, key);
+    emit(d, (uint16_t)(y0 & 0x1fff));
+    emit(d, (uint16_t)(x0 & 0x1fff));
+    lazvw(d, m, colors, (int16_t)(uint16_t)(d->lz_cx - x0), (int16_t)(uint16_t)(d->lz_cy - dy_base));
+}
+
+/* VWLAZ: the left pair or the right, in turn */
+static void lasers(sw_dogfight *d, const sw_machine *m)
+{
+    if (d->lz_edg <= 0 && d->lz_hit <= 0) return;
+    uint16_t low = (uint16_t)(SW_VGLIMB - SW_VGOFFY + 35);
+    emit(d, SW_VGCNTR);
+    if (d->lz_alt & 1) {
+        beam(d, m, SW_VGOFFY + 0, 0, SW_VGLIML + 90, 0, 0);        /* UPPER LEFT */
+        beam(d, m, SW_VGLIMB + 35, low, SW_VGLIML + 85, 8, 1);     /* LOWER LEFT */
+    } else {
+        beam(d, m, SW_VGLIMB + 35, low, SW_VGLIMR - 85, 0, 2);     /* LOWER RIGHT */
+        beam(d, m, SW_VGOFFY + 0, 0, SW_VGLIMR - 90, 8, 3);        /* UPPER RIGHT */
     }
 }
 
@@ -1164,7 +1709,8 @@ static void death_star_colors(sw_dogfight *d, float cx, float cy, float r)
 
 int sw_dogfight_lines(sw_dogfight *d, const sw_machine *m, const sw_line **out)
 {
-    d->at = 0;
+    vg_catch_up(d, m);
+    d->at = SW_VGVARB;                      /* (above the routines the restarts keep) */
     d->n_faces = 0;
     d->ds_shown = 0;
     d->inst = 0x8000;
@@ -1225,29 +1771,34 @@ int sw_dogfight_lines(sw_dogfight *d, const sw_machine *m, const sw_line **out)
         }
     }
 
-    /* the fireballs */
-    for (int s = 0; s < SW_DF_SHOTS; s++) {
-        double x, y, z;
-        if (!d->shot[s].live || !project(d, d->shot[s].pos, &x, &y, &z) || z < 40.0 || !on_screen(x, y, 4.0)) continue;
-        d->tag = SW_TAG(SW_TAG_SHOT, s);
-        fireball(d, x, y, z, s);
+    /* far off, the battle beyond: ships blowing up */
+    for (int i = 0; i < 8; i++) {
+        double age = d->t - d->blast_t[i], x, y, z;
+        if (d->blast_t[i] <= 0.0 || age > 0.8 || !project(d, d->blast_at[i], &x, &y, &z) || !on_screen(x, y, 10.0)) continue;
+        d->tag = SW_TAG(SW_TAG_SHOT, 0x300 + i);
+        blast(d, x, y, z, 1.0 - age / 0.8);
     }
 
-    /* the lasers: from the guns to the sight, the left pair or the right */
-    if (d->laser_t > 0.0 && d->t - d->laser_t < LASER_SHOW) {
-        static const double GUN[4][2] = { { -104.6, -25.9 }, { -105.8, -143.7 }, { 105.8, -143.7 }, { 104.6, -25.9 } };
-        float k = (float)(1.0 - (d->t - d->laser_t) / LASER_SHOW);
-        for (int g = 0; g < 4; g++) {
-            if ((g < 2) != (d->laser_side == 0)) continue;
-            d->tag = SW_TAG(SW_TAG_LASER, g);
-            double mx = GUN[g][0] + (SIGHT_X - GUN[g][0]) * 0.55, my = GUN[g][1] + (SIGHT_Y - GUN[g][1]) * 0.55;
-            move_to(d, GUN[g][0], GUN[g][1]);
-            color(d, BLU, (unsigned)(255.0f * k));
-            vctr(d, vg(mx - GUN[g][0]), vg(my - GUN[g][1]), 7);
-            color(d, TRQ, (unsigned)(255.0f * k));
-            vctr(d, vg(SIGHT_X - mx), vg(SIGHT_Y - my), 7);
-        }
+    /* the fireballs, as the game draws its shots */
+    for (int s = 0; s < SW_DF_SHOTS; s++) {
+        const sw_df_shot *sh = &d->shot[s];
+        double x, y, z;
+        if (!sh->live) continue;
+        d->tag = SW_TAG(SW_TAG_SHOT, s);
+        if (sh->hurt == 2) { glow(d, sh->gx, sh->gy, sh->tmr); continue; }
+        if (!project(d, sh->pos, &x, &y, &z) || z < 40.0 || !on_screen(x, y, 4.0)) continue;
+        fireball(d, x, y, z, sh->hurt, sh->tmr);
     }
+    /* the proton torpedoes: balls as the fireballs are */
+    for (int i = 0; i < SW_DF_TORPS; i++) {
+        double x, y, z;
+        if (!d->torp[i].live || !project(d, d->torp[i].pos, &x, &y, &z) || z < 40.0 || !on_screen(x, y, 4.0)) continue;
+        d->tag = SW_TAG(SW_TAG_SHOT, 0x200 + i);
+        fireball(d, x, y, z < 4500.0 ? 4500.0 : z, 0, 0);     /* (just fired, not as large as a shot at one's face) */
+    }
+
+    /* the lasers, as VWLAZ draws them */
+    lasers(d, m);
 
     /* the sight, in the middle of the view: one aims with the nose */
     d->tag = SW_TAG(SW_TAG_SITE, 0);
@@ -1287,6 +1838,18 @@ int sw_dogfight_lines(sw_dogfight *d, const sw_machine *m, const sw_line **out)
         move_to(d, at, y - 3.0);
         color(d, YLW, 0xa0);
         vctr(d, 0, vg(6.0), 7);
+        /* the torpedoes: a bar filling as they charge; charged, it shines */
+        x0 = -122.0;
+        int ready = d->torp_charge >= 1.0;
+        move_to(d, x0, y);
+        color(d, ready ? TRQ : GRN, ready ? (fmod(d->t, 0.6) < 0.4 ? 0xff : 0x90) : 0x40);
+        vctr(d, vg(w), 0, 5);
+        if (!ready) {
+            move_to(d, x0, y);
+            color(d, YLW, 0xa0);
+            vctr(d, vg(w * d->torp_charge), 0, 7);
+        }
+        text(d, m, x0, y - 9.0, ready ? TRQ : GRN, ready ? 0xa0 : 0x60, SW_VGSCAL, "TORPEDO");
     }
     if (d->over) {
         char s[24];
@@ -1333,7 +1896,7 @@ int sw_dogfight_lines(sw_dogfight *d, const sw_machine *m, const sw_line **out)
     }
 
     emit(d, 0x2000);                        /* HALT */
-    sw_avg_run_tagged(d->space, 0, d->tags, NULL, &d->list, 60000);
+    sw_avg_run_tagged(d->space, SW_VGVARB, d->tags, NULL, &d->list, 60000);
 
     /* The Death Star hides the stars behind it: none in its disc (the
      * specks near the ship are before it). Its disc from its own lines. */
@@ -1417,6 +1980,16 @@ int sw_dogfight_lines(sw_dogfight *d, const sw_machine *m, const sw_line **out)
 
     /* the ships, in true perspective (after the list: their lines are added) */
     chase(d);
+    for (int i = 0; i < SW_DF_ALLIES; i++)
+        if (d->ally[i].live) draw_model(d, M_XWING, &d->ally[i].b, SHIP_SIZE, WHT, 170.0f, SW_TDSXW);
+    for (int s = 0; s < SW_DF_BOLTS; s++) {
+        const sw_df_bolt *bo = &d->bolt[s];
+        if (!bo->live) continue;
+        double tail[3], dir[3] = { bo->vel[0], bo->vel[1], bo->vel[2] };
+        norm(dir);
+        for (int k = 0; k < 3; k++) tail[k] = bo->pos[k] - dir[k] * BOLT_LEN;
+        line3(d, tail, bo->pos, bo->red ? RED : GRN, 230.0f, 0, 0, 0);
+    }
     for (int i = 0; i < SW_DF_ENEMIES; i++) {
         sw_df_enemy *e = &d->enemy[i];
         if (!e->kind) continue;
