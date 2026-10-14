@@ -249,7 +249,7 @@ int main(int argc, char **argv)
     m.sound_wait = on_sound_wait;
     sw_picture_init(&pic, &m);
     pic.occlusion = !arg_flag(argc, argv, "--wire");
-    pic.enhance.cockpit = arg_flag(argc, argv, "--cockpit");
+    pic.enhance.view = arg(argc, argv, "--view") ? atoi(arg(argc, argv, "--view")) % SW_VIEWS : SW_VIEW_ARCADE;
     if (!arg_flag(argc, argv, "--plain")) {
         pic.enhance.surface = pic.enhance.stars = pic.enhance.towers = pic.enhance.dogfights = 1;
         pic.enhance.logo = 1;
