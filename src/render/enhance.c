@@ -363,6 +363,7 @@ static void towers(sw_enhance *e, const sw_machine *m, double now)
     const double BRIGHT = 2500.0;               /* from here on a building is as bright as it gets */
     const double SMALLEST = 0.08;               /* the arcade machine's sizing goes to 0 at 4000h: not below this */
     const double LOCK = 9000.0;                 /* from here on a turret has found the player */
+    const int LAST_PASS = 5;                    /* the pass the game clears the ground in (S1MVGD) */
     unsigned mz = TGDPTR + (unsigned)((uint8_t)(ram8(m, SW_GD_WAV) << 2));
     if (mz >= ZGDPTR) mz = ZGDPTR - 4;
     unsigned first = sw_rom16(m, (uint16_t)mz), end = sw_rom16(m, (uint16_t)(mz + 2));
@@ -398,6 +399,11 @@ static void towers(sw_enhance *e, const sw_machine *m, double now)
             vec c = turn(e, vec3(ahead / 2.0, (double)(int16_t)(by - (int)e->t[1]) / 2.0, (GD_CENTER - e->t[2]) / 2.0));
             if (c.x < 256.0 || c.x >= FAR || fabs(c.y) >= c.x) continue;
             if (c.x < RANGE && !(state & TYP_VW)) continue;
+            /* The towers end with the fifth pass (S1MVGD: GD.SEQ 5 sets
+             * Q.KTW, and the game sets up no building it has not shown
+             * yet): beyond the range nothing more comes then, and none of
+             * the pass that would follow. Those it shows still go by. */
+            if (c.x >= RANGE && (pass >= LAST_PASS || ram8(m, SW_Q_KTW))) continue;
             /* The farthest are dark, and each gets brighter in a straight
              * line as it comes nearer: none comes up at once, and what is
              * behind does not crowd what is before it. */
