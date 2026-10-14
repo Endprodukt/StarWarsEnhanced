@@ -347,7 +347,7 @@ draußen ist, mit einer Kennlinie n * (0,3 + 0,7 |n|): nah der Mitte sanft
 Treffer gehen dorthin, wo das Fadenkreuz steht. Beim Rollen (beide
 Daumentasten) und beim Umdrehen am Rand kehrt es zur Mitte zurück. Am
 Gerät nicht gefühlt; Reichweite und Kennlinie sind Setzungen
-( in dogfight.c).
+(`SIGHT_REACH_X`, `SIGHT_REACH_Y` in dogfight.c).
 
 ## Dogfight, Etappe 2: Gegner, Laser, Joch direkt (2026-10-14)
 
