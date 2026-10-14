@@ -54,7 +54,7 @@ typedef struct sw_dogfight_input {
 #define SW_DF_BOLTS   16
 #define SW_DF_PIECES  48
 #define SW_DF_MODELS  6         /* TIE fighter, its three pieces, Vader's TIE, the X-wing */
-#define SW_DF_FACES   96
+#define SW_DF_FACES   320
 
 /* A thing in space: where it is, and its axes ahead, to the right, up. */
 typedef struct sw_df_body { double pos[3], f[3], r[3], u[3]; } sw_df_body;
@@ -100,9 +100,34 @@ typedef struct sw_df_piece {
     double     vel[3], spin[3], t;
 } sw_df_piece;
 
+/* The dogfight's own high scores (not the arcade game's): kept by the
+ * program in a file of its own; `dirty` when one was added. */
+#define SW_DF_TABLE 10
+typedef struct sw_df_scores {
+    char name[SW_DF_TABLE][4];
+    long score[SW_DF_TABLE];
+    int  wave[SW_DF_TABLE];
+    int  dirty;
+} sw_df_scores;
+
+/* The best of ten as it begins (initials of the films' pilots). */
+void sw_dogfight_scores_default(sw_df_scores *s);
+
+/* Where the dogfight is: how it is flown (the yoke shown), the game, its
+ * end (initials of a new best pilot, the table). */
+enum { SW_DF_HOWTO, SW_DF_PLAY, SW_DF_ENTRY, SW_DF_TABLE_SHOWN };
+
 typedef struct sw_dogfight {
     int    active;
     int    finished;            /* the game is over and shown: the program goes back to the attract mode */
+    int    stage;               /* SW_DF_HOWTO .. */
+    double stage_t;             /* seconds in this stage (the how-to page, the entry, the table) */
+    int    fire_held;           /* (the trigger as it was: for its pulls) */
+    sw_df_scores *scores;       /* the table (the program's; kept across sw_dogfight_start) */
+    int    rank;                /* where the new one stands in it, or -1 */
+    char   initials[4];
+    int    letter;              /* the initial being chosen (0..2), and the yoke's step */
+    double letter_t;
     double t;                   /* seconds since it began */
     /* the ship: where it is, and its own axes ahead (f), to the right (r)
      * and up (u), in the box's coordinates */
@@ -174,6 +199,11 @@ typedef struct sw_dogfight {
  * -1..-3: only one enemy of that kind (TIE fighter, interceptor, Vader)
  * turning slowly before the ship, to look at it). */
 void sw_dogfight_start(sw_dogfight *d, const sw_machine *m, int wave);
+
+/* Shows first how it is flown: the yoke, and the X-wing beside it doing
+ * what the yoke does (as Time Pilot 3D shows it; the Atari logo on it). A
+ * pull of the trigger, or the end of the page, begins the game. */
+void sw_dogfight_howto(sw_dogfight *d);
 
 /* A step of dt seconds. */
 void sw_dogfight_step(sw_dogfight *d, const sw_dogfight_input *in, double dt);

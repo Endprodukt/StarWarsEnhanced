@@ -337,6 +337,48 @@ static void apply_enhanced(board *b, const sw_display_cfg *cfg)
     if (cfg->yoke_autocenter && on && !b->m.yoke_exact) sw_yoke_exact(&b->m);
 }
 
+/* --- the dogfight's best pilots --------------------------------------------- */
+
+/* Its own table (not the arcade game's three in the NOVRAM): save/dogfight.hi,
+ * a line each: initials, score, wave. */
+static void df_scores_path(char *buf, size_t size)
+{
+    snprintf(buf, size, "%s/dogfight.hi", vp_save_dir());
+}
+
+static void df_scores_load(sw_df_scores *s)
+{
+    char path[1024], line[128];
+    sw_dogfight_scores_default(s);
+    df_scores_path(path, sizeof path);
+    FILE *f = fopen(path, "r");
+    if (!f) return;
+    for (int i = 0; i < SW_DF_TABLE && fgets(line, sizeof line, f); i++) {
+        char name[8] = "";
+        long score = 0;
+        int wave = 0;
+        if (sscanf(line, "%3[^,],%ld,%d", name, &score, &wave) != 3) break;
+        memset(s->name[i], 0, sizeof s->name[i]);
+        memcpy(s->name[i], name, strlen(name) > 3 ? 3 : strlen(name));
+        s->score[i] = score;
+        s->wave[i] = wave;
+    }
+    fclose(f);
+}
+
+static void df_scores_save(const sw_df_scores *s)
+{
+    char path[1024];
+    df_scores_path(path, sizeof path);
+    FILE *f = fopen(path, "w");
+    if (!f) {
+        fprintf(stderr, "swenhanced: cannot write %s\n", path);
+        return;
+    }
+    for (int i = 0; i < SW_DF_TABLE; i++) fprintf(f, "%.3s,%ld,%d\n", s->name[i], s->score[i], s->wave[i]);
+    fclose(f);
+}
+
 /* --- the NOVRAM's file --------------------------------------------------------- */
 
 /* Options, accounting, the three best scores and the yoke's learned range
@@ -494,8 +536,15 @@ int main(int argc, char **argv)
         /* The dogfight: chosen as a fourth Death Star, by firing at it; flown
          * with the yoke, the thumb buttons faster and slower. */
         if (brd.native && !brd.df.active && !menu.open && sw_dogfight_chosen(&brd.m) &&
-            (vp_input_pressed(app.in, "p1_button1") || vp_input_pressed(app.in, "p1_button4") || vp_input_pressed(app.in, "start1")))
+            (vp_input_pressed(app.in, "p1_button1") || vp_input_pressed(app.in, "p1_button4") || vp_input_pressed(app.in, "start1"))) {
+            static sw_df_scores df_scores;
+            static int df_scores_loaded;
+            if (!df_scores_loaded) { df_scores_load(&df_scores); df_scores_loaded = 1; }
+            brd.df.scores = &df_scores;
             sw_dogfight_start(&brd.df, &brd.m, 1);
+            sw_dogfight_howto(&brd.df);         /* (first how it is flown) */
+            brd.df.fire_held = 1;               /* (the pull that chose it does not end that page) */
+        }
         if (brd.df.active) {
             /* the yoke itself when there is one (each of its buttons on its
              * own, its whole travel), else the controls as the game has them */
@@ -520,10 +569,16 @@ int main(int argc, char **argv)
                 int r = sw_dogfight_sound(&brd.df);
                 if (r >= 0) { brd.m.sound_out = (uint8_t)r; brd.m.sound_out_full = 1; }
             }
+            if (brd.df.scores && brd.df.scores->dirty) {
+                brd.df.scores->dirty = 0;
+                df_scores_save(brd.df.scores);
+            }
             if (brd.df.finished) {
-                /* over: back to the attract mode, the board's sound stopped */
+                /* Over: the board's sound stopped, and the game ends as its
+                 * own games end (PHIEGM: "Remember...", the accounting, Ben's
+                 * theme, the attract mode). */
                 brd.df.active = 0;
-                brd.m.ram[SW_PHASE - 0x4800] = SW_PHSBNR;
+                brd.m.ram[SW_PHASE - 0x4800] = SW_PHSEGM;
                 brd.m.sound_out = 0;
                 brd.m.sound_out_full = 1;
             }
@@ -603,6 +658,11 @@ int main(int argc, char **argv)
         } else {
             sw_sched_advance(&sched, dt, roms_ok ? &hooks : NULL);
         }
+        /* With the attract mode's sound off (the operator's option MUSIC IN
+         * ATTRACT: NO, the game's "sick and tired of the music"), a demo
+         * flight, a game the program plays itself in the attract mode, is
+         * quiet as well: its shots, music and voices are not heard. */
+        if (brd.snd) brd.snd->volume = roms_ok && brd.demo.active && sw_option_get(&brd.m, 7, NULL) == 1 ? 0.0f : 1.0f;
         if (brd.snd) sw_audio_balance(brd.snd);
         /* (a demo flight keeps nothing: the machine is put back after it) */
         if (brd.m.nv_stores != nv_saved && !brd.demo.active) {      /* the program stored its NOVRAM */
