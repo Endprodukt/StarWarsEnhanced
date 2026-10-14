@@ -6,6 +6,7 @@
 #include "game/game.h"
 
 #include <math.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -1008,6 +1009,67 @@ static void number(char *s, long v)
     s[n] = 0;
 }
 
+/* The Death Star in the colors of the films rather than the arcade
+ * machine's green: its plates grey (dimmed white), its trench bright, its
+ * dish grey with the spokes of the superlaser green; and lit by a sun that
+ * stands still in space: the side towards it bright, the other dark, with
+ * a soft line between (from where each line lies on the sphere as seen). */
+static const double SUN[3] = { 0.1, -0.8, 0.5 };    /* (from the left and above, as one first sees it) */
+
+static void death_star_colors(sw_dogfight *d, float cx, float cy, float r)
+{
+    double sun[3] = { SUN[0], SUN[1], SUN[2] };
+    norm(sun);
+    /* the sun as the ship sees it: to the right, up, towards the ship */
+    double sv[3] = { dot(sun, d->r), dot(sun, d->u), -dot(sun, d->f) };
+    /* the dish: where its red spokes meet */
+    double dx = 0.0, dy = 0.0;
+    int nd = 0;
+    for (int i = 0; i < d->list.count; i++) {
+        const sw_line *l = &d->list.lines[i];
+        if (SW_TAG_SECTION((unsigned)(l->id >> 48)) != SW_TAG_DSTAR || l->color != RED) continue;
+        dx += l->x0 + l->x1;
+        dy += l->y0 + l->y1;
+        nd += 2;
+    }
+    if (nd) { dx /= nd; dy /= nd; }
+    double dish_r = 0.0;
+    for (int i = 0; i < d->list.count; i++) {
+        const sw_line *l = &d->list.lines[i];
+        if (SW_TAG_SECTION((unsigned)(l->id >> 48)) != SW_TAG_DSTAR || l->color != RED) continue;
+        double e0 = hypot(l->x0 - dx, l->y0 - dy), e1 = hypot(l->x1 - dx, l->y1 - dy);
+        if (e0 > dish_r) dish_r = e0;
+        if (e1 > dish_r) dish_r = e1;
+    }
+    for (int i = 0; i < d->list.count; i++) {
+        sw_line *l = &d->list.lines[i];
+        if (SW_TAG_SECTION((unsigned)(l->id >> 48)) != SW_TAG_DSTAR) continue;
+        /* how lit it is where it lies */
+        double mx = (l->x0 + l->x1) * 0.5 - cx, my = (l->y0 + l->y1) * 0.5 - cy;
+        double rx = mx / r, ry = my / r, rr = rx * rx + ry * ry;
+        double n[3] = { rx, ry, rr < 1.0 ? sqrt(1.0 - rr) : 0.0 };
+        double lit = n[0] * sv[0] + n[1] * sv[1] + n[2] * sv[2];
+        double k = lit < -0.25 ? 0.18 : lit > 0.35 ? 1.0 : 0.18 + 0.82 * (lit + 0.25) / 0.6;
+        double base;
+        unsigned c = WHT;
+        if (l->color == RED) {
+            /* the dish: its spokes green where they meet, its rim grey and bright */
+            /* (a spoke runs from the middle out: long; the rim is made of short pieces) */
+            int spoke = dish_r > 0.0 && hypot(l->x1 - l->x0, l->y1 - l->y0) > dish_r * 0.55;
+            c = spoke ? GRN : WHT;
+            base = spoke ? 170.0 : 150.0;
+            if (spoke && k < 0.55) k = 0.55;    /* (the superlaser glows, lit or not) */
+        } else if (l->color == WHT) {
+            base = 210.0;                       /* the trench */
+            if (k < 0.4) k = 0.4;
+        } else {
+            base = 135.0;                       /* the plates and the outline */
+        }
+        l->color = (uint8_t)c;
+        l->intensity = (uint8_t)(base * k > 255.0 ? 255.0 : base * k);
+    }
+}
+
 int sw_dogfight_lines(sw_dogfight *d, const sw_machine *m, const sw_line **out)
 {
     d->at = 0;
@@ -1195,6 +1257,7 @@ int sw_dogfight_lines(sw_dogfight *d, const sw_machine *m, const sw_line **out)
         if (x1 > x0) {
             float cx = (x0 + x1) * 0.5f, cy = (y0 + y1) * 0.5f;
             float r = ((x1 - x0) > (y1 - y0) ? (x1 - x0) : (y1 - y0)) * 0.5f;
+            death_star_colors(d, cx, cy, r);
             int k = 0;
             for (int i = 0; i < d->list.count; i++) {
                 const sw_line *l = &d->list.lines[i];
