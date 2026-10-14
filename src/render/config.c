@@ -67,7 +67,7 @@ static int set(sw_display_cfg *c, const char *key, const char *val)
         { "enh_surface", &c->enh_surface }, { "enh_stars", &c->enh_stars },
         { "enh_towers", &c->enh_towers }, { "enh_dogfights", &c->enh_dogfights },
         { "enh_clip", &c->enh_clip }, { "enh_falcon", &c->enh_falcon }, { "enh_camera", &c->enh_camera },
-        { "enh_cockpit", &c->enh_cockpit },
+        { "enh_view", &c->enh_view },
         { "logo_yellow", &c->logo_yellow }, { "sound_replace", &c->sound_replace },
     };
     if (strcmp(key, "sort_strokes") == 0) return 0;     /* (gone: settings files from before may still have it) */
@@ -158,9 +158,10 @@ int sw_display_cfg_save(const sw_display_cfg *c, const char *path)
     fprintf(f, "\n; enhanced: the camera's turns towards the enemy it tracks gather speed and slow\n"
                "; down (0: at full rate from the first frame, as the arcade machine)\n"
                "enh_camera = %d\n", c->enh_camera);
-    fprintf(f, "\n; enhanced: seen from inside the cockpit, its frame and instrument panel in place\n"
-               "; of the X-wing's nose and guns (0: as the arcade machine)\n"
-               "enh_cockpit = %d\n", c->enh_cockpit);
+    fprintf(f, "\n; enhanced: from where the player sees in flight: 0 as the arcade machine (the\n"
+               "; X-wing's nose and guns), 1 from inside the cockpit, 2 from behind the X-wing\n"
+               "; (the start button steps through them in play)\n"
+               "enh_view = %d\n", c->enh_view);
     fprintf(f, "\n; enhanced: the STAR WARS logo yellow (0: blue, as the arcade machine)\n"
                "logo_yellow = %d\n", c->logo_yellow);
     fprintf(f, "\n; enhanced: play sounds/NAME.wav in place of the sound NAME where there is such a file\n"

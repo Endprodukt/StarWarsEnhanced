@@ -26,9 +26,12 @@
  *   falcon     shortly before the exhaust port the Millennium Falcon comes
  *              over the player from behind and flies on down the trench
  * Wherever the X-wing's nose and guns are drawn:
- *   cockpit    the view from inside the cockpit instead: the canopy's
- *              frame and the instrument panel, what is behind them hidden
- *              (the lasers come out from behind the panel); off by default
+ *   view       from where the player sees: the arcade machine's view; from
+ *              inside the cockpit (the canopy's frame and the instrument
+ *              panel, what is behind them hidden, the lasers coming out
+ *              from behind the panel); or from behind the X-wing, which
+ *              banks and turns with the yoke, its lasers fired from the
+ *              tips of its wings
  * And in the attract mode:
  *   logo       the STAR WARS logo is yellow, as in the films (the arcade
  *              machine has it blue)
@@ -45,6 +48,14 @@
 #include "core/machine.h"
 #include "render/solid.h"
 
+/* From where the player sees in flight: as the arcade machine (the
+ * X-wing's nose and guns), from inside its cockpit, or from behind it. */
+enum { SW_VIEW_ARCADE, SW_VIEW_COCKPIT, SW_VIEW_OUTSIDE, SW_VIEWS };
+
+/* Shapes on the screen that may hide what is behind them (the cockpit's,
+ * the faces of the X-wing seen from outside). */
+#define SW_ENHANCE_HIDE 128
+
 /* Stars of the sky (many: over the trench only a strip of it shows). */
 #define SW_ENHANCE_STARS 420
 
@@ -53,12 +64,15 @@ typedef struct sw_enhance {
     int logo;                                   /* 1: the STAR WARS logo yellow */
     int clip;                                   /* 1: what stands in the trench is cut at the edge of the screen */
     int falcon;                                 /* 1: the Millennium Falcon flies over before the exhaust port */
-    int cockpit;                                /* 1: seen from inside the cockpit, not the nose and guns */
+    int view;                                   /* SW_VIEW_...: from where the player sees */
+    int plane_seen;                             /* the last picture had the X-wing's nose and guns (in flight) */
 
     sw_line *out;
     int      n, cap;
     sw_line *cock;                              /* (the lines with what the cockpit hides cut out) */
     int      cap_cock;
+    float    hide_p[SW_ENHANCE_HIDE][6][2];     /* shapes on the screen that hide what is behind them */
+    int      hide_n[SW_ENHANCE_HIDE], n_hide;
     sw_solid_extra *faces;                      /* of the towers: for render/solid.h */
     int      n_faces, cap_faces;
     uint16_t inst;                              /* things drawn so far in this picture */

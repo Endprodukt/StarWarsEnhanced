@@ -2,6 +2,7 @@
 #include "platform/menu.h"
 
 #include "game/game.h"
+#include "render/enhance.h"
 #include "sound/samples.h"
 
 #include <math.h>
@@ -140,7 +141,7 @@ int sw_menu_update(sw_menu *u, sw_display_cfg *cfg, sw_machine *m, vp_input *in,
     case L_STARS:         return toggle(&cfg->enh_stars);
     case L_CLIP:          return toggle(&cfg->enh_clip);
     case L_FALCON:        return toggle(&cfg->enh_falcon);
-    case L_COCKPIT:       return toggle(&cfg->enh_cockpit);
+    case L_COCKPIT:       cfg->enh_view = step(cfg->enh_view % SW_VIEWS, d, 0, SW_VIEWS - 1); return SW_MENU_CHANGED;
     case L_CAMERA:        return toggle(&cfg->enh_camera);
     case L_SAMPLES:       return toggle(&cfg->sound_replace);
     case L_SOUND_TEST:
@@ -162,6 +163,7 @@ static void describe(int line, const sw_menu *u, const sw_display_cfg *cfg, cons
                      const char **label, char *value, size_t size)
 {
     static const char *const STEADY[] = { "AS THE ARCADE", "FIXED PER PHASE", "ALWAYS 20" };
+    static const char *const VIEW[SW_VIEWS] = { "ARCADE", "COCKPIT", "OUTSIDE" };
     value[0] = '\0';
     if (line >= L_OPT0 && line < L_OPT_END) {
         int i = line - L_OPT0, max;
@@ -184,7 +186,7 @@ static void describe(int line, const sw_menu *u, const sw_display_cfg *cfg, cons
     case L_DOGFIGHTS:     *label = "DISTANT DOGFIGHTS"; snprintf(value, size, "%s", on_off(cfg->enh_dogfights)); break;
     case L_STARS:         *label = "STARS";             snprintf(value, size, "%s", on_off(cfg->enh_stars)); break;
     case L_CLIP:          *label = "TRENCH CLIPPING";   snprintf(value, size, "%s", on_off(cfg->enh_clip)); break;
-    case L_COCKPIT:       *label = "COCKPIT VIEW";      snprintf(value, size, "%s", on_off(cfg->enh_cockpit)); break;
+    case L_COCKPIT:       *label = "VIEW";              snprintf(value, size, "%s", VIEW[cfg->enh_view % SW_VIEWS]); break;
     case L_FALCON:        *label = "FALCON FLY-OVER";   snprintf(value, size, "%s", on_off(cfg->enh_falcon)); break;
     case L_CAMERA:        *label = "SMOOTH CAMERA";     snprintf(value, size, "%s", on_off(cfg->enh_camera)); break;
     case L_SAMPLES:       *label = "REPLACED SOUNDS";   snprintf(value, size, "%s", on_off(cfg->sound_replace)); break;

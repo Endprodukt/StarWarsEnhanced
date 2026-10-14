@@ -337,11 +337,38 @@ wiederholt sich alle 8000h, jedes Gebäude wird auf dieser und der nächsten
 Runde betrachtet. Standbilder: am Start der Oberfläche nichts neben dem
 Spieler, am Horizont die kleinen dunklen Türme.
 
+## Außenansicht, Umschalten mit Start (2026-10-14)
+
+Die Cockpit-Option ist eine von drei Ansichten geworden: `enh_view` 0
+(Arcade, Standard), 1 (Cockpit), 2 (Außen); Testmenü Graphics "View". Im
+Flug (wenn das Spiel Nase und Kanonen zeichnet, `plane_seen`) schaltet die
+Start-Taste weiter und feuert dort nicht (`start_fires` in
+`platform/controls.c`); sonst, im Attract, startet sie wie bisher das Spiel.
+Die Wahl wird sofort in die Einstellungsdatei geschrieben.
+
+Außen (`outside` in `render/enhance.c`): ein eigenes X-Wing-Modell
+(`xwing_build`, ~200 Linien, ~70 Flächen: Rumpf, spitz zulaufende Nase mit
+rotem Band, Kanzel, R2-Kuppel, vier Flügel in X-Stellung mit roten
+Streifen, vier sechseckige Triebwerke mit rotem Glühen hinten, Kanonen mit
+Läufen an den Flügelspitzen) fliegt 1000 vor der Kamera, unten im Bild. Es
+legt sich mit der Lage des Fadenkreuzes in die Kurve (bis 31 Grad) und
+dreht leicht mit (bis 13 Grad Gier, 7 Grad Nicken); die Welt bleibt die
+Sicht des Spiels (eine Verfolgerkamera knapp hinter dem Schiff). Die Laser
+des Spiels werden so verschoben, dass sie an den vier Kanonenspitzen
+beginnen und am selben Ziel enden (Fadenkreuz oder Treffer), ihre Farben
+und Teilstücke bleiben. Was hinter dem Schiff liegt, wird an dessen
+projizierten Flächen abgeschnitten (gemeinsam mit dem Cockpit: `hide`),
+Rückseiten des Modells über die Normalen weggelassen. Die Zeichenhilfe des
+Falcon ist dafür zu einem allgemeinen Modell geworden (`model`,
+`model_draw`, `msolid`). Bekannt: Teile des Modells verdecken einander
+nicht (nur jede konvexe Form ihre eigene Rückseite), Treffer bleiben die
+des Spiels (wie in der Arcade-Sicht). Am Gerät nicht gesehen.
+
 ## Cockpit-Ansicht (2026-10-14)
 
 Wunsch des Besitzers nach einer Vorlage aus dem Film: Ego-Perspektive aus
-dem Cockpit statt Nase und Kanonen des X-Wings. `enh_cockpit` (Testmenü
-"Cockpit View", Standard aus), in `render/enhance.c` (`cockpit`): Wo das
+dem Cockpit statt Nase und Kanonen des X-Wings, heute `enh_view = 1` (Testmenü
+"View", siehe oben), in `render/enhance.c` (`cockpit`): Wo das
 Spiel Nase und Kanonen zeichnet (SW_TAG_PLANE), fallen deren Linien weg, und
 im Bildraum steht ein Cockpit: zwei Kanzelstreben von den oberen Ecken
 (unter Score und Wave, die frei bleiben) zur Brüstung, ein flaches
@@ -376,7 +403,7 @@ sobald das Menü neu startet (nach dem Verlassen des Spiels). Nicht geprüft
 am Gerät, auch nicht, ob der längere Titel des Testmenüs (jetzt Größe 90
 statt 110) in die Breite passt.
 
-Marquee erneuert (zweites Artwork des Besitzers, ohne die Streifen unten; auf die volle Breite 1920 gezogen, 17 % breiter als das Original), Version 0.2.1. **Noch nicht auf dem Automaten**, der war aus: beim nächsten Mal `sh tools/deploy.sh` und die neueste `dist/swenhanced-<version>.vpk` (jetzt 0.2.2, mit der Cockpit-Ansicht) nach `/persistent/games/packages/` (dort liegt noch 0.2.0).
+Marquee erneuert (zweites Artwork des Besitzers, ohne die Streifen unten; auf die volle Breite 1920 gezogen, 17 % breiter als das Original), Version 0.2.1. **Noch nicht auf dem Automaten**, der war aus: beim nächsten Mal `sh tools/deploy.sh` und die neueste `dist/swenhanced-<version>.vpk` (jetzt 0.2.3, mit Cockpit- und Außenansicht) nach `/persistent/games/packages/` (dort liegt noch 0.2.0).
 
 Paketdatei: `sh tools/pack.sh` (in WSL, nach dem Pi-Build) schreibt
 `dist/swenhanced-<version>.vpk` mit dem `vp-pack` des SDK (dessen Skript und

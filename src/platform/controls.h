@@ -34,6 +34,7 @@ typedef struct sw_controls {
     int     centered, still_frames;
     float   center_x, center_y, still_x, still_y;
     int     self_test;         /* the self-test switch is on (set by the program, from its menu) */
+    int     start_fires;       /* start is a fire button (to start a game); 0 in flight, where it changes the view */
 } sw_controls;
 
 void sw_controls_init(sw_controls *c, vp_input *in);

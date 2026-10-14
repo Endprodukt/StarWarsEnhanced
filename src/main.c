@@ -294,7 +294,7 @@ static void apply_enhanced(board *b, const sw_display_cfg *cfg)
     b->pic.enhance.logo = on && cfg->logo_yellow;
     b->pic.enhance.clip = on && cfg->enh_clip;
     b->pic.enhance.falcon = on && cfg->enh_falcon;
-    b->pic.enhance.cockpit = on && cfg->enh_cockpit;
+    b->pic.enhance.view = on ? cfg->enh_view % SW_VIEWS : SW_VIEW_ARCADE;
     b->m.camera_ease = (uint8_t)(on && cfg->enh_camera);
     if (b->snd && b->snd->samples) b->snd->samples->enabled = on && cfg->sound_replace;
     /* the yoke: its rest as its middle, and passed through exactly (the
@@ -443,7 +443,16 @@ int main(int argc, char **argv)
     while (sw_app_poll(&app, &dt)) {
         /* (the yoke's rest is learned while nobody plays: in the attract mode) */
         brd.ctl.learn = RAM8(&brd.m, SW_PHASE) >= SW_PHSBNR && RAM8(&brd.m, SW_PHASE) <= SW_PHSHIS + 1;
+        /* In flight (the X-wing's nose and guns in the picture) the start
+         * button steps through the views; else it fires, to start a game. */
+        int in_flight = brd.native && brd.pic.enhance.plane_seen && !menu.open;
+        brd.ctl.start_fires = !in_flight;
         sw_controls_read(&brd.ctl, app.in);
+        if (in_flight && vp_input_pressed(app.in, "start1")) {
+            cfg.enh_view = (cfg.enh_view % SW_VIEWS + 1) % SW_VIEWS;
+            apply_enhanced(&brd, &cfg);
+            if (sw_display_cfg_save(&cfg, cfg_path) != 0) fprintf(stderr, "swenhanced: cannot write %s\n", cfg_path);
+        }
         /* Where the yoke rests is kept for the next start as soon as it is
          * known, or has moved (a cabinet is switched off, not shut down). */
         if (brd.ctl.autocenter && brd.ctl.centered &&

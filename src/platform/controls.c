@@ -11,6 +11,7 @@ void sw_controls_init(sw_controls *c, vp_input *in)
     c->deadzone = 0.02f;
     c->in0 = c->in1 = 0xff;
     c->adc_x = c->adc_y = 0x80;
+    c->start_fires = 1;
     if (in) vp_input_set_deadzone(in, c->deadzone);
 }
 
@@ -39,7 +40,7 @@ static float recenter(float v, float center)
 void sw_controls_read(sw_controls *c, vp_input *in)
 {
     uint8_t in0 = 0xff, in1 = 0xff;
-    if (vp_input_held(in, "p1_button1") || vp_input_held(in, "start1")) in0 &= (uint8_t)~SW_IN0_LFIRE;
+    if (vp_input_held(in, "p1_button1") || (c->start_fires && vp_input_held(in, "start1"))) in0 &= (uint8_t)~SW_IN0_LFIRE;
     if (vp_input_held(in, "p1_button4") || vp_input_held(in, "start2")) in0 &= (uint8_t)~SW_IN0_RFIRE;
     if (vp_input_held(in, "p1_button2")) in1 &= (uint8_t)~SW_IN1_LTHUMB;
     if (vp_input_held(in, "p1_button3")) in1 &= (uint8_t)~SW_IN1_RTHUMB;

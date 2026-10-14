@@ -553,18 +553,19 @@ typedef struct mline { float a[3], b[3], n[2][3]; uint8_t nn, color; } mline;
 /* A face of the model, for what is behind the ship not to show. */
 typedef struct mface { float p[6][3]; uint8_t n; } mface;
 
-#define FALCON_LINES 240
-#define FALCON_FACES 64
-static mline falcon_model[FALCON_LINES];
-static mface falcon_faces[FALCON_FACES];
-static int   falcon_lines, falcon_nfaces;
+/* A model: its lines and faces. The ships made here are built into one
+ * at a time (`building`). */
+#define MODEL_LINES 240
+#define MODEL_FACES 96
+typedef struct model { mline line[MODEL_LINES]; mface face[MODEL_FACES]; int lines, faces; } model;
+static model falcon, xwing, *building;
 
 static void set3(float *o, vec v) { o[0] = (float)v.x; o[1] = (float)v.y; o[2] = (float)v.z; }
 
 static void mline_add(vec a, vec b, vec n1, vec n2, int nn, unsigned color)
 {
-    if (falcon_lines == FALCON_LINES) return;
-    mline *l = &falcon_model[falcon_lines++];
+    if (building->lines == MODEL_LINES) return;
+    mline *l = &building->line[building->lines++];
     set3(l->a, a);
     set3(l->b, b);
     set3(l->n[0], n1);
@@ -575,8 +576,8 @@ static void mline_add(vec a, vec b, vec n1, vec n2, int nn, unsigned color)
 
 static void mface_add(const vec *p, int n)
 {
-    if (falcon_nfaces == FALCON_FACES || n > 6) return;
-    mface *f = &falcon_faces[falcon_nfaces++];
+    if (building->faces == MODEL_FACES || n > 6) return;
+    mface *f = &building->face[building->faces++];
     for (int i = 0; i < n; i++) set3(f->p[i], p[i]);
     f->n = (uint8_t)n;
 }
@@ -742,13 +743,19 @@ static void falcon_build(void)
     }
 }
 
-/* The ship at `at` (from the player, not turned with him, in V), looking
- * along f with its left to l and its up to u, its hull's radius `size`. */
-static void falcon_draw(sw_enhance *e, vec at, vec f, vec l, vec u, double size, float lum)
+/* A ship at `at` from the player, looking along f with its left to l and
+ * its up to u, its own units times `size`: in the world's axes (world 1,
+ * turned as the player is), or in the view's own (world 0: x ahead, y to
+ * the right on the screen, z up). With `hide`, the faces also go where
+ * what is behind them is cut away by the enhancement itself (hide()). */
+static void hide_face(sw_enhance *e, const vec *c, int n);
+static void hide(sw_enhance *e, int lasers);
+static void model_draw(sw_enhance *e, const model *md, vec at, vec f, vec l, vec u, double size, float lum,
+                       int world, int hide)
 {
     if (++e->inst == 0) e->inst = 0x8000;
-    for (int i = 0; i < falcon_lines; i++) {
-        const mline *ml = &falcon_model[i];
+    for (int i = 0; i < md->lines; i++) {
+        const mline *ml = &md->line[i];
         vec p[2];
         for (int k = 0; k < 2; k++) {
             const float *q = k ? ml->b : ml->a;
@@ -764,15 +771,19 @@ static void falcon_draw(sw_enhance *e, vec at, vec f, vec l, vec u, double size,
             }
             if (!seen) continue;
         }
-        float lm = ml->color == BLU ? lum * 1.2f : ml->color == TRQ ? lum * 0.9f : lum;
-        line(e, turn(e, p[0]), turn(e, p[1]), ml->color, lm, SW_TAG_OBJECT);
+        float lm = ml->color == BLU ? lum * 1.2f : ml->color == TRQ ? lum * 0.9f : ml->color == RED ? lum * 0.85f : lum;
+        if (world) line(e, turn(e, p[0]), turn(e, p[1]), ml->color, lm, SW_TAG_OBJECT);
+        else line(e, p[0], p[1], ml->color, lm, hide ? SW_TAG_NONE : SW_TAG_OBJECT);
     }
-    for (int i = 0; i < falcon_nfaces; i++) {
-        const mface *mf = &falcon_faces[i];
+    for (int i = 0; i < md->faces; i++) {
+        const mface *mf = &md->face[i];
         vec c[6];
-        for (int k = 0; k < mf->n; k++)
-            c[k] = turn(e, add(at, add(scaled(f, mf->p[k][0] * size), add(scaled(l, mf->p[k][1] * size), scaled(u, mf->p[k][2] * size)))));
-        face_n(e, c, mf->n);
+        for (int k = 0; k < mf->n; k++) {
+            c[k] = add(at, add(scaled(f, mf->p[k][0] * size), add(scaled(l, mf->p[k][1] * size), scaled(u, mf->p[k][2] * size))));
+            if (world) c[k] = turn(e, c[k]);
+        }
+        if (hide) hide_face(e, c, mf->n);
+        else face_n(e, c, mf->n);
     }
 }
 
@@ -839,7 +850,227 @@ static void falcon_fly(sw_enhance *e, const sw_machine *m, double now)
     float lum = 230.0f;
     if (t < 0.25) lum *= (float)(t / 0.25);
     if (t > RUN - 0.5) lum *= (float)((RUN - t) / 0.5);
-    falcon_draw(e, at, f, lb, ub, 300.0, lum);
+    model_draw(e, &falcon, at, f, lb, ub, 300.0, lum, 1, 0);
+}
+
+/* --- the X-wing, seen from outside ---------------------------------------------------------- */
+
+/* A face of a solid being built. */
+typedef struct poly { vec p[6]; int n; } poly;
+
+/* A convex solid of faces: each edge once, with the normals of its faces
+ * (outwards, from the solid's middle), and the faces themselves. */
+static void msolid(const poly *f, int nf, unsigned color)
+{
+    vec c = vec3(0.0, 0.0, 0.0);
+    int np = 0;
+    for (int i = 0; i < nf; i++)
+        for (int k = 0; k < f[i].n; k++) { c = add(c, f[i].p[k]); np++; }
+    c = scaled(c, 1.0 / np);
+    vec nrm[16];
+    struct { vec a, b; int f0, f1; } ed[64];
+    int ne = 0;
+    for (int i = 0; i < nf && i < 16; i++) {
+        const vec *p = f[i].p;
+        vec nv = unit(cross(vec3(p[1].x - p[0].x, p[1].y - p[0].y, p[1].z - p[0].z),
+                            vec3(p[2].x - p[0].x, p[2].y - p[0].y, p[2].z - p[0].z)));
+        if (nv.x * (p[0].x - c.x) + nv.y * (p[0].y - c.y) + nv.z * (p[0].z - c.z) < 0.0) nv = scaled(nv, -1.0);
+        nrm[i] = nv;
+        mface_add(p, f[i].n);
+        for (int k = 0; k < f[i].n; k++) {
+            vec a = p[k], b = p[(k + 1) % f[i].n];
+            int found = -1;
+            for (int q = 0; q < ne && found < 0; q++) {
+                double d1 = fabs(ed[q].a.x - b.x) + fabs(ed[q].a.y - b.y) + fabs(ed[q].a.z - b.z);
+                double d2 = fabs(ed[q].b.x - a.x) + fabs(ed[q].b.y - a.y) + fabs(ed[q].b.z - a.z);
+                double d3 = fabs(ed[q].a.x - a.x) + fabs(ed[q].a.y - a.y) + fabs(ed[q].a.z - a.z);
+                double d4 = fabs(ed[q].b.x - b.x) + fabs(ed[q].b.y - b.y) + fabs(ed[q].b.z - b.z);
+                if ((d1 < 1e-6 && d2 < 1e-6) || (d3 < 1e-6 && d4 < 1e-6)) found = q;
+            }
+            if (found >= 0) ed[found].f1 = i;
+            else if (ne < 64) { ed[ne].a = a; ed[ne].b = b; ed[ne].f0 = i; ed[ne].f1 = -1; ne++; }
+        }
+    }
+    for (int q = 0; q < ne; q++)
+        mline_add(ed[q].a, ed[q].b, nrm[ed[q].f0], ed[q].f1 >= 0 ? nrm[ed[q].f1] : nrm[ed[q].f0], ed[q].f1 >= 0 ? 2 : 1, color);
+}
+
+/* A box of a solid's faces. */
+static void mbox_solid(double x0, double x1, double y0, double y1, double z0, double z1, unsigned color)
+{
+    poly f[6] = {
+        { { vec3(x0, y0, z1), vec3(x1, y0, z1), vec3(x1, y1, z1), vec3(x0, y1, z1) }, 4 },
+        { { vec3(x0, y0, z0), vec3(x1, y0, z0), vec3(x1, y1, z0), vec3(x0, y1, z0) }, 4 },
+        { { vec3(x0, y0, z0), vec3(x1, y0, z0), vec3(x1, y0, z1), vec3(x0, y0, z1) }, 4 },
+        { { vec3(x0, y1, z0), vec3(x1, y1, z0), vec3(x1, y1, z1), vec3(x0, y1, z1) }, 4 },
+        { { vec3(x0, y0, z0), vec3(x0, y1, z0), vec3(x0, y1, z1), vec3(x0, y0, z1) }, 4 },
+        { { vec3(x1, y0, z0), vec3(x1, y1, z0), vec3(x1, y1, z1), vec3(x1, y0, z1) }, 4 },
+    };
+    msolid(f, 6, color);
+}
+
+/* The X-wing, in its own units: from its tail at -0.62 to the tip of its
+ * nose at 1, its left to +y, up +z; the tips of its four guns at
+ * XWING_GUN_X, +-XWING_GUN_Y, +-XWING_GUN_Z. */
+#define XWING_GUN_X 0.86
+#define XWING_GUN_Y 0.95
+#define XWING_GUN_Z 0.28
+static void xwing_build(void)
+{
+    const double PI = 3.14159265358979;
+    const vec NONE = { 0, 0, 0 }, UP = { 0, 0, 1 }, BACK = { -1, 0, 0 };
+    const double XT = -0.62, XC = 0.30, XN = 1.0, W = 0.11, H = 0.10, WN = 0.035, HN = 0.03;
+    /* the fuselage, and the nose tapering from it */
+    mbox_solid(XT, XC, -W, W, -H, H, WHT);
+    {
+        poly f[5] = {
+            { { vec3(XC, -W, H), vec3(XC, W, H), vec3(XN, WN, HN), vec3(XN, -WN, HN) }, 4 },
+            { { vec3(XC, -W, -H), vec3(XC, W, -H), vec3(XN, WN, -HN), vec3(XN, -WN, -HN) }, 4 },
+            { { vec3(XC, W, -H), vec3(XC, W, H), vec3(XN, WN, HN), vec3(XN, WN, -HN) }, 4 },
+            { { vec3(XC, -W, -H), vec3(XC, -W, H), vec3(XN, -WN, HN), vec3(XN, -WN, -HN) }, 4 },
+            { { vec3(XN, -WN, -HN), vec3(XN, WN, -HN), vec3(XN, WN, HN), vec3(XN, -WN, HN) }, 4 },
+        };
+        msolid(f, 5, WHT);
+        /* the red band round the nose */
+        double xb = 0.62, kb = (xb - XC) / (XN - XC), wb = W + (WN - W) * kb, hb = H + (HN - H) * kb;
+        mline_add(vec3(xb, -wb, hb), vec3(xb, wb, hb), UP, UP, 1, RED);
+        mline_add(vec3(xb, wb, -hb), vec3(xb, wb, hb), vec3(0, 1, 0), vec3(0, 1, 0), 1, RED);
+        mline_add(vec3(xb, -wb, -hb), vec3(xb, -wb, hb), vec3(0, -1, 0), vec3(0, -1, 0), 1, RED);
+    }
+    /* the canopy, glass */
+    {
+        const double C0 = 0.0, C1 = 0.32, CW = 0.08, T0 = 0.04, T1 = 0.18, TW = 0.06, CH = 0.07;
+        poly f[5] = {
+            { { vec3(T0, -TW, H + CH), vec3(T1, -TW, H + CH), vec3(T1, TW, H + CH), vec3(T0, TW, H + CH) }, 4 },
+            { { vec3(C1, -CW, H), vec3(C1, CW, H), vec3(T1, TW, H + CH), vec3(T1, -TW, H + CH) }, 4 },
+            { { vec3(C0, -CW, H), vec3(C0, CW, H), vec3(T0, TW, H + CH), vec3(T0, -TW, H + CH) }, 4 },
+            { { vec3(C0, -CW, H), vec3(C1, -CW, H), vec3(T1, -TW, H + CH), vec3(T0, -TW, H + CH) }, 4 },
+            { { vec3(C0, CW, H), vec3(C1, CW, H), vec3(T1, TW, H + CH), vec3(T0, TW, H + CH) }, 4 },
+        };
+        msolid(f, 5, TRQ);
+    }
+    /* the astromech behind it: a dome */
+    for (int i = 0; i < 8; i++) {
+        double a = i * PI / 4.0, b = a + PI / 4.0;
+        mline_add(vec3(-0.14 + 0.05 * cos(a), 0.05 * sin(a), H + 0.01), vec3(-0.14 + 0.05 * cos(b), 0.05 * sin(b), H + 0.01), UP, UP, 1, BLU);
+    }
+    /* the four wings, in an X, with red stripes; the engines at their
+     * roots, the guns at their tips */
+    for (int sy = -1; sy <= 1; sy += 2)
+        for (int sz = -1; sz <= 1; sz += 2) {
+            double rz = sz * 0.04, tz = sz * XWING_GUN_Z;
+            vec r0 = vec3(-0.56, sy * W, rz), r1 = vec3(-0.06, sy * W, rz);
+            vec t0 = vec3(-0.52, sy * XWING_GUN_Y, tz), t1 = vec3(-0.30, sy * XWING_GUN_Y, tz);
+            mline_add(r0, t0, NONE, NONE, 0, WHT);
+            mline_add(r1, t1, NONE, NONE, 0, WHT);
+            mline_add(t0, t1, NONE, NONE, 0, WHT);
+            vec q[4] = { r0, r1, t1, t0 };
+            mface_add(q, 4);
+            for (int k = 0; k < 2; k++) {
+                double u0 = 0.30 + 0.08 * k, u1 = u0 + 0.30;
+                vec a = vec3(-0.40 + 0.03 * k, sy * (W + (XWING_GUN_Y - W) * u0), rz + (tz - rz) * u0);
+                vec b = vec3(-0.38 + 0.03 * k, sy * (W + (XWING_GUN_Y - W) * u1), rz + (tz - rz) * u1);
+                mline_add(a, b, NONE, NONE, 0, RED);
+            }
+            /* the engine: a six-sided tube, glowing red at its back */
+            {
+                double cy = sy * 0.19, cz = sz * 0.12, R = 0.075, X0 = -0.68, X1 = -0.12;
+                vec ring0[6], ring1[6];
+                for (int i = 0; i < 6; i++) {
+                    double a = i * PI / 3.0 + PI / 6.0;
+                    ring0[i] = vec3(X0, cy + R * cos(a), cz + R * sin(a));
+                    ring1[i] = vec3(X1, cy + R * 0.85 * cos(a), cz + R * 0.85 * sin(a));
+                }
+                poly f[8];
+                for (int i = 0; i < 6; i++) {
+                    int j = (i + 1) % 6;
+                    f[i].n = 4;
+                    f[i].p[0] = ring0[i]; f[i].p[1] = ring0[j]; f[i].p[2] = ring1[j]; f[i].p[3] = ring1[i];
+                }
+                f[6].n = 6;
+                f[7].n = 6;
+                for (int i = 0; i < 6; i++) { f[6].p[i] = ring0[i]; f[7].p[i] = ring1[i]; }
+                msolid(f, 8, WHT);
+                for (int i = 0; i < 6; i++) {
+                    int j = (i + 1) % 6;
+                    vec a = vec3(X0 - 0.001, cy + (ring0[i].y - cy) * 0.6, cz + (ring0[i].z - cz) * 0.6);
+                    vec b = vec3(X0 - 0.001, cy + (ring0[j].y - cy) * 0.6, cz + (ring0[j].z - cz) * 0.6);
+                    mline_add(a, b, BACK, BACK, 1, RED);
+                }
+            }
+            /* the gun: its housing on the tip, the barrel ahead of it */
+            {
+                double gy = sy * XWING_GUN_Y, gz = tz, G = 0.022;
+                mbox_solid(-0.54, 0.30, gy - G, gy + G, gz - G, gz + G, WHT);
+                mline_add(vec3(0.30, gy, gz), vec3(XWING_GUN_X, gy, gz), NONE, NONE, 0, WHT);
+                mline_add(vec3(0.62, gy - G * 0.7, gz), vec3(0.70, gy - G * 0.7, gz), NONE, NONE, 0, WHT);
+                mline_add(vec3(0.62, gy + G * 0.7, gz), vec3(0.70, gy + G * 0.7, gz), NONE, NONE, 0, WHT);
+            }
+        }
+}
+
+/* Seen from behind the X-wing: it flies ahead of the camera, low, banks
+ * and turns a little with the yoke (where the sight is), and its lasers
+ * leave from the tips of its guns, each to where the game sends it (the
+ * sight, or what it hits). What is behind it is not seen. */
+static void outside(sw_enhance *e, const sw_machine *m)
+{
+    const double D = 1000.0, SIZE = 340.0;
+    double sx = (int8_t)ram8(m, SW_SI_RSX) / 128.0, sy = (int8_t)ram8(m, SW_SI_RSY) / 128.0;
+    double yaw = 0.22 * sx, pitch = 0.12 * sy, roll = 0.55 * sx;
+    /* its axes in the view's: ahead, to the right, up */
+    vec f = vec3(cos(yaw), sin(yaw), 0.0), r = vec3(-sin(yaw), cos(yaw), 0.0), u = vec3(0.0, 0.0, 1.0);
+    vec f2 = add(scaled(f, cos(pitch)), scaled(u, sin(pitch)));
+    u = add(scaled(u, cos(pitch)), scaled(f, -sin(pitch)));
+    f = f2;
+    vec r2 = add(scaled(r, cos(roll)), scaled(u, -sin(roll)));
+    u = add(scaled(u, cos(roll)), scaled(r, sin(roll)));
+    r = r2;
+    vec l = scaled(r, -1.0);
+    vec at = vec3(D, 150.0 * sx, -400.0 + 60.0 * sy);
+
+    /* the lasers from the guns: the beams' keys 0 to 3 are the upper left,
+     * lower left, lower right and upper right gun */
+    float tip[4][2];
+    for (int k = 0; k < 4; k++) {
+        double gy = (k < 2 ? 1.0 : -1.0) * XWING_GUN_Y, gz = (k == 0 || k == 3 ? 1.0 : -1.0) * XWING_GUN_Z;
+        vec p = add(at, add(scaled(f, XWING_GUN_X * SIZE), add(scaled(l, gy * SIZE), scaled(u, gz * SIZE))));
+        tip[k][0] = (float)(PERSPECTIVE * p.y / p.x) * VG_SCALE;
+        tip[k][1] = ((float)(PERSPECTIVE * p.z / p.x) + VG_OFFY) * VG_SCALE;
+    }
+    float from[4][2], to[4][2];
+    int has[4] = { 0, 0, 0, 0 };
+    for (int i = 0; i < e->n; i++) {
+        unsigned tag = (unsigned)(e->out[i].id >> 48);
+        if (SW_TAG_SECTION(tag) != SW_TAG_LASER || (tag & 0x3ff) > 3) continue;
+        int k = (int)(tag & 0x3ff);
+        if (!has[k]) { from[k][0] = e->out[i].x0; from[k][1] = e->out[i].y0; has[k] = 1; }
+        to[k][0] = e->out[i].x1;
+        to[k][1] = e->out[i].y1;
+    }
+    for (int i = 0; i < e->n; i++) {
+        sw_line *ln = &e->out[i];
+        unsigned tag = (unsigned)(ln->id >> 48);
+        if (SW_TAG_SECTION(tag) != SW_TAG_LASER || (tag & 0x3ff) > 3) continue;
+        int k = (int)(tag & 0x3ff);
+        float dx = to[k][0] - from[k][0], dy = to[k][1] - from[k][1], dd = dx * dx + dy * dy;
+        float ox = tip[k][0] - from[k][0], oy = tip[k][1] - from[k][1];
+        for (int end = 0; end < 2; end++) {
+            float *x = end ? &ln->x1 : &ln->x0, *y = end ? &ln->y1 : &ln->y0;
+            float s = dd > 0.0f ? ((*x - from[k][0]) * dx + (*y - from[k][1]) * dy) / dd : 1.0f;
+            if (s < 0.0f) s = 0.0f;
+            if (s > 1.0f) s = 1.0f;
+            *x += ox * (1.0f - s);
+            *y += oy * (1.0f - s);
+        }
+    }
+
+    /* the ship, and what it covers */
+    uint16_t inst = e->inst;
+    e->n_hide = 0;
+    model_draw(e, &xwing, at, f, l, u, SIZE, 170.0f, 0, 1);
+    hide(e, 0);
+    e->inst = inst;
 }
 
 /* --- the cockpit ------------------------------------------------------------------------------ */
@@ -907,10 +1138,24 @@ static void flat_ring(sw_enhance *e, float cx, float cy, float r, unsigned color
     }
 }
 
-/* The game's lines without what the cockpit hides, then the cockpit. */
-static void cockpit(sw_enhance *e)
+/* A face (corners in V) for what is behind it to be cut away by hide(). */
+static void hide_face(sw_enhance *e, const vec *c, int n)
 {
-    /* hidden: all but what is written on the screen and the sight */
+    if (e->n_hide == SW_ENHANCE_HIDE || n < 3 || n > 6) return;
+    for (int i = 0; i < n; i++) if (c[i].x < NEAR) return;
+    for (int i = 0; i < n; i++) {
+        e->hide_p[e->n_hide][i][0] = (float)(PERSPECTIVE * c[i].y / c[i].x) * VG_SCALE;
+        e->hide_p[e->n_hide][i][1] = ((float)(PERSPECTIVE * c[i].z / c[i].x) + VG_OFFY) * VG_SCALE;
+    }
+    e->hide_n[e->n_hide++] = n;
+}
+
+/* The lines so far without what the shapes in e->hide (convex, on the
+ * screen) cover. Not cut: what is written on the screen, the sight, what
+ * the enhancement draws in front (SW_TAG_NONE), and the lasers if
+ * `lasers` is 0. */
+static void hide(sw_enhance *e, int lasers)
+{
     int n = e->n;
     if (e->cap_cock < 2 * n + 16) {
         sw_line *o = (sw_line *)realloc(e->cock, (size_t)(2 * n + 2048) * sizeof *o);
@@ -922,26 +1167,40 @@ static void cockpit(sw_enhance *e)
     for (int i = 0; i < n; i++) {
         const sw_line *l = &e->out[i];
         unsigned sec = SW_TAG_SECTION((unsigned)(l->id >> 48));
-        if (sec == SW_TAG_MESS || sec == SW_TAG_SCORE || sec == SW_TAG_SITE || sec == SW_TAG_COIN || sec == SW_TAG_COUNT) {
-            e->cock[k++] = *l;
+        if (sec == SW_TAG_MESS || sec == SW_TAG_SCORE || sec == SW_TAG_SITE || sec == SW_TAG_COIN ||
+            sec == SW_TAG_COUNT || sec == SW_TAG_NONE || (sec == SW_TAG_LASER && !lasers) || k >= 2 * n + 8) {
+            if (k < e->cap_cock) e->cock[k++] = *l;
             continue;
         }
         /* the pieces of it left, shape by shape (each cuts at most one out) */
-        float piece[8][2] = { { 0.0f, 1.0f } };
+        float piece[16][2] = { { 0.0f, 1.0f } };
         int np = 1;
-        for (int s = 0; s < 3; s++) {
+        float bx0 = l->x0 < l->x1 ? l->x0 : l->x1, bx1 = l->x0 < l->x1 ? l->x1 : l->x0;
+        float by0 = l->y0 < l->y1 ? l->y0 : l->y1, by1 = l->y0 < l->y1 ? l->y1 : l->y0;
+        for (int s = 0; s < e->n_hide; s++) {
+            /* (not near it at all: nothing to do) */
+            float px0 = 1e9f, px1 = -1e9f, py0 = 1e9f, py1 = -1e9f;
+            for (int c = 0; c < e->hide_n[s]; c++) {
+                float x = e->hide_p[s][c][0], y = e->hide_p[s][c][1];
+                if (x < px0) px0 = x;
+                if (x > px1) px1 = x;
+                if (y < py0) py0 = y;
+                if (y > py1) py1 = y;
+            }
+            if (bx1 < px0 || bx0 > px1 || by1 < py0 || by0 > py1) continue;
             int m = np;
             for (int q = 0; q < m; q++) {
                 float a = piece[q][0], b = piece[q][1], t0, t1;
+                if (b <= a) continue;
                 float x0 = l->x0 + (l->x1 - l->x0) * a, y0 = l->y0 + (l->y1 - l->y0) * a;
                 float x1 = l->x0 + (l->x1 - l->x0) * b, y1 = l->y0 + (l->y1 - l->y0) * b;
-                if (!inside_part(COCKPIT[s], COCKPIT_N[s], x0, y0, x1, y1, &t0, &t1)) continue;
+                if (!inside_part((const float (*)[2])e->hide_p[s], e->hide_n[s], x0, y0, x1, y1, &t0, &t1)) continue;
                 float c0 = a + (b - a) * t0, c1 = a + (b - a) * t1;
                 piece[q][1] = c0;                               /* before the shape */
-                if (np < 8) { piece[np][0] = c1; piece[np][1] = b; np++; }    /* after it */
+                if (np < 16) { piece[np][0] = c1; piece[np][1] = b; np++; }   /* after it */
             }
         }
-        for (int q = 0; q < np; q++) {
+        for (int q = 0; q < np && k < e->cap_cock; q++) {
             float a = piece[q][0], b = piece[q][1];
             if (b - a < 1e-4f && !(a == 0.0f && b == 1.0f && l->x0 == l->x1 && l->y0 == l->y1)) continue;
             sw_line c = *l;
@@ -960,6 +1219,22 @@ static void cockpit(sw_enhance *e)
     e->cock = t;
     e->cap_cock = cap;
     e->n = k;
+}
+
+/* The game's lines without what the cockpit hides, then the cockpit. */
+static void cockpit(sw_enhance *e)
+{
+    /* hidden: all but what is written on the screen and the sight */
+    e->n_hide = 0;
+    for (int s = 0; s < 3; s++) {
+        for (int c = 0; c < COCKPIT_N[s]; c++) {
+            e->hide_p[s][c][0] = COCKPIT[s][c][0];
+            e->hide_p[s][c][1] = COCKPIT[s][c][1];
+        }
+        e->hide_n[s] = COCKPIT_N[s];
+    }
+    e->n_hide = 3;
+    hide(e, 1);
 
     /* the cockpit itself */
     uint16_t inst = e->inst;
@@ -1007,7 +1282,8 @@ static void cockpit(sw_enhance *e)
 
 void sw_enhance_init(sw_enhance *e, const sw_machine *m)
 {
-    if (!falcon_lines) falcon_build();
+    if (!falcon.lines) { building = &falcon; falcon_build(); }
+    if (!xwing.lines) { building = &xwing; xwing_build(); }
     /* the stars: the same sky every time, none below the horizon */
     int n = (int)(sizeof e->star / sizeof e->star[0]);
     for (int i = 0; i < n; i++) {
@@ -1064,10 +1340,11 @@ int sw_enhance_run(sw_enhance *e, const sw_machine *m, double now, const sw_line
     int logo = e->logo && phase >= SW_PHSBNR && phase <= SW_PHSHIS + 1;     /* (the attract mode) */
     if (!in_trench) e->falcon_at = 0.0, e->falcon_done = 0;
     /* the cockpit wherever the game shows the X-wing's nose and guns */
-    int cock = 0;
-    for (int i = 0; e->cockpit && i < n && !cock; i++)
-        cock = SW_TAG_SECTION((unsigned)(in[i].id >> 48)) == SW_TAG_PLANE;
-    if (!ground && !logo && !trench && !clip && !falcon && !cock) {
+    int plane = 0;
+    for (int i = 0; i < n && !plane; i++) plane = SW_TAG_SECTION((unsigned)(in[i].id >> 48)) == SW_TAG_PLANE;
+    e->plane_seen = plane;
+    int cock = plane && e->view == SW_VIEW_COCKPIT, outs = plane && e->view == SW_VIEW_OUTSIDE;
+    if (!ground && !logo && !trench && !clip && !falcon && !cock && !outs) {
         *out = in;
         return n;
     }
@@ -1083,7 +1360,7 @@ int sw_enhance_run(sw_enhance *e, const sw_machine *m, double now, const sw_line
     for (int i = 0; i < n; i++) {
         unsigned tag = (unsigned)(in[i].id >> 48);
         if (ground && e->towers && SW_TAG_SECTION(tag) == SW_TAG_OBJECT && (tag & 0x3ff) >= 16) continue;
-        if (cock && SW_TAG_SECTION(tag) == SW_TAG_PLANE) continue;
+        if ((cock || outs) && SW_TAG_SECTION(tag) == SW_TAG_PLANE) continue;
         e->out[e->n] = in[i];
         if (logo && SW_TAG_SECTION(tag) == SW_TAG_BANNER) e->out[e->n].color = YLW;
         if (clip && in[i].d3) {
@@ -1115,6 +1392,7 @@ int sw_enhance_run(sw_enhance *e, const sw_machine *m, double now, const sw_line
     if (ground && e->towers) towers(e, m, now);
     if (ground && e->dogfights && e->tie_ready) dogfights(e, now);
     if (cock) cockpit(e);
+    if (outs) outside(e, m);
     *out = e->out;
     return e->n;
 }
