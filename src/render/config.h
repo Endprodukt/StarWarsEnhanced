@@ -81,6 +81,10 @@ typedef struct sw_display_cfg {
      * nose and guns; 1 from inside its cockpit; 2 from behind it. The
      * start button steps through them in play. */
     int enh_view;
+    /* Enhanced: 1 (the default): in the attract mode, before the high
+     * scores, a demo flight, each part of it from another view
+     * (platform/demo.h). 0: the attract mode as the arcade machine's. */
+    int enh_demo;
     /* Enhanced: 1: the camera's turns (the ship turning towards the enemy
      * it tracks, or the Death Star) gather speed and slow down, in place of
      * the arcade machine's turns at full rate from the first frame. */

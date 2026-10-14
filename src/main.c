@@ -21,6 +21,7 @@
 #include "platform/controls.h"
 #include "platform/app.h"
 #include "platform/audio.h"
+#include "platform/demo.h"
 #include "platform/menu.h"
 #include "render/config.h"
 #include "render/dvgmap.h"
@@ -194,6 +195,7 @@ typedef struct board {
     int         native;                        /* the C routines only: no 6809 at all */
     sw_sndboard *snd;                          /* the sound board (its chips; its program in C too), NULL: none */
     int         original;                      /* --original: the whole original program on the 6809 */
+    sw_demo     demo;                          /* the demo flight of the attract mode */
 } board;
 
 static float vg13(uint16_t v) { return (float)((int16_t)(uint16_t)(v << 3) >> 3); }
@@ -209,6 +211,7 @@ static void on_irq(void *u)
 {
     board *b = (board *)u;
     sw_controls_tick(&b->ctl, &b->m);
+    if (b->native) sw_demo_tick(&b->demo, &b->m);  /* (a demo flight: its own player) */
     b->irqs++;
     sw_picture_irq_begin(&b->pic, (double)b->irqs / SW_IRQ_HZ);
     if (b->controls_test) {
@@ -295,6 +298,7 @@ static void apply_enhanced(board *b, const sw_display_cfg *cfg)
     b->pic.enhance.clip = on && cfg->enh_clip;
     b->pic.enhance.falcon = on && cfg->enh_falcon;
     b->pic.enhance.view = on ? cfg->enh_view % SW_VIEWS : SW_VIEW_ARCADE;
+    b->demo.enabled = on && cfg->enh_demo;
     b->m.camera_ease = (uint8_t)(on && cfg->enh_camera);
     if (b->snd && b->snd->samples) b->snd->samples->enabled = on && cfg->sound_replace;
     /* the yoke: its rest as its middle, and passed through exactly (the
@@ -445,9 +449,17 @@ int main(int argc, char **argv)
         brd.ctl.learn = RAM8(&brd.m, SW_PHASE) >= SW_PHSBNR && RAM8(&brd.m, SW_PHASE) <= SW_PHSHIS + 1;
         /* In flight (the X-wing's nose and guns in the picture) the start
          * button steps through the views; else it fires, to start a game. */
-        int in_flight = brd.native && brd.pic.enhance.plane_seen && !menu.open;
+        int in_flight = brd.native && brd.pic.enhance.plane_seen && !menu.open && !brd.demo.active;
         brd.ctl.start_fires = !in_flight;
         sw_controls_read(&brd.ctl, app.in);
+        /* A coin or a button ends a demo flight: the attract mode is back
+         * at once, and the coin or the button counts there. */
+        if (brd.demo.active) {
+            static const char *const keys[] = { "p1_button1", "p1_button2", "p1_button3", "p1_button4", "p1_button5",
+                                                "start1", "start2", "coin1", "coin2" };
+            for (size_t i = 0; i < sizeof keys / sizeof keys[0]; i++)
+                if (vp_input_pressed(app.in, keys[i])) brd.demo.interrupt = 1;
+        }
         if (in_flight && vp_input_pressed(app.in, "start1")) {
             cfg.enh_view = (cfg.enh_view % SW_VIEWS + 1) % SW_VIEWS;
             apply_enhanced(&brd, &cfg);
@@ -466,18 +478,18 @@ int main(int argc, char **argv)
         /* The self-test button: out of where it led (the arcade program's
          * operator screens, the calibration), else the menu open or shut. */
         int menu_left = 0;
-        /* The Tab key does the same, as it opens the menu in MAME (the
+        /* The F2 key does the same, as the service key of MAME (the
          * VectorPie cabinet has a keyboard, and no self-test button bound:
          * all the buttons of its yoke are the fire button). */
-        static int tab_was;
-        int tab_is = SDL_GetKeyboardState(NULL)[SDL_SCANCODE_TAB] != 0;
-        int tab = tab_is && !tab_was;
-        tab_was = tab_is;
-        if (roms_ok && !calibrate && (vp_input_pressed(app.in, "p1_button6") || tab)) {
+        static int f2_was;
+        int f2_is = SDL_GetKeyboardState(NULL)[SDL_SCANCODE_F2] != 0;
+        int f2 = f2_is && !f2_was;
+        f2_was = f2_is;
+        if (roms_ok && !calibrate && (vp_input_pressed(app.in, "p1_button6") || f2)) {
             if (brd.ctl.self_test) brd.ctl.self_test = 0;
             else if (menu_calibrate) menu_calibrate = 0;
             else if (menu.open) menu_left = 1;
-            else { menu.open = 1; menu.page = 0; }
+            else { sw_demo_stop(&brd.demo, &brd.m); menu.open = 1; menu.page = 0; }
         }
         if (menu.open && !menu_calibrate && !menu_left) {
             switch (sw_menu_update(&menu, &cfg, &brd.m, app.in, app.clock)) {
@@ -518,7 +530,8 @@ int main(int argc, char **argv)
             sw_sched_advance(&sched, dt, roms_ok ? &hooks : NULL);
         }
         if (brd.snd) sw_audio_balance(brd.snd);
-        if (brd.m.nv_stores != nv_saved) {      /* the program stored its NOVRAM */
+        /* (a demo flight keeps nothing: the machine is put back after it) */
+        if (brd.m.nv_stores != nv_saved && !brd.demo.active) {      /* the program stored its NOVRAM */
             nv_saved = brd.m.nv_stores;
             nvram_save(&brd.m);
         }
@@ -527,7 +540,7 @@ int main(int argc, char **argv)
          * kept, as the board's power-fail circuit would at the last moment. */
         static double nv_checked;
         static uint8_t nv_kept[sizeof brd.m.nvram];
-        if (roms_ok && !calibrate && !brd.controls_test && app.clock - nv_checked > 5.0) {
+        if (roms_ok && !calibrate && !brd.controls_test && !brd.demo.active && app.clock - nv_checked > 5.0) {
             nv_checked = app.clock;
             if (brd.irqs > 2000 && memcmp(nv_kept, brd.m.nvram, sizeof nv_kept) != 0) {
                 memcpy(nv_kept, brd.m.nvram, sizeof nv_kept);
@@ -535,6 +548,9 @@ int main(int argc, char **argv)
                 nvram_save(&brd.m);
             }
         }
+        /* the demo's view while it flies, the player's own again after it */
+        if (brd.demo.active) brd.pic.enhance.view = brd.demo.view;
+        if (brd.demo.ended) { brd.demo.ended = 0; apply_enhanced(&brd, &cfg); }
         sw_app_begin_frame(&app);
 
         if (!roms_ok) {
@@ -551,7 +567,7 @@ int main(int argc, char **argv)
             sw_draw_lines(app.dvg, &cfg, cal.lines, cal.count);
             static const char *const modes[] = { "SIZE", "POSITION", "GAMMA FLOOR", "BRIGHTNESS" };
             char line[64];
-            snprintf(line, sizeof line, calibrate ? "%s  B1 MODE  B2 SAVE" : "%s  FIRE MODE  TAB BACK", modes[cal.mode]);
+            snprintf(line, sizeof line, calibrate ? "%s  B1 MODE  B2 SAVE" : "%s  FIRE MODE  F2 BACK", modes[cal.mode]);
             const char *text[] = { line };
             draw_text_lines(app.dvg, text, 1, 700);
         } else if (menu.open) {

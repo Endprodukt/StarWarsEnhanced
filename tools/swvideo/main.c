@@ -11,6 +11,10 @@
  * phase of the game.
  * --wire: wire frames as the arcade machine drew them (no occlusion).
  * --plain: without what the port adds over the surface (render/enhance.h).
+ * --view N: in flight seen as the arcade machine (0), from the cockpit (1)
+ *   or from behind the X-wing (2); --views-every S: each in turn, S seconds.
+ * --demo: the attract mode's demo flight (platform/demo.h); with a long
+ *   --attract, so that no coin of the script ends it.
  * --aim 80,4c: the first game starts on the Death Star in the middle (wave
  * 3, which has the surface).
  * --every N: only every Nth picture is written (stills to look at).
@@ -27,6 +31,7 @@
 #include "core/sched.h"
 #include "core/sw_symbols.h"
 #include "game/game.h"
+#include "platform/demo.h"
 #include "render/picture.h"
 #include "rom/romset.h"
 #include "sound/sndboard.h"
@@ -250,6 +255,10 @@ int main(int argc, char **argv)
     sw_picture_init(&pic, &m);
     pic.occlusion = !arg_flag(argc, argv, "--wire");
     pic.enhance.view = arg(argc, argv, "--view") ? atoi(arg(argc, argv, "--view")) % SW_VIEWS : SW_VIEW_ARCADE;
+    double views_every = arg(argc, argv, "--views-every") ? atof(arg(argc, argv, "--views-every")) : 0.0;
+    static sw_demo demo;
+    demo.enabled = arg_flag(argc, argv, "--demo");
+    int base_view = pic.enhance.view;
     if (!arg_flag(argc, argv, "--plain")) {
         pic.enhance.surface = pic.enhance.stars = pic.enhance.towers = pic.enhance.dogfights = 1;
         pic.enhance.logo = 1;
@@ -294,6 +303,10 @@ int main(int argc, char **argv)
                 in0 = (i % 60 < 20) ? (uint8_t)~SW_IN0_LFIRE : 0xff;
             }
             m.in.in0 = in0;
+            if (demo.enabled) {
+                sw_demo_tick(&demo, &m);            /* (--demo: the attract mode's demo flight) */
+                pic.enhance.view = demo.active ? demo.view : base_view;
+            }
             irqs++;
             sw_picture_irq_begin(&pic, (double)irqs / SW_IRQ_HZ);
             /* --immortal: the shields never run out (to film what comes late in a game) */
@@ -310,6 +323,7 @@ int main(int argc, char **argv)
         }
         const sw_line *lines;
         clock_t t0 = clock();
+        if (views_every > 0.0) pic.enhance.view = (int)(now / views_every) % SW_VIEWS;   /* (--views-every: each view in turn) */
         int count = sw_picture_lines(&pic, now, 3, &lines);
         if (check) {
             unsigned ph = m.ram[SW_PHASE - 0x4800] >> 1;

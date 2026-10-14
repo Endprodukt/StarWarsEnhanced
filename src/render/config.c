@@ -37,6 +37,7 @@ void sw_display_cfg_defaults(sw_display_cfg *c)
     c->enh_clip = 1;
     c->enh_falcon = 1;
     c->enh_camera = 1;
+    c->enh_demo = 1;
     c->sound_replace = 1;
 }
 
@@ -67,7 +68,7 @@ static int set(sw_display_cfg *c, const char *key, const char *val)
         { "enh_surface", &c->enh_surface }, { "enh_stars", &c->enh_stars },
         { "enh_towers", &c->enh_towers }, { "enh_dogfights", &c->enh_dogfights },
         { "enh_clip", &c->enh_clip }, { "enh_falcon", &c->enh_falcon }, { "enh_camera", &c->enh_camera },
-        { "enh_view", &c->enh_view },
+        { "enh_view", &c->enh_view }, { "enh_demo", &c->enh_demo },
         { "logo_yellow", &c->logo_yellow }, { "sound_replace", &c->sound_replace },
     };
     if (strcmp(key, "sort_strokes") == 0) return 0;     /* (gone: settings files from before may still have it) */
@@ -162,6 +163,8 @@ int sw_display_cfg_save(const sw_display_cfg *c, const char *path)
                "; X-wing's nose and guns), 1 from inside the cockpit, 2 from behind the X-wing\n"
                "; (the start button steps through them in play)\n"
                "enh_view = %d\n", c->enh_view);
+    fprintf(f, "\n; enhanced: a demo flight in the attract mode, each part from another view\n"
+               "enh_demo = %d\n", c->enh_demo);
     fprintf(f, "\n; enhanced: the STAR WARS logo yellow (0: blue, as the arcade machine)\n"
                "logo_yellow = %d\n", c->logo_yellow);
     fprintf(f, "\n; enhanced: play sounds/NAME.wav in place of the sound NAME where there is such a file\n"

@@ -337,6 +337,34 @@ wiederholt sich alle 8000h, jedes Gebäude wird auf dieser und der nächsten
 Runde betrachtet. Standbilder: am Start der Oberfläche nichts neben dem
 Spieler, am Horizont die kleinen dunklen Türme.
 
+## Demo-Flug im Attract, Servicemenü auf F2 (2026-10-14)
+
+Der Attract-Modus des Originals hat keine Flugszenen (Highscores, Logo,
+Fluganleitung, Punkteliste). Auf Wunsch des Besitzers gibt es jetzt einen
+Demo-Flug (`enh_demo`, Standard an, Testmenü "Attract Demo";
+`platform/demo.c`): Wenn der Attract von der Punkteliste zu den Highscores
+geht und niemand bezahlt hat (im Free Play immer), wird die ganze Maschine
+beiseitegelegt, ein Credit gegeben, im Takt Feuer gedrückt, bis das Spiel
+läuft, der mittlere Todesstern gewählt, dann fliegt der Autopilot wie das
+Filmskript (Joch pendelt, Feuer im Takt, Schilde laufen nie aus). Jeder
+Abschnitt (Weltraum, Oberfläche, Graben) kommt aus der nächsten Ansicht,
+der nächste Demo beginnt eine Ansicht weiter. Nach 112 s, wenn das Spiel
+endet, oder sobald jemand eine Münze einwirft oder einen Knopf drückt,
+wird die Maschine zurückgelegt: kein Credit, keine Punkte, keine Zählung
+im NOVRAM (das Speichern des NOVRAM ist während des Demos aus), und die
+Münze oder der Knopf zählt danach wie immer. Der Ton der Platine wird beim
+Zurücklegen zurückgesetzt. `tests/test_demo.c`: Demo beginnt, kommt durch
+Weltraum (1 s), Oberfläche (33 s) und Graben (72 s), jeder Teil aus einer
+anderen Ansicht, und die Maschine ist danach wie vorher (RAM, NOVRAM).
+Befund dabei: Ein Feuerdruck im einen Bild, das eine Attract-Seite
+aufbaut, wird vom Original nicht geprüft (STRTCK läuft dort nicht), daher
+drückt der Demo im Takt. Bekannt: Die Betriebszeit-Zähler der Maschine
+laufen während des Demos nicht weiter (sie werden mit zurückgelegt).
+`swvideo --demo` (mit langem `--attract`) filmt ihn.
+
+Das Servicemenü liegt jetzt auf F2 (die Service-Taste von MAME) statt Tab,
+ebenso das Zurück aus Kalibrierung und Operator-Seiten.
+
 ## Außenansicht, Umschalten mit Start (2026-10-14)
 
 Die Cockpit-Option ist eine von drei Ansichten geworden: `enh_view` 0
@@ -403,7 +431,7 @@ sobald das Menü neu startet (nach dem Verlassen des Spiels). Nicht geprüft
 am Gerät, auch nicht, ob der längere Titel des Testmenüs (jetzt Größe 90
 statt 110) in die Breite passt.
 
-Marquee erneuert (zweites Artwork des Besitzers, ohne die Streifen unten; auf die volle Breite 1920 gezogen, 17 % breiter als das Original), Version 0.2.1. **Noch nicht auf dem Automaten**, der war aus: beim nächsten Mal `sh tools/deploy.sh` und die neueste `dist/swenhanced-<version>.vpk` (jetzt 0.2.3, mit Cockpit- und Außenansicht) nach `/persistent/games/packages/` (dort liegt noch 0.2.0).
+Marquee erneuert (zweites Artwork des Besitzers, ohne die Streifen unten; auf die volle Breite 1920 gezogen, 17 % breiter als das Original), Version 0.2.1. **Noch nicht auf dem Automaten**, der war aus: beim nächsten Mal `sh tools/deploy.sh` und die neueste `dist/swenhanced-<version>.vpk` (jetzt 0.2.4, mit den drei Ansichten, dem Demo-Flug und F2) nach `/persistent/games/packages/` (dort liegt noch 0.2.0).
 
 Paketdatei: `sh tools/pack.sh` (in WSL, nach dem Pi-Build) schreibt
 `dist/swenhanced-<version>.vpk` mit dem `vp-pack` des SDK (dessen Skript und

@@ -157,20 +157,20 @@ Belegung über die `advmame.rc` des Automaten, wie bei MAMEs Star Wars:
 
 ### Testmenü
 
-Die Tab-Taste (wie in MAME) oder der Selbsttest-Knopf hält das Spiel an
+Die Taste F2 (die Service-Taste von MAME) oder der Selbsttest-Knopf hält das Spiel an
 und öffnet das Menü; dieselbe Taste führt auch wieder hinaus und aus der
 Kalibrierung und den Operator-Seiten zurück. Joch auf/ab
 wählt eine Zeile, links/rechts oder Feuer ändert sie, Feuer öffnet eine
-Seite; BACK führt zur Hauptseite, Tab speichert und kehrt ins Spiel zurück.
+Seite; BACK führt zur Hauptseite, F2 speichert und kehrt ins Spiel zurück.
 
 | Seite | Zeilen |
 |---|---|
-| Graphics | Smooth Motion, Smooth Camera, Frame Pace, Occlusion, Yellow Logo, View; Surface Plating, Detailed Towers, Distant Dogfights; Stars, Trench Clipping, Falcon Fly-Over (wie `smooth`, `enh_camera`, `steady_frames`, `occlusion`, `logo_yellow`, `enh_*` unten) |
+| Graphics | Smooth Motion, Smooth Camera, Frame Pace, Occlusion, Yellow Logo, View, Attract Demo; Surface Plating, Detailed Towers, Distant Dogfights; Stars, Trench Clipping, Falcon Fly-Over (wie `smooth`, `enh_camera`, `steady_frames`, `occlusion`, `logo_yellow`, `enh_*` unten) |
 | Sound | Replaced Sounds; Sound Test (Joch links/rechts wählt eine der 59 Anforderungen aus [docs/SOUNDS.md](docs/SOUNDS.md), Feuer spielt sie) |
 | Controls and Screen | Yoke Auto Center; Screen Calibration (das Testbild von `--calibrate`; Feuer wechselt Größe, Lage, Gamma, Helligkeit, das Joch stellt ein) |
 | Game Options | Coin Value, Left Mech, Right Mech, Bonus Adder; Starting Shields, Difficulty, Bonus Shields, Music in Attract: die Optionen des Spiels, dieselben wie auf der Optionsseite des Automaten; sie liegen in dessen NOVRAM (`save/nvram.bin`) und gelten sofort. Coin Value = FREE PLAY: kein Münzeinwurf, Feuer startet das Spiel, und im Attract steht nur "PRESS FIRE TO START" ohne Credit-Zeile |
-| Arcade Operator Screens | Statistik, Optionen, Resets und NOVRAM-Test des Automatenprogramms (Aux-Münze blättert); Tab führt zurück ins Spiel |
-| Save and Exit | wie Tab |
+| Arcade Operator Screens | Statistik, Optionen, Resets und NOVRAM-Test des Automatenprogramms (Aux-Münze blättert); F2 führt zurück ins Spiel |
+| Save and Exit | wie F2 |
 
 ## Marquee
 
@@ -198,6 +198,7 @@ ersetzen (PNG; Größe nach `advmame.rc`, `vector_aux_marquee_display_mode`).
 | `enh_dogfights` | Enhanced. `1` (Standard): in der Ferne jagen TIE Fighter einen X-Wing über den Himmel |
 | `enh_clip` | Enhanced, im Graben. `1` (Standard): Nahe Hindernisse behalten ihre Form, ihre Linien werden am Bildrand abgeschnitten. `0`: wie am Automaten, der die Punkte naher Objekte an den Rand schiebt |
 | `enh_falcon` | Enhanced, im Graben. `1` (Standard): gut drei Sekunden vor dem Abluftschacht kommt der Millennium Falcon von hinten über den Spieler und fliegt den Graben voraus davon (eigenes Modell, massiv). `0`: nichts |
+| `enh_demo` | Enhanced. `1` (Standard): Im Attract-Modus kommt vor den Highscores ein Demo-Flug (Weltraum, Oberfläche, Graben des mittleren Todessterns, gut 110 s), jeder Abschnitt aus einer anderen Ansicht, der nächste Demo beginnt mit der nächsten. Er hinterlässt nichts (kein Credit, keine Punkte, keine Zählung im NOVRAM); eine Münze oder ein Knopf beendet ihn sofort und zählt dann wie immer. `0`: der Attract-Modus des Automaten, nur Textseiten |
 | `enh_view` | Enhanced: von wo man im Flug sieht. `0` (Standard): wie am Automaten, Nase und Kanonen des X-Wings. `1`: aus dem Cockpit: Kanzelrahmen mit zwei Streben zu den oberen Ecken und ein flaches Armaturenbrett unten, dahinter Liegendes wird nicht gezeichnet; die Laser kommen hinter Konsole und Streben hervor. `2`: von außen, hinter dem X-Wing: ein eigenes Modell (Rumpf, Nase, Kanzel, R2, vier Flügel in X-Stellung mit roten Streifen, vier Triebwerke mit rotem Glühen, Kanonen an den Flügelspitzen), das sich mit dem Joch in die Kurve legt und leicht mitdreht; die Laser starten an seinen Kanonenspitzen und laufen dorthin, wohin das Spiel sie schickt. Im Flug schaltet die Start-Taste weiter (Arcade, Cockpit, Außen) und feuert dort nicht; im Attract startet sie wie bisher das Spiel. Die Wahl wird gespeichert |
 | `enh_camera` | Enhanced. `1` (Standard): die Schwenks der Kamera (das Schiff dreht sich im Weltraum von selbst zum verfolgten Gegner oder zum Todesstern) nehmen Fahrt auf und bremsen ab, statt wie am Automaten vom ersten Bild an mit voller Rate zu drehen. Im Spiel selbst, nicht nur im Bild: die Drehrate ändert sich pro Bild um höchstens 12 von 127 |
 | `avg_*`, `margin_*`, `flip_*` | Lage und Größe des Bildes, mit `--calibrate` einzustellen |
