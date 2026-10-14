@@ -564,6 +564,134 @@ static void draw_interceptor(sw_dogfight *d, const sw_df_body *b, float lum)
     }
 }
 
+/* --- the X-wing: a model of its own ---------------------------------------------------------------- */
+
+/* The ROM's X-wing (TDSXW) has no lines to be had here: the game draws its
+ * own only from the cockpit. Wingmen and the chases far off are drawn as
+ * the outside view draws the player's (render/enhance.c, xwing_build), in
+ * the units of that model (its nose at x 1, its left +y, up +z), its wings
+ * open in an X. */
+#define XW_SIZE 420.0                   /* (twice a TIE fighter's length, as in the films) */
+
+static void xw_pt(const sw_df_body *b, double x, double y, double z, double *p)
+{
+    double q[3] = { x * XW_SIZE, y * XW_SIZE, z * XW_SIZE };
+    place(b, q, 1.0, p);
+}
+
+static void xw_line(sw_dogfight *d, const sw_df_body *b, const double *a, const double *c, unsigned col, float lum)
+{
+    double p0[3], p1[3];
+    xw_pt(b, a[0], a[1], a[2], p0);
+    xw_pt(b, c[0], c[1], c[2], p1);
+    line3(d, p0, p1, col, lum, 0, 0, 0);
+}
+
+static void xw_face(sw_dogfight *d, const sw_df_body *b, const double (*q)[3], int n)
+{
+    double p[6][3];
+    for (int i = 0; i < n && i < 6; i++) xw_pt(b, q[i][0], q[i][1], q[i][2], p[i]);
+    int_face(d, (const double (*)[3])p, n);
+}
+
+static void draw_xwing(sw_dogfight *d, const sw_df_body *b, float lum)
+{
+    if (++d->inst == 0) d->inst = 0x8000;
+    const double XT = -0.62, XC = 0.30, XN = 1.0, W = 0.11, H = 0.10, WN = 0.035, HN = 0.03;
+    const double GY = 0.95, GZ = 0.28;
+    /* the fuselage: a box, and the nose tapering from it */
+    double box[8][3], nose[4][3];
+    for (int i = 0; i < 8; i++) {
+        box[i][0] = i & 1 ? XC : XT;
+        box[i][1] = i & 2 ? W : -W;
+        box[i][2] = i & 4 ? H : -H;
+    }
+    for (int i = 0; i < 4; i++) {
+        nose[i][0] = XN;
+        nose[i][1] = i & 1 ? WN : -WN;
+        nose[i][2] = i & 2 ? HN : -HN;
+    }
+    for (int i = 0; i < 8; i++) {
+        if (!(i & 1)) xw_line(d, b, box[i], box[i | 1], WHT, lum);
+        if (!(i & 2)) xw_line(d, b, box[i], box[i | 2], WHT, lum);
+        if (!(i & 4)) xw_line(d, b, box[i], box[i | 4], WHT, lum);
+    }
+    static const int RING[4] = { 0, 1, 3, 2 };          /* (round the nose's end) */
+    for (int i = 0; i < 4; i++) {
+        int a = RING[i], c = RING[(i + 1) % 4];
+        int ba = 1 | ((a & 1) << 1) | ((a & 2) << 1);   /* the box's front corner under nose corner a */
+        xw_line(d, b, box[ba], nose[a], WHT, lum);
+        xw_line(d, b, nose[a], nose[c], WHT, lum);
+    }
+    {
+        /* the red band round the nose */
+        double xb = 0.62, k = (xb - XC) / (XN - XC), wb = W + (WN - W) * k, hb = H + (HN - H) * k;
+        double c[4][3] = { { xb, -wb, -hb }, { xb, wb, -hb }, { xb, wb, hb }, { xb, -wb, hb } };
+        for (int i = 0; i < 4; i++) xw_line(d, b, c[i], c[(i + 1) % 4], RED, lum);
+    }
+    {
+        /* the canopy */
+        double c0[3] = { 0.0, -0.08, H }, c1[3] = { 0.04, -0.06, H + 0.07 }, c2[3] = { 0.18, -0.06, H + 0.07 }, c3[3] = { 0.32, -0.08, H };
+        double e0[3] = { 0.0, 0.08, H }, e1[3] = { 0.04, 0.06, H + 0.07 }, e2[3] = { 0.18, 0.06, H + 0.07 }, e3[3] = { 0.32, 0.08, H };
+        xw_line(d, b, c0, c1, TRQ, lum); xw_line(d, b, c1, c2, TRQ, lum); xw_line(d, b, c2, c3, TRQ, lum);
+        xw_line(d, b, e0, e1, TRQ, lum); xw_line(d, b, e1, e2, TRQ, lum); xw_line(d, b, e2, e3, TRQ, lum);
+        xw_line(d, b, c1, e1, TRQ, lum); xw_line(d, b, c2, e2, TRQ, lum);
+    }
+    /* its faces: the box's six and the nose's four sides */
+    {
+        static const int F[6][4] = { { 0, 1, 3, 2 }, { 4, 5, 7, 6 }, { 0, 1, 5, 4 }, { 2, 3, 7, 6 }, { 0, 2, 6, 4 }, { 1, 3, 7, 5 } };
+        for (int i = 0; i < 6; i++) {
+            double q[4][3];
+            for (int k = 0; k < 4; k++) memcpy(q[k], box[F[i][k]], sizeof q[k]);
+            xw_face(d, b, (const double (*)[3])q, 4);
+        }
+        for (int i = 0; i < 4; i++) {
+            int a = RING[i], c = RING[(i + 1) % 4];
+            int ba = 1 | ((a & 1) << 1) | ((a & 2) << 1), bc = 1 | ((c & 1) << 1) | ((c & 2) << 1);
+            double q[4][3];
+            memcpy(q[0], box[ba], sizeof q[0]); memcpy(q[1], box[bc], sizeof q[0]);
+            memcpy(q[2], nose[c], sizeof q[0]); memcpy(q[3], nose[a], sizeof q[0]);
+            xw_face(d, b, (const double (*)[3])q, 4);
+        }
+    }
+    /* the four wings, in an X: red stripes, the engine at the root, the gun at the tip */
+    for (int sy = -1; sy <= 1; sy += 2)
+        for (int sz = -1; sz <= 1; sz += 2) {
+            double rz = sz * 0.04, tz = sz * GZ;
+            double r0[3] = { -0.56, sy * W, rz }, r1[3] = { -0.06, sy * W, rz };
+            double t0[3] = { -0.52, sy * GY, tz }, t1[3] = { -0.30, sy * GY, tz };
+            xw_line(d, b, r0, t0, WHT, lum);
+            xw_line(d, b, r1, t1, WHT, lum);
+            xw_line(d, b, t0, t1, WHT, lum);
+            double q[4][3];
+            memcpy(q[0], r0, sizeof q[0]); memcpy(q[1], r1, sizeof q[0]);
+            memcpy(q[2], t1, sizeof q[0]); memcpy(q[3], t0, sizeof q[0]);
+            xw_face(d, b, (const double (*)[3])q, 4);
+            for (int k = 0; k < 2; k++) {
+                double u0 = 0.30 + 0.08 * k, u1 = u0 + 0.30;
+                double a[3] = { -0.40 + 0.03 * k, sy * (W + (GY - W) * u0), rz + (tz - rz) * u0 };
+                double c[3] = { -0.38 + 0.03 * k, sy * (W + (GY - W) * u1), rz + (tz - rz) * u1 };
+                xw_line(d, b, a, c, RED, lum);
+            }
+            /* the engine: a six-sided tube, its back glowing blue */
+            double cy = sy * 0.19, cz = sz * 0.12, R = 0.075, ring0[6][3], ring1[6][3];
+            for (int i = 0; i < 6; i++) {
+                double an = i * 1.0471976 + 0.5235988;
+                ring0[i][0] = -0.68; ring0[i][1] = cy + R * cos(an); ring0[i][2] = cz + R * sin(an);
+                ring1[i][0] = -0.12; ring1[i][1] = cy + R * 0.85 * cos(an); ring1[i][2] = cz + R * 0.85 * sin(an);
+            }
+            for (int i = 0; i < 6; i++) {
+                int j = (i + 1) % 6;
+                xw_line(d, b, ring0[i], ring0[j], BLU, lum);
+                xw_line(d, b, ring1[i], ring1[j], WHT, lum);
+                if (!(i & 1)) xw_line(d, b, ring0[i], ring1[i], WHT, lum);
+            }
+            /* the gun ahead of the tip */
+            double g0[3] = { -0.54, sy * GY, tz }, g1[3] = { 0.86, sy * GY, tz };
+            xw_line(d, b, g0, g1, WHT, lum);
+        }
+}
+
 /* --- the dogfight ---------------------------------------------------------------------------- */
 
 static void body_facing(sw_df_body *b, const double *pos, const double *to)
@@ -688,9 +816,13 @@ void sw_dogfight_start(sw_dogfight *d, const sw_machine *m, int wave)
 {
     sw_line *keep = d->list.lines;
     int cap = d->list.cap;
+    sw_df_scores *scores = d->scores;
     memset(d, 0, sizeof *d);
     d->list.lines = keep;
     d->list.cap = cap;
+    d->scores = scores;
+    d->stage = SW_DF_PLAY;
+    d->rank = -1;
     if (m->rom) {
         memcpy(d->space + 0x3000, m->rom->vrom, sizeof m->rom->vrom);
         /* DOWNVG: the "fake VG ROM" of the program ROM (the shots' sparkle
@@ -811,7 +943,7 @@ static void lose_shield(sw_dogfight *d)
         d->shields = 0;
         d->over = 1;
         d->over_t = d->t;
-        sound(d, S_SPKFOA);                 /* "The Force will be with you, always" */
+        /* (the game's own end, PHIEGM, says "Remember... the Force will be with you, always" after the table) */
     }
 }
 
@@ -999,6 +1131,63 @@ static void enemies_step(sw_dogfight *d, double dt)
         }
         begin_wave(d);
     }
+}
+
+/* --- the dogfight's own high scores ---------------------------------------------------------- */
+
+static sw_df_scores own_scores;             /* (when the program gives none) */
+
+void sw_dogfight_scores_default(sw_df_scores *s)
+{
+    static const char *const NAMES[SW_DF_TABLE] = { "LUK", "WED", "BIG", "POR", "HAN", "CHW", "LEI", "BEN", "DUT", "GLD" };
+    memset(s, 0, sizeof *s);
+    for (int i = 0; i < SW_DF_TABLE; i++) {
+        memcpy(s->name[i], NAMES[i], 4);
+        s->score[i] = 30000 - 3000 * i;
+        s->wave[i] = 10 - i;
+    }
+}
+
+static sw_df_scores *table_of(sw_dogfight *d)
+{
+    if (d->scores) return d->scores;
+    if (!own_scores.score[0]) sw_dogfight_scores_default(&own_scores);
+    return &own_scores;
+}
+
+/* Where the score just made would stand, or -1. */
+static int score_rank(sw_dogfight *d)
+{
+    const sw_df_scores *s = table_of(d);
+    if (d->score <= 0) return -1;
+    for (int i = 0; i < SW_DF_TABLE; i++) if (d->score > s->score[i]) return i;
+    return -1;
+}
+
+static void score_insert(sw_dogfight *d)
+{
+    sw_df_scores *s = table_of(d);
+    int r = d->rank;
+    if (r < 0 || r >= SW_DF_TABLE) return;
+    for (int i = SW_DF_TABLE - 1; i > r; i--) {
+        memcpy(s->name[i], s->name[i - 1], 4);
+        s->score[i] = s->score[i - 1];
+        s->wave[i] = s->wave[i - 1];
+    }
+    memcpy(s->name[r], d->initials, 3);
+    s->name[r][3] = 0;
+    s->score[r] = d->score;
+    s->wave[r] = d->wave;
+    s->dirty = 1;
+}
+
+#define HOWTO_LONG 32.0                     /* seconds of the how-to page, if nobody pulls the trigger */
+
+void sw_dogfight_howto(sw_dogfight *d)
+{
+    if (d->preview) return;
+    d->stage = SW_DF_HOWTO;
+    d->stage_t = 0.0;
 }
 
 /* A frame of the game's (20.5 Hz): the lasers as TSTLAZ times them, the
@@ -1233,6 +1422,17 @@ void sw_dogfight_step(sw_dogfight *d, const sw_dogfight_input *in, double dt)
 {
     if (!d->active || dt <= 0.0) return;
     if (dt > 0.1) dt = 0.1;
+    int pull = in->fire && !d->fire_held;
+    d->fire_held = in->fire;
+    if (d->stage == SW_DF_HOWTO) {
+        /* the page: on until a pull of the trigger, or its end; the game waits */
+        d->stage_t += dt;
+        if ((pull && d->stage_t > 1.5) || d->stage_t > HOWTO_LONG) {
+            d->stage = SW_DF_PLAY;
+            d->fire_next = d->t + 0.4;      /* (that pull does not fire) */
+        }
+        return;
+    }
     d->t += dt;
     if (d->preview) {
         sw_df_body *b = &d->enemy[0].b;
@@ -1241,7 +1441,45 @@ void sw_dogfight_step(sw_dogfight *d, const sw_dogfight_input *in, double dt)
         square3(b->f, b->r, b->u);
         return;
     }
-    if (d->over && d->t - d->over_t > 7.0) d->finished = 1;
+    /* the end: GAME OVER a while; a new best pilot gives his initials; then the table */
+    if (d->over && d->stage == SW_DF_PLAY && d->t - d->over_t > 4.0) {
+        d->rank = score_rank(d);
+        d->stage = d->rank >= 0 ? SW_DF_ENTRY : SW_DF_TABLE_SHOWN;
+        d->stage_t = 0.0;
+        d->letter = 0;
+        d->letter_t = 0.0;
+        memcpy(d->initials, "A  ", 4);
+    }
+    if (d->stage == SW_DF_ENTRY) {
+        /* the yoke to a side steps through the letters, a pull takes one */
+        static const char LETTERS[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ .";
+        const int NL = (int)sizeof LETTERS - 1;
+        d->stage_t += dt;
+        char *c = &d->initials[d->letter];
+        int at = (int)(strchr(LETTERS, *c) ? strchr(LETTERS, *c) - LETTERS : 0);
+        if (fabsf(in->yaw) > 0.45f) {
+            if (d->t >= d->letter_t) {
+                at = (at + (in->yaw > 0.0f ? 1 : NL - 1)) % NL;
+                d->letter_t = d->t + (fabsf(in->yaw) > 0.85f ? 0.11 : 0.22);
+            }
+        } else {
+            d->letter_t = 0.0;
+        }
+        *c = LETTERS[at];
+        if (pull) {
+            sound(d, S_AUDXL);
+            if (++d->letter < 3) d->initials[d->letter] = d->initials[d->letter - 1];
+        }
+        if (d->letter >= 3 || d->stage_t > 30.0) {
+            if (d->letter < 3) for (int k = d->letter + 1; k < 3; k++) d->initials[k] = ' ';
+            score_insert(d);
+            d->stage = SW_DF_TABLE_SHOWN;
+            d->stage_t = 0.0;
+        }
+    } else if (d->stage == SW_DF_TABLE_SHOWN) {
+        d->stage_t += dt;
+        if (d->stage_t > 7.0 || (pull && d->stage_t > 2.0)) d->finished = 1;
+    }
 
     /* the throttle: a button held pulls it its way, twice as fast while it
      * is still on the other side of the middle; let go, it goes back */
@@ -1377,7 +1615,7 @@ static void chase_one(sw_dogfight *d, double t, uint32_t h)
         double to[3] = { p[0] + fw[0], p[1] + fw[1], p[2] + fw[2] };
         body_facing(&b, p, to);
         int xwing = (k == 0) != rebels_chase;
-        if (xwing) draw_model(d, M_XWING, &b, 1.0, WHT, lum, SW_TDSXW);
+        if (xwing) draw_xwing(d, &b, lum);
         else draw_model(d, M_TIE, &b, 1.0, GRN, lum * 0.8f, SW_TDSTIE);
         /* now and then a bolt of a chaser after the one it chases (red
          * from an X-wing, as in the films; green from a TIE) */
@@ -1690,9 +1928,218 @@ static void death_star_colors(sw_dogfight *d, float cx, float cy, float r)
     death_star_details(d, cx, cy, r, sv, dx, dy, dish_r);
 }
 
+/* --- how to fly it ------------------------------------------------------------------------------
+ *
+ * As Time Pilot 3D shows how it is flown: the yoke, in the round, and the
+ * X-wing beside it doing what the yoke does. First the yoke is turned,
+ * then pushed and pulled; then it turns round to show its front with the
+ * two triggers, and back for the two buttons under the thumbs, each lit in
+ * turn with what it does; last the roll, and START. The yoke is the
+ * arcade's of the eighties: a box (the Atari logo on the side the player
+ * sees), a cone out of each side, on each a grip leaning in, its trigger in
+ * front, its thumb's button behind. In the units of Time Pilot 3D's page (x
+ * to the right, y up, z away from the player), K of ours each. */
+
+typedef struct hxf { double m[9], t[3]; } hxf;
+
+static hxf hxf_mul(const hxf *a, const hxf *b)
+{
+    hxf r;
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++)
+            r.m[i * 3 + j] = a->m[i * 3] * b->m[j] + a->m[i * 3 + 1] * b->m[3 + j] + a->m[i * 3 + 2] * b->m[6 + j];
+        r.t[i] = a->m[i * 3] * b->t[0] + a->m[i * 3 + 1] * b->t[1] + a->m[i * 3 + 2] * b->t[2] + a->t[i];
+    }
+    return r;
+}
+
+static hxf hxf_rot(int axis, double a)
+{
+    double c = cos(a), s = sin(a);
+    hxf r = { { 1, 0, 0, 0, 1, 0, 0, 0, 1 }, { 0, 0, 0 } };
+    int i = (axis + 1) % 3, j = (axis + 2) % 3;     /* (x: y z; y: z x; z: x y) */
+    r.m[i * 3 + i] = c; r.m[i * 3 + j] = -s;
+    r.m[j * 3 + i] = s; r.m[j * 3 + j] = c;
+    return r;
+}
+
+static hxf hxf_move(double x, double y, double z, double k)
+{
+    hxf r = { { k, 0, 0, 0, k, 0, 0, 0, k }, { x, y, z } };
+    return r;
+}
+
+#define HOWTO_K (1000.0 / 150.0)
+
+/* a point of the page in space, as the ship (where the page is looked at from) sees it */
+static void hw_at(const sw_dogfight *d, const hxf *x, double px, double py, double pz, double *w)
+{
+    double p[3] = { px, py, pz }, q[3];
+    for (int i = 0; i < 3; i++) q[i] = x->m[i * 3] * p[0] + x->m[i * 3 + 1] * p[1] + x->m[i * 3 + 2] * p[2] + x->t[i];
+    for (int i = 0; i < 3; i++) w[i] = d->pos[i] + (d->r[i] * q[0] + d->u[i] * q[1] + d->f[i] * q[2]) * HOWTO_K;
+}
+
+static void hw_line(sw_dogfight *d, const hxf *x, double x0, double y0, double z0, double x1, double y1, double z1, unsigned c, float lum)
+{
+    double a[3], b[3];
+    hw_at(d, x, x0, y0, z0, a);
+    hw_at(d, x, x1, y1, z1, b);
+    line3(d, a, b, c, lum, 0, 0, 0);
+}
+
+/* the twelve edges of a box, and its six faces */
+static void hw_box(sw_dogfight *d, const hxf *x, double x0, double y0, double z0, double x1, double y1, double z1, unsigned c, float lum)
+{
+    double p[8][3];
+    if (++d->inst == 0) d->inst = 0x8000;
+    for (int i = 0; i < 8; i++) hw_at(d, x, i & 1 ? x1 : x0, i & 2 ? y1 : y0, i & 4 ? z1 : z0, p[i]);
+    for (int i = 0; i < 8; i++) {
+        if (!(i & 1)) line3(d, p[i], p[i | 1], c, lum, 0, 0, 0);
+        if (!(i & 2)) line3(d, p[i], p[i | 2], c, lum, 0, 0, 0);
+        if (!(i & 4)) line3(d, p[i], p[i | 4], c, lum, 0, 0, 0);
+    }
+    static const int F[6][4] = { { 0, 1, 3, 2 }, { 4, 5, 7, 6 }, { 0, 1, 5, 4 }, { 2, 3, 7, 6 }, { 0, 2, 6, 4 }, { 1, 3, 7, 5 } };
+    for (int i = 0; i < 6; i++) {
+        double q[4][3];
+        for (int k = 0; k < 4; k++) memcpy(q[k], p[F[i][k]], sizeof q[k]);
+        int_face(d, (const double (*)[3])q, 4);
+    }
+}
+
+/* The Atari logo, on the box's side towards the player (z = z0): the
+ * straight stem in the middle, the two curved ones flaring out below. */
+static void hw_atari(sw_dogfight *d, const hxf *x, double z0, float lum)
+{
+    if (++d->inst == 0) d->inst = 0x8000;
+    const double TOP = 2.7, LOW = -3.0;
+    hw_line(d, x, -0.38, LOW, z0, -0.38, TOP, z0, RED, lum);
+    hw_line(d, x, 0.38, LOW, z0, 0.38, TOP, z0, RED, lum);
+    hw_line(d, x, -0.38, TOP, z0, 0.38, TOP, z0, RED, lum);
+    hw_line(d, x, -0.38, LOW, z0, 0.38, LOW, z0, RED, lum);
+    for (int s = -1; s <= 1; s += 2) {
+        double pi0 = 0.75, po0 = 1.35;          /* (inner, outer edge at the top) */
+        for (int k = 0; k < 6; k++) {
+            double t0 = k / 6.0, t1 = (k + 1) / 6.0;
+            double y0 = TOP + (LOW - TOP) * t0, y1 = TOP + (LOW - TOP) * t1;
+            double i0 = pi0 + 0.85 * t0 * t0, i1 = pi0 + 0.85 * t1 * t1;
+            double o0 = po0 + 2.0 * t0 * t0, o1 = po0 + 2.0 * t1 * t1;
+            hw_line(d, x, s * i0, y0, z0, s * i1, y1, z0, RED, lum);
+            hw_line(d, x, s * o0, y0, z0, s * o1, y1, z0, RED, lum);
+        }
+        hw_line(d, x, s * pi0, TOP, z0, s * po0, TOP, z0, RED, lum);
+        hw_line(d, x, s * (pi0 + 0.85), LOW, z0, s * (po0 + 2.0), LOW, z0, RED, lum);
+    }
+}
+
+static double smooth01(double v) { v = v < 0.0 ? 0.0 : v > 1.0 ? 1.0 : v; return v * v * (3.0 - 2.0 * v); }
+
+static int howto_lines(sw_dogfight *d, const sw_machine *m, const sw_line **out)
+{
+    const double PI = 3.14159265358979, T_PUSH = 5.0, T_BUTTONS = 10.0, EACH = 3.5;
+    const double T_ROLL = T_BUTTONS + 4.0 * EACH, T_START = T_ROLL + 4.5;
+    enum { LASER, TORPEDO, FASTER, SLOWER };
+    double t = d->stage_t;
+    double turn_k = t < T_PUSH ? sin(2.0 * PI * t / 2.5) : t > T_ROLL && t < T_START ? 1.0 : 0.0;
+    double push = t >= T_PUSH && t < T_BUTTONS ? sin(2.0 * PI * (t - T_PUSH) / 2.5) : 0.0;
+    double roll_round = t > T_ROLL ? 2.0 * PI * smooth01((t - T_ROLL - 0.6) / 3.0) : 0.0;
+    int step = t >= T_BUTTONS && t < T_ROLL ? (int)((t - T_BUTTONS) / EACH) : -1, rolling = t >= T_ROLL && t < T_START;
+    if (step > SLOWER) step = SLOWER;
+    /* which is lit: the triggers and thumb buttons, right and left */
+    int lit_trig[2] = { step == LASER, step == TORPEDO }, lit_thumb[2] = { step == FASTER || rolling, step == SLOWER || rolling };
+    int blink = fmod(t, 0.2) < 0.1;
+    /* from the player's side, or (for a trigger) from in front of it */
+    double front = 0.0, was = 0.0;
+    for (int k = 0; k < 6; k++) {
+        double begins = k < 4 ? T_BUTTONS + EACH * k : k == 4 ? T_ROLL : T_START;
+        double want = k < 2 ? 1.0 : 0.0;
+        if (t < begins) break;
+        front = was + (want - was) * smooth01((t - begins) / 1.1);
+        was = want;
+    }
+    double yaw = 0.4 + (PI - 0.8) * front;
+
+    d->at = SW_VGVARB;
+    d->n_faces = 0;
+    d->ds_shown = 0;
+    d->inst = 0x8000;
+    d->line_id = 0;
+    d->tag = SW_TAG(SW_TAG_MESS, 0x3ff);
+    emit(d, SW_VGSCAL);
+    text_mid(d, m, 0.0, 128.0, YLW, 0xd0, SW_VGSCAL - 0x100, LETTER * 2.0, "HOW TO FLY");
+    const char *line1, *line2;
+    if (t < T_PUSH) { line1 = "TURN THE YOKE"; line2 = "THE X-WING TURNS WITH IT"; }
+    else if (t < T_BUTTONS) { line1 = "PULL TO CLIMB - PUSH TO DIVE"; line2 = "THE SIGHT GOES WITH THE YOKE"; }
+    else if (step == LASER) { line1 = "RIGHT TRIGGER - LASERS"; line2 = "HOLD IT AND THEY GO ON FIRING"; }
+    else if (step == TORPEDO) { line1 = "LEFT TRIGGER - PROTON TORPEDOES"; line2 = "TWO HOMING SHOTS WHEN CHARGED"; }
+    else if (step == FASTER) { line1 = "RIGHT THUMB BUTTON - FASTER"; line2 = "LET GO AND IT SLOWS AGAIN"; }
+    else if (step == SLOWER) { line1 = "LEFT THUMB BUTTON - SLOWER"; line2 = "TO TURN TIGHTER"; }
+    else if (rolling) { line1 = "FASTER AND SLOWER TOGETHER"; line2 = "NOW THE YOKE ROLLS THE X-WING"; }
+    else { line1 = "START CHANGES THE VIEW"; line2 = "ARCADE - COCKPIT - OUTSIDE"; }
+    text_mid(d, m, 0.0, -96.0, WHT, 0xe0, SW_VGSCAL, LETTER, line1);
+    text_mid(d, m, 0.0, -108.0, TRQ, 0xa0, SW_VGSCAL, LETTER, line2);
+    if (t > 1.5 && fmod(t, 1.0) < 0.65) text_mid(d, m, 0.0, -136.0, RED, 0xc0, SW_VGSCAL, LETTER, "PULL THE TRIGGER TO BEGIN");
+    emit(d, 0x2000);
+    sw_avg_run_tagged(d->space, SW_VGVARB, d->tags, NULL, &d->list, 20000);
+
+    /* the yoke */
+    hxf base = hxf_move(-38.0, 38.0, 150.0, 1.0), k3 = hxf_move(0, 0, 0, 4.4), r;   /* (up: the view's middle is low) */
+    r = hxf_rot(0, 0.3); base = hxf_mul(&base, &r);
+    r = hxf_rot(1, yaw); base = hxf_mul(&base, &r);
+    base = hxf_mul(&base, &k3);
+    r = hxf_rot(2, -turn_k * 0.6);
+    hxf box = hxf_mul(&base, &r);
+    hxf gm = hxf_move(0, 0, 3.5, 1.0), grips = hxf_mul(&box, &gm);
+    r = hxf_rot(0, push * 0.5); grips = hxf_mul(&grips, &r);
+    hw_box(d, &box, -5.0, -4.2, 0.0, 5.0, 4.2, 7.0, WHT, 150.0f);
+    hw_atari(d, &box, -0.05, 230.0f);
+    for (int s = 0; s < 2; s++) {
+        double side = s == 0 ? 1.0 : -1.0;          /* (0 the right grip, 1 the left) */
+        hxf gt = hxf_move(9.6 * side, 0, 0, 1.0), grip = hxf_mul(&grips, &gt);
+        r = hxf_rot(2, 0.22 * side); grip = hxf_mul(&grip, &r);
+        /* the cone out of the box's side */
+        if (++d->inst == 0) d->inst = 0x8000;
+        for (int j = 0; j < 6; j++) {
+            double a0 = 2.0 * PI * j / 6.0, a1 = 2.0 * PI * (j + 1) / 6.0;
+            hw_line(d, &grips, 5.0 * side, 1.1 * cos(a0), 1.1 * sin(a0), 5.0 * side, 1.1 * cos(a1), 1.1 * sin(a1), BLU, 170.0f);
+            hw_line(d, &grips, 8.3 * side, 2.3 * cos(a0), 2.3 * sin(a0), 8.3 * side, 2.3 * cos(a1), 2.3 * sin(a1), BLU, 170.0f);
+            if (!(j & 1)) hw_line(d, &grips, 5.0 * side, 1.1 * cos(a0), 1.1 * sin(a0), 8.3 * side, 2.3 * cos(a0), 2.3 * sin(a0), BLU, 170.0f);
+        }
+        /* the grip, its trigger in front, its thumb's button behind */
+        hw_box(d, &grip, -1.3, -6.0, -1.4, 1.3, 6.0, 1.4, TRQ, 200.0f);
+        int lt = lit_trig[s] && blink, lb = lit_thumb[s] && blink;
+        hw_box(d, &grip, -0.7, 1.4, 1.4, 0.7, 3.6, 2.7, lt ? WHT : RED, lt ? 255.0f : 200.0f);
+        if (++d->inst == 0) d->inst = 0x8000;
+        for (int j = 0; j < 8; j++) {
+            double a0 = 2.0 * PI * j / 8.0, a1 = 2.0 * PI * (j + 1) / 8.0;
+            hw_line(d, &grip, 0.9 * cos(a0), 4.5 + 0.9 * sin(a0), -1.75, 0.9 * cos(a1), 4.5 + 0.9 * sin(a1), -1.75,
+                    lb ? WHT : YLW, lb ? 255.0f : 210.0f);
+        }
+    }
+
+    /* the X-wing, seen from behind and a little above, doing what the yoke does */
+    {
+        sw_df_body b;
+        double at[3];
+        for (int k = 0; k < 3; k++) at[k] = d->pos[k] + d->f[k] * 1900.0 + d->r[k] * 820.0 + d->u[k] * 480.0;
+        memcpy(b.pos, at, sizeof b.pos);
+        memcpy(b.f, d->f, sizeof b.f);
+        memcpy(b.r, d->r, sizeof b.r);
+        memcpy(b.u, d->u, sizeof b.u);
+        turn(b.f, b.u, -0.3);                       /* (its back a little towards the eye above it) */
+        turn(b.f, b.r, t < T_PUSH ? turn_k * 0.35 : 0.0);
+        turn(b.f, b.u, -push * 0.45);               /* (pushed: the nose down) */
+        turn(b.r, b.u, -(turn_k * (rolling ? 0.0 : 0.7) + roll_round));
+        square3(b.f, b.r, b.u);
+        draw_xwing(d, &b, 220.0f);
+    }
+    *out = d->list.lines;
+    return d->list.count;
+}
+
 int sw_dogfight_lines(sw_dogfight *d, const sw_machine *m, const sw_line **out)
 {
     vg_catch_up(d, m);
+    if (d->stage == SW_DF_HOWTO) return howto_lines(d, m, out);
     d->at = SW_VGVARB;                      /* (above the routines the restarts keep) */
     d->n_faces = 0;
     d->ds_shown = 0;
@@ -1784,14 +2231,17 @@ int sw_dogfight_lines(sw_dogfight *d, const sw_machine *m, const sw_line **out)
     lasers(d, m);
 
     /* the sight, in the middle of the view: one aims with the nose */
+    int playing = d->stage == SW_DF_PLAY;   /* (not over the initials and the table) */
     d->tag = SW_TAG(SW_TAG_SITE, 0);
-    move_to(d, SIGHT_X, SIGHT_Y);
-    color(d, TRQ, 0x80);
-    emit(d, rom16(m, SW_VGSITE));
+    if (playing) {
+        move_to(d, SIGHT_X, SIGHT_Y);
+        color(d, TRQ, 0x80);
+        emit(d, rom16(m, SW_VGSITE));
+    }
 
     /* the X-wing's nose and guns (VWPLAN, the sight in the middle) */
     static const uint16_t parts[5] = { SW_VJSTBM, SW_VJSTTR, SW_VJSTBL, SW_VJSTTL, SW_VJSTBR };
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 5 && playing; i++) {
         d->tag = SW_TAG(SW_TAG_PLANE, i);
         emit(d, SW_VGCNTR);
         emit(d, parts[i]);
@@ -1834,7 +2284,43 @@ int sw_dogfight_lines(sw_dogfight *d, const sw_machine *m, const sw_line **out)
         }
         text(d, m, x0, y - 9.0, ready ? TRQ : GRN, ready ? 0xa0 : 0x60, SW_VGSCAL, "TORPEDO");
     }
-    if (d->over) {
+    if (d->stage == SW_DF_ENTRY) {
+        /* a new best pilot: his initials, chosen with the yoke */
+        char s[24];
+        text_mid(d, m, 0.0, 80.0, YLW, 0xd0, SW_VGSCAL, LETTER, "A NEW BEST PILOT");
+        number(s, d->score);
+        text_mid(d, m, 0.0, 68.0, GRN, 0xa0, SW_VGSCAL, LETTER, s);
+        for (int k = 0; k < 3; k++) {
+            char c[2] = { d->initials[k], 0 };
+            int on = k == d->letter && fmod(d->stage_t, 0.5) < 0.3;
+            if (c[0] == ' ') c[0] = '-';
+            text(d, m, -20.0 + 15.0 * k, 40.0, k == d->letter ? WHT : TRQ, on || k != d->letter ? 0xe0 : 0x60, SW_VGSCAL - 0x100, c);
+        }
+        text_mid(d, m, 0.0, 14.0, GRN, 0x90, SW_VGSCAL, LETTER, "YOKE - LETTER    TRIGGER - NEXT");
+    } else if (d->stage == SW_DF_TABLE_SHOWN) {
+        /* the dogfight's own best pilots */
+        const sw_df_scores *t = table_of(d);
+        text_mid(d, m, 0.0, 96.0, YLW, 0xd0, SW_VGSCAL - 0x100, LETTER * 2.0, "DOGFIGHT");
+        text_mid(d, m, 0.0, 78.0, RED, 0xb0, SW_VGSCAL, LETTER, "BEST PILOTS");
+        for (int i = 0; i < SW_DF_TABLE; i++) {
+            char s[48], n[16], w[16];
+            number(n, t->score[i]);
+            number(w, t->wave[i]);
+            int k = 0;
+            s[k++] = (char)(i == 9 ? '1' : ' ');
+            s[k++] = (char)(i == 9 ? '0' : '1' + i);
+            s[k++] = ' '; s[k++] = ' ';
+            for (int j = 0; j < 3; j++) s[k++] = t->name[i][j] ? t->name[i][j] : ' ';
+            s[k++] = ' ';
+            for (int j = (int)strlen(n); j < 7; j++) s[k++] = ' ';
+            for (int j = 0; n[j]; j++) s[k++] = n[j];
+            memcpy(s + k, "   WAVE ", 8); k += 8;
+            for (int j = 0; w[j]; j++) s[k++] = w[j];
+            s[k] = 0;
+            int mine = i == d->rank;
+            text_mid(d, m, 0.0, 62.0 - 11.0 * i, mine ? WHT : GRN, mine && fmod(d->stage_t, 0.5) < 0.3 ? 0xff : 0xa0, SW_VGSCAL, LETTER, s);
+        }
+    } else if (d->over) {
         char s[24];
         text_mid(d, m, 0.0, 60.0, RED, 0xc0, SW_VGSCAL, LETTER, "GAME OVER");
         number(s, d->score);
@@ -1874,6 +2360,56 @@ int sw_dogfight_lines(sw_dogfight *d, const sw_machine *m, const sw_line **out)
                 vctr(d, vg(-ax * 7.0 + px * 4.0), vg(-ay * 7.0 + py * 4.0), 7);
                 vctr(d, vg(-px * 8.0), vg(-py * 8.0), 7);
                 vctr(d, vg(ax * 7.0 + px * 4.0), vg(ay * 7.0 + py * 4.0), 7);
+            }
+        }
+    }
+
+    /* The radar: all about the ship in a disc, the way ahead in its middle,
+     * what is behind at its rim, above up, to the right right. The enemies
+     * red (Vader yellow), near ones bright; the wingmen turquoise. */
+    if (!d->preview && !d->over) {
+        const double RX = 0.0, RY = 100.0, RR = 12.0, PI = 3.14159265358979;
+        d->tag = SW_TAG(SW_TAG_MESS, 0x3fd);
+        for (int ring = 0; ring < 2; ring++) {
+            double r = ring ? RR * 0.5 : RR;        /* (the inner ring: square to the way ahead) */
+            move_to(d, RX + r, RY);
+            color(d, GRN, ring ? 0x30 : 0x60);
+            double px = RX + r, py = RY;
+            for (int k = 1; k <= 20; k++) {
+                double a = k * PI / 10.0, x = RX + r * cos(a), y = RY + r * sin(a) * DS_K;
+                vctr(d, vg(x - px), vg(y - py), 7);
+                px = x;
+                py = y;
+            }
+        }
+        move_to(d, RX - 1.5, RY);
+        color(d, GRN, 0x50);
+        vctr(d, vg(3.0), 0, 7);
+        for (int pass = 0; pass < 2; pass++) {
+            int n = pass ? SW_DF_ALLIES : SW_DF_ENEMIES;
+            for (int i = 0; i < n; i++) {
+                const double *p;
+                unsigned c, lum;
+                if (pass) {
+                    if (!d->ally[i].live) continue;
+                    p = d->ally[i].b.pos;
+                    c = TRQ;
+                    lum = 0x90;
+                } else {
+                    if (!d->enemy[i].kind) continue;
+                    p = d->enemy[i].b.pos;
+                    c = d->enemy[i].kind == K_VADER ? YLW : RED;
+                    lum = dist(p, d->pos) < 4000.0 ? 0xff : 0xa0;
+                }
+                double v[3];
+                view_of(d, p, v);
+                double nv = sqrt(dot(v, v)), side = hypot(v[1], v[2]);
+                if (nv < 1.0) continue;
+                double off = acos(v[0] / nv > 1.0 ? 1.0 : v[0] / nv < -1.0 ? -1.0 : v[0] / nv), rr = RR * off / PI;
+                double ux = side > 1e-6 ? v[1] / side : 0.0, uy = side > 1e-6 ? v[2] / side : 0.0;
+                move_to(d, RX + ux * rr - 0.7, RY + uy * rr * DS_K);
+                color(d, c, lum);
+                vctr(d, vg(1.4), 0, 7);
             }
         }
     }
@@ -1964,7 +2500,7 @@ int sw_dogfight_lines(sw_dogfight *d, const sw_machine *m, const sw_line **out)
     /* the ships, in true perspective (after the list: their lines are added) */
     chase(d);
     for (int i = 0; i < SW_DF_ALLIES; i++)
-        if (d->ally[i].live) draw_model(d, M_XWING, &d->ally[i].b, SHIP_SIZE, WHT, 170.0f, SW_TDSXW);
+        if (d->ally[i].live) draw_xwing(d, &d->ally[i].b, 150.0f);
     for (int s = 0; s < SW_DF_BOLTS; s++) {
         const sw_df_bolt *bo = &d->bolt[s];
         if (!bo->live) continue;

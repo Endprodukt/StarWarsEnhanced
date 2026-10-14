@@ -337,6 +337,38 @@ wiederholt sich alle 8000h, jedes Gebäude wird auf dieser und der nächsten
 Runde betrachtet. Standbilder: am Start der Oberfläche nichts neben dem
 Spieler, am Horizont die kleinen dunklen Türme.
 
+## Dogfight: Radar, Anleitung, eigene Bestenliste, Ende; Attract still (2026-10-14)
+
+Rückmeldung des Besitzers vom Automaten (0.3.10) und was daraus wurde (0.3.11):
+
+* **X-Wings waren unsichtbar:** Das ROM-Modell TDSXW liefert hier keine
+  Kanten (2 Punkte, 0 Kanten; das Spiel zeichnet sein X-Wing nur aus dem
+  Cockpit). Deshalb schossen die Jagden im Hintergrund "auf niemanden", und
+  die Flügelmänner fehlten. Der Dogfight hat jetzt ein eigenes X-Wing
+  (`draw_xwing`, nach dem der Außenansicht, mit Flächen für die Occlusion,
+  Größe 420).
+* **Radar:** eine Scheibe mittig oben unter SHIELD. Vorn liegt in der Mitte,
+  hinten am Rand, oben oben. Gegner rot (Vader gelb, nahe hell),
+  Flügelmänner türkis; ein innerer Ring für "quer".
+* **Anleitung mit dem Joch** (wie Time Pilot 3D, `F:\Time Pilot 3D\src\attract.c`
+  draw_howto): Nach der Wahl des Dogfights kommt HOW TO FLY. Das Joch (Kasten mit
+  Atari-Logo zum Spieler, Kegel, Griffe, Abzüge vorn, Daumentasten hinten)
+  dreht, nickt, zeigt jede Taste blinkend mit ihrer Aufgabe (rechter
+  Abzug Laser, linker Torpedos, rechter Daumen schneller, linker langsamer),
+  dann das Rollen und START. Daneben das X-Wing, das tut, was das Joch tut.
+  32 s, oder ein Zug am Abzug (nach 1,5 s) beginnt. `swvideo --howto`.
+* **Eigene Bestenliste:** zehn Plätze (Initialen, Punkte, Welle) in
+  `save/dogfight.hi`, anfangs LUK 30000 bis GLD 3000. Nach GAME OVER (4 s)
+  gibt ein neuer bester Pilot seine Initialen ein (Joch zur Seite: Buchstabe,
+  Abzug: weiter, 30 s), dann zeigt DOGFIGHT BEST PILOTS die Liste 7 s.
+* **Übergang in den Attract:** Danach geht es durch das Spielende des
+  Originals (PHSEGM: "Remember...", "The Force will be with you", Buchhaltung,
+  Bens Thema, BNR) statt direkt zur Titelseite. Die eigene Ansage des
+  Dogfights beim Game Over fällt dafür weg.
+* **Attract still:** Ist MUSIC IN ATTRACT auf NO, ist auch der Demo-Flug stumm
+  (Lautstärke der Soundplatine 0, solange er läuft). Vorher waren seine
+  Schüsse, Musik und Ansagen zu hören.
+
 ## Dogfight: Originalschüsse, Protonentorpedos, große Schlacht (2026-10-14)
 
 Rückmeldung des Besitzers: falsche Schüsse, kein Torpedo, Gegner greifen zu
@@ -720,7 +752,7 @@ sobald das Menü neu startet (nach dem Verlassen des Spiels). Nicht geprüft
 am Gerät, auch nicht, ob der längere Titel des Testmenüs (jetzt Größe 90
 statt 110) in die Breite passt.
 
-Marquee erneuert (zweites Artwork des Besitzers, ohne die Streifen unten; auf die volle Breite 1920 gezogen, 17 % breiter als das Original), Version 0.2.1. **Noch nicht auf dem Automaten**, der war aus: beim nächsten Mal `sh tools/deploy.sh` und die neueste `dist/swenhanced-<version>.vpk` (jetzt 0.3.10, mit Dogfight Etappe 3) nach `/persistent/games/packages/` (dort liegt noch 0.2.0).
+Marquee erneuert (zweites Artwork des Besitzers, ohne die Streifen unten; auf die volle Breite 1920 gezogen, 17 % breiter als das Original), Version 0.2.1. **Noch nicht auf dem Automaten**, der war aus: beim nächsten Mal `sh tools/deploy.sh` und die neueste `dist/swenhanced-<version>.vpk` (jetzt 0.3.11, mit Dogfight Etappe 4) nach `/persistent/games/packages/` (dort liegt noch 0.2.0).
 
 Paketdatei: `sh tools/pack.sh` (in WSL, nach dem Pi-Build) schreibt
 `dist/swenhanced-<version>.vpk` mit dem `vp-pack` des SDK (dessen Skript und

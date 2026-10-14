@@ -266,6 +266,7 @@ int main(int argc, char **argv)
     static sw_dogfight df;
     int dogfight = arg_flag(argc, argv, "--dogfight");
     if (dogfight) sw_dogfight_start(&df, &m, arg(argc, argv, "--wave") ? atoi(arg(argc, argv, "--wave")) : 1);
+    if (dogfight && arg_flag(argc, argv, "--howto")) sw_dogfight_howto(&df);     /* (the page of how it is flown first) */
     if (!arg_flag(argc, argv, "--plain")) {
         pic.enhance.surface = pic.enhance.stars = pic.enhance.towers = pic.enhance.dogfights = 1;
         pic.enhance.logo = 1;
