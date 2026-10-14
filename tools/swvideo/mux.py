@@ -1,9 +1,10 @@
-"""mux.py OUT.mp4 SOUND.wav WIDTH HEIGHT FPS < frames.rgb
+"""mux.py OUT.mp4 SOUND.wav WIDTH HEIGHT FPS [SKIP] < frames.rgb
 
 Makes an MP4 (H.264 and AAC) of the raw RGB24 pictures tools/swvideo writes
 to its standard output and of its WAV file. Needs PyAV (pip install av);
 the WAV file is read when the pictures have ended, so swvideo can still be
-writing it while they come in.
+writing it while they come in. SKIP: seconds of the sound left out at its
+start (for pictures from swvideo --from SKIP).
 """
 import sys
 import wave
@@ -14,7 +15,7 @@ import numpy as np
 
 
 def main():
-    if len(sys.argv) != 6:
+    if len(sys.argv) not in (6, 7):
         sys.exit(__doc__)
     out, wav_path = sys.argv[1], sys.argv[2]
     width, height, fps = int(sys.argv[3]), int(sys.argv[4]), int(sys.argv[5])
@@ -45,6 +46,8 @@ def main():
         if w.getframerate() != rate or w.getnchannels() != 1:
             sys.exit("mux.py: the sound has to be %d Hz mono" % rate)
         pcm = np.frombuffer(w.readframes(w.getnframes()), np.int16)
+    if len(sys.argv) == 7:
+        pcm = pcm[int(float(sys.argv[6]) * rate):]
     resample = av.AudioResampler(format="fltp", layout="mono", rate=rate)
     step = 1024
     for i in range(0, len(pcm), step):
