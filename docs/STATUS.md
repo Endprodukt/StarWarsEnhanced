@@ -365,6 +365,17 @@ Rückmeldung des Besitzers vom Automaten (0.3.10) und was daraus wurde (0.3.11):
   Originals (PHSEGM: "Remember...", "The Force will be with you", Buchhaltung,
   Bens Thema, BNR) statt direkt zur Titelseite. Die eigene Ansage des
   Dogfights beim Game Over fällt dafür weg.
+* **Nachbesserung (0.3.12):** In der Anleitung schießt das X-Wing beim
+  rechten Abzug Laser (türkise Bolzen, paarweise im Wechsel, sie treffen sich
+  vorn) und beim linken zwei Torpedos (das Funkelbild der Schüsse). Beim
+  Schnellerwerden klappen die Flügel zusammen, und die Triebwerke bekommen
+  blaues Feuer mit einem wachsenden Leuchtring. Beim Langsamerwerden öffnen
+  sich die Flügel wieder. Es wird genau von hinten gesehen (die Nase entlang
+  der Blicklinie).
+* **Nicht mehr ins Gesicht (0.3.12):** Die Flügelmänner fliegen weit außen
+  und hinten (2600 seitlich, 1800 bis 2600 hinter dem Spieler) und weichen
+  unter 2200 aus. Gegner drehen schon unter 2200 ab (unter 3400, wenn sie
+  vorbei sind) und werden unter 1600 vom Spieler weggelenkt.
 * **Attract still:** Ist MUSIC IN ATTRACT auf NO, ist auch der Demo-Flug stumm
   (Lautstärke der Soundplatine 0, solange er läuft). Vorher waren seine
   Schüsse, Musik und Ansagen zu hören.
@@ -752,7 +763,7 @@ sobald das Menü neu startet (nach dem Verlassen des Spiels). Nicht geprüft
 am Gerät, auch nicht, ob der längere Titel des Testmenüs (jetzt Größe 90
 statt 110) in die Breite passt.
 
-Marquee erneuert (zweites Artwork des Besitzers, ohne die Streifen unten; auf die volle Breite 1920 gezogen, 17 % breiter als das Original), Version 0.2.1. **Noch nicht auf dem Automaten**, der war aus: beim nächsten Mal `sh tools/deploy.sh` und die neueste `dist/swenhanced-<version>.vpk` (jetzt 0.3.11, mit Dogfight Etappe 4) nach `/persistent/games/packages/` (dort liegt noch 0.2.0).
+Marquee erneuert (zweites Artwork des Besitzers, ohne die Streifen unten; auf die volle Breite 1920 gezogen, 17 % breiter als das Original), Version 0.2.1. **Noch nicht auf dem Automaten**, der war aus: beim nächsten Mal `sh tools/deploy.sh` und die neueste `dist/swenhanced-<version>.vpk` (jetzt 0.3.12, mit Dogfight Etappe 4) nach `/persistent/games/packages/` (dort liegt noch 0.2.0).
 
 Paketdatei: `sh tools/pack.sh` (in WSL, nach dem Pi-Build) schreibt
 `dist/swenhanced-<version>.vpk` mit dem `vp-pack` des SDK (dessen Skript und

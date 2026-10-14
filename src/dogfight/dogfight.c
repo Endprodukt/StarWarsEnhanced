@@ -280,8 +280,9 @@ static void vg_restart(sw_dogfight *d, const sw_machine *m, uint32_t n)
 /* The restarts due by the time of the picture. */
 static void vg_catch_up(sw_dogfight *d, const sw_machine *m)
 {
-    if (d->vg_clock > d->t + 1.0 || d->vg_clock < d->t - 0.5) d->vg_clock = d->t;   /* (a jump: not caught up) */
-    while (d->vg_clock <= d->t) {
+    double now = d->stage == SW_DF_HOWTO ? d->t + d->stage_t : d->t;      /* (the game waits on the how-to page; its pictures do not) */
+    if (d->vg_clock > now + 1.0 || d->vg_clock < now - 0.5) d->vg_clock = now;   /* (a jump: not caught up) */
+    while (d->vg_clock <= now) {
         vg_restart(d, m, (uint32_t)lrint(d->vg_clock * VG_HZ));
         d->vg_clock += 1.0 / VG_HZ;
     }
@@ -594,7 +595,9 @@ static void xw_face(sw_dogfight *d, const sw_df_body *b, const double (*q)[3], i
     int_face(d, (const double (*)[3])p, n);
 }
 
-static void draw_xwing(sw_dogfight *d, const sw_df_body *b, float lum)
+/* open: its S-foils, 1 open in an X, 0 closed (flat, as it speeds up);
+ * burn: 0, or how far its engines' blue fire reaches back (0..1). */
+static void draw_xwing(sw_dogfight *d, const sw_df_body *b, float lum, double open, double burn)
 {
     if (++d->inst == 0) d->inst = 0x8000;
     const double XT = -0.62, XC = 0.30, XN = 1.0, W = 0.11, H = 0.10, WN = 0.035, HN = 0.03;
@@ -657,7 +660,7 @@ static void draw_xwing(sw_dogfight *d, const sw_df_body *b, float lum)
     /* the four wings, in an X: red stripes, the engine at the root, the gun at the tip */
     for (int sy = -1; sy <= 1; sy += 2)
         for (int sz = -1; sz <= 1; sz += 2) {
-            double rz = sz * 0.04, tz = sz * GZ;
+            double rz = sz * 0.04, tz = sz * (0.045 + (GZ - 0.045) * open);
             double r0[3] = { -0.56, sy * W, rz }, r1[3] = { -0.06, sy * W, rz };
             double t0[3] = { -0.52, sy * GY, tz }, t1[3] = { -0.30, sy * GY, tz };
             xw_line(d, b, r0, t0, WHT, lum);
@@ -685,6 +688,27 @@ static void draw_xwing(sw_dogfight *d, const sw_df_body *b, float lum)
                 xw_line(d, b, ring0[i], ring0[j], BLU, lum);
                 xw_line(d, b, ring1[i], ring1[j], WHT, lum);
                 if (!(i & 1)) xw_line(d, b, ring0[i], ring1[i], WHT, lum);
+            }
+            /* its fire, when it is pushed on */
+            if (burn > 0.0) {
+                double fl = 0.8 + 0.2 * sin(d->t * 41.0 + sy * 1.7 + sz * 2.9 + d->stage_t * 37.0);
+                double tail[3] = { -0.68 - (0.25 + 0.75 * burn) * fl, cy, cz };
+                double core[3] = { -0.68 - (0.12 + 0.4 * burn) * fl, cy, cz };
+                for (int i = 0; i < 6; i += 2) {
+                    double e[3] = { -0.69, cy + (ring0[i][1] - cy) * 0.6, cz + (ring0[i][2] - cz) * 0.6 };
+                    xw_line(d, b, e, tail, BLU, lum);
+                }
+                double c0[3] = { -0.69, cy, cz };
+                xw_line(d, b, c0, core, WHT, lum);
+                /* (and its glow round the exit, growing: seen from behind, the fire itself is short) */
+                double rf = R * (0.9 + 0.9 * burn * fl), xf = -0.70 - 0.08 * burn;
+                for (int i = 0; i < 6; i++) {
+                    double a0 = i * 1.0471976, a1 = a0 + 1.0471976;
+                    double p0[3] = { xf, cy + rf * cos(a0), cz + rf * sin(a0) }, p1[3] = { xf, cy + rf * cos(a1), cz + rf * sin(a1) };
+                    double q0[3] = { xf, cy + rf * 0.45 * cos(a0), cz + rf * 0.45 * sin(a0) }, q1[3] = { xf, cy + rf * 0.45 * cos(a1), cz + rf * 0.45 * sin(a1) };
+                    xw_line(d, b, p0, p1, BLU, 255.0f);
+                    if (burn > 0.5) xw_line(d, b, q0, q1, WHT, (float)(120.0 + 135.0 * burn));
+                }
             }
             /* the gun ahead of the tip */
             double g0[3] = { -0.54, sy * GY, tz }, g1[3] = { 0.86, sy * GY, tz };
@@ -998,7 +1022,7 @@ static void enemies_step(sw_dogfight *d, double dt)
             if (dd < 520.0) for (int k = 0; k < 3; k++) e->b.pos[k] += v[k] / dd * (520.0 - dd) * 0.5;
         }
         norm(want);
-        if (e->mode == 0 && (far < 1100.0 || (far < 2200.0 && dot(e->b.f, to) < 0.0))) {
+        if (e->mode == 0 && (far < 2200.0 || (far < 3400.0 && dot(e->b.f, to) < 0.0))) {
             /* close in: break away, somewhere aside, and soon come round again */
             e->mode = 1;
             e->mode_t = d->t + 0.9 + rnd(d) * 1.0;
@@ -1010,6 +1034,15 @@ static void enemies_step(sw_dogfight *d, double dt)
             for (int k = 0; k < 3; k++) want[k] = e->away[k];
             norm(want);
             if (d->t > e->mode_t) e->mode = 0;
+        }
+        /* not into the player's face: near him it turns away (the owner: they came far too close) */
+        {
+            double v[3] = { e->b.pos[0] - d->pos[0], e->b.pos[1] - d->pos[1], e->b.pos[2] - d->pos[2] };
+            double dd = sqrt(dot(v, v));
+            if (dd > 1e-6 && dd < 1600.0) {
+                for (int k = 0; k < 3; k++) want[k] += v[k] / dd * (1600.0 / dd - 1.0) * 4.0;
+                norm(want);
+            }
         }
         if (fabs(e->b.pos[0]) > BOX * 1.15 || fabs(e->b.pos[1]) > BOX * 1.15 || fabs(e->b.pos[2]) > BOX * 1.15) {
             for (int k = 0; k < 3; k++) want[k] = -e->b.pos[k];
@@ -1304,8 +1337,8 @@ static void ally_place(sw_dogfight *d, int i, int beside)
     a->speed = ALLY_SPEED;
     double p[3], to[3];
     if (beside) {
-        static const double R[SW_DF_ALLIES] = { -1100.0, 1100.0, 0.0 }, U[SW_DF_ALLIES] = { 150.0, 150.0, 800.0 },
-                            B[SW_DF_ALLIES] = { 500.0, 500.0, 1200.0 };
+        static const double R[SW_DF_ALLIES] = { -2600.0, 2600.0, 0.0 }, U[SW_DF_ALLIES] = { 300.0, 300.0, 1600.0 },
+                            B[SW_DF_ALLIES] = { 1800.0, 1800.0, 2600.0 };
         for (int k = 0; k < 3; k++) {
             p[k] = d->pos[k] + d->r[k] * R[i] + d->u[k] * U[i] - d->f[k] * B[i];
             to[k] = p[k] + d->f[k];
@@ -1349,9 +1382,11 @@ static void allies_step(sw_dogfight *d, double dt)
             }
         } else {
             /* none left: off the player's wing */
-            static const double R[SW_DF_ALLIES] = { -1100.0, 1100.0, 0.0 }, U[SW_DF_ALLIES] = { 0.0, 0.0, 900.0 };
+            /* (well out to the sides and behind: they are seen when the player turns, never in his face) */
+            static const double R[SW_DF_ALLIES] = { -2600.0, 2600.0, 0.0 }, U[SW_DF_ALLIES] = { 300.0, 300.0, 1600.0 },
+                                B[SW_DF_ALLIES] = { 1800.0, 1800.0, 2600.0 };
             double at[3];
-            for (int k = 0; k < 3; k++) at[k] = d->pos[k] + d->r[k] * R[i] + d->u[k] * U[i] - d->f[k] * 700.0 - a->b.pos[k];
+            for (int k = 0; k < 3; k++) at[k] = d->pos[k] + d->r[k] * R[i] + d->u[k] * U[i] - d->f[k] * B[i] - a->b.pos[k];
             double gap = sqrt(dot(at, at));
             for (int k = 0; k < 3; k++) want[k] = d->f[k] * 900.0 + at[k] * 1.5;
             norm(want);
@@ -1365,7 +1400,7 @@ static void allies_step(sw_dogfight *d, double dt)
         /* not into the player */
         double v[3] = { a->b.pos[0] - d->pos[0], a->b.pos[1] - d->pos[1], a->b.pos[2] - d->pos[2] };
         double dd = sqrt(dot(v, v));
-        if (dd > 1e-6 && dd < 800.0) for (int k = 0; k < 3; k++) want[k] += v[k] / dd * (800.0 / dd - 1.0) * 2.0;
+        if (dd > 1e-6 && dd < 2200.0) for (int k = 0; k < 3; k++) want[k] += v[k] / dd * (2200.0 / dd - 1.0) * 4.0;
         if (fabs(a->b.pos[0]) > BOX * 1.1 || fabs(a->b.pos[1]) > BOX * 1.1 || fabs(a->b.pos[2]) > BOX * 1.1)
             for (int k = 0; k < 3; k++) want[k] = -a->b.pos[k];
         norm(want);
@@ -1615,7 +1650,7 @@ static void chase_one(sw_dogfight *d, double t, uint32_t h)
         double to[3] = { p[0] + fw[0], p[1] + fw[1], p[2] + fw[2] };
         body_facing(&b, p, to);
         int xwing = (k == 0) != rebels_chase;
-        if (xwing) draw_xwing(d, &b, lum);
+        if (xwing) draw_xwing(d, &b, lum, 1.0, 0.0);
         else draw_model(d, M_TIE, &b, 1.0, GRN, lum * 0.8f, SW_TDSTIE);
         /* now and then a bolt of a chaser after the one it chases (red
          * from an X-wing, as in the films; green from a TIE) */
@@ -2078,6 +2113,39 @@ static int howto_lines(sw_dogfight *d, const sw_machine *m, const sw_line **out)
     text_mid(d, m, 0.0, -96.0, WHT, 0xe0, SW_VGSCAL, LETTER, line1);
     text_mid(d, m, 0.0, -108.0, TRQ, 0xa0, SW_VGSCAL, LETTER, line2);
     if (t > 1.5 && fmod(t, 1.0) < 0.65) text_mid(d, m, 0.0, -136.0, RED, 0xc0, SW_VGSCAL, LETTER, "PULL THE TRIGGER TO BEGIN");
+
+    /* the X-wing, seen from behind and a little above, doing what the yoke
+     * does: its wings close as it speeds up, its engines' fire grows */
+    sw_df_body xb;
+    for (int k = 0; k < 3; k++) xb.pos[k] = d->pos[k] + d->f[k] * 1900.0 + d->r[k] * 820.0 + d->u[k] * 480.0;
+    /* (its nose along the eye's line to it: seen from straight behind, off
+     * the view's middle as it is; a little nose down, its back to the eye) */
+    for (int k = 0; k < 3; k++) xb.f[k] = xb.pos[k] - d->pos[k];
+    norm(xb.f);
+    memcpy(xb.r, d->r, sizeof xb.r);
+    memcpy(xb.u, d->u, sizeof xb.u);
+    square3(xb.f, xb.r, xb.u);
+    turn(xb.f, xb.u, -0.1);
+    turn(xb.f, xb.r, t < T_PUSH ? turn_k * 0.35 : 0.0);
+    turn(xb.f, xb.u, -push * 0.45);                 /* (pushed: the nose down) */
+    turn(xb.r, xb.u, -(turn_k * (rolling ? 0.0 : 0.7) + roll_round));
+    square3(xb.f, xb.r, xb.u);
+    double t_fast = T_BUTTONS + 2.0 * EACH, t_slow = T_BUTTONS + 3.0 * EACH;
+    double xw_open = step == FASTER ? 1.0 - smooth01((t - t_fast) / 1.0) : step == SLOWER ? smooth01((t - t_slow) / 1.0) : 1.0;
+    double xw_burn = step == FASTER ? 0.3 + 0.7 * smooth01((t - t_fast) / 0.6) : step == SLOWER ? 0.05 : rolling ? 0.45 : 0.25;
+    if (step == TORPEDO) {
+        /* two at a time, as the game's shots look, from below its nose, ahead */
+        double t0 = T_BUTTONS + EACH, ph = fmod(t - t0, 1.75) / 1.75;
+        for (int g = 0; g < 2; g++) {
+            double sy = g ? 1.0 : -1.0, ahead = 1.1 + ph * 16.0, k = 1.0 - ph * 0.7;
+            double q[3] = { ahead * XW_SIZE, sy * 0.35 * k * XW_SIZE, -0.12 * XW_SIZE }, p[3], x, y, z;
+            place(&xb, q, 1.0, p);
+            if (ph < 0.95 && project(d, p, &x, &y, &z)) {
+                d->tag = SW_TAG(SW_TAG_SHOT, 0x200 + g);
+                fireball(d, x, y, z < 4500.0 ? 4500.0 : z, 0, 0);
+            }
+        }
+    }
     emit(d, 0x2000);
     sw_avg_run_tagged(d->space, SW_VGVARB, d->tags, NULL, &d->list, 20000);
 
@@ -2116,21 +2184,25 @@ static int howto_lines(sw_dogfight *d, const sw_machine *m, const sw_line **out)
         }
     }
 
-    /* the X-wing, seen from behind and a little above, doing what the yoke does */
-    {
-        sw_df_body b;
-        double at[3];
-        for (int k = 0; k < 3; k++) at[k] = d->pos[k] + d->f[k] * 1900.0 + d->r[k] * 820.0 + d->u[k] * 480.0;
-        memcpy(b.pos, at, sizeof b.pos);
-        memcpy(b.f, d->f, sizeof b.f);
-        memcpy(b.r, d->r, sizeof b.r);
-        memcpy(b.u, d->u, sizeof b.u);
-        turn(b.f, b.u, -0.3);                       /* (its back a little towards the eye above it) */
-        turn(b.f, b.r, t < T_PUSH ? turn_k * 0.35 : 0.0);
-        turn(b.f, b.u, -push * 0.45);               /* (pushed: the nose down) */
-        turn(b.r, b.u, -(turn_k * (rolling ? 0.0 : 0.7) + roll_round));
-        square3(b.f, b.r, b.u);
-        draw_xwing(d, &b, 220.0f);
+    /* the X-wing, its lasers, its fire */
+    draw_xwing(d, &xb, 220.0f, xw_open, xw_burn);
+    if (step == LASER) {
+        /* a shot every 0.18 s, the pairs in turn, each bolt flying ahead
+         * from its guns' tips to where they meet */
+        double begun = T_BUTTONS;
+        for (int k = 0; k < 4; k++) {
+            int n = (int)floor((t - begun) / 0.18) - k;
+            if (n < 0) continue;
+            double age = t - begun - n * 0.18, s0 = 0.9 + age * 13.0;
+            if (s0 > 9.0) continue;
+            int right = n & 1;
+            for (int g = 0; g < 2; g++) {
+                double sy = right ? 1.0 : -1.0, sz = g ? 1.0 : -1.0, gy = sy * 0.95, gz = sz * 0.28;
+                double k0 = 1.0 - s0 / 12.0, k1 = 1.0 - (s0 + 2.6) / 12.0;
+                double a[3] = { s0, gy * k0, gz * k0 }, c[3] = { s0 + 2.6, gy * k1, gz * k1 };
+                xw_line(d, &xb, a, c, TRQ, 255.0f);
+            }
+        }
     }
     *out = d->list.lines;
     return d->list.count;
@@ -2500,7 +2572,7 @@ int sw_dogfight_lines(sw_dogfight *d, const sw_machine *m, const sw_line **out)
     /* the ships, in true perspective (after the list: their lines are added) */
     chase(d);
     for (int i = 0; i < SW_DF_ALLIES; i++)
-        if (d->ally[i].live) draw_xwing(d, &d->ally[i].b, 150.0f);
+        if (d->ally[i].live) draw_xwing(d, &d->ally[i].b, 150.0f, 1.0, 0.0);
     for (int s = 0; s < SW_DF_BOLTS; s++) {
         const sw_df_bolt *bo = &d->bolt[s];
         if (!bo->live) continue;
