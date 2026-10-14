@@ -293,13 +293,40 @@ int main(int argc, char **argv)
             in.faster = fmod(t, 14.0) > 4.0 && fmod(t, 14.0) < 8.0;
             in.slower = fmod(t, 14.0) > 10.0 && fmod(t, 14.0) < 12.0;
             if (fmod(t, 23.0) > 19.0 && fmod(t, 23.0) < 21.0) { in.faster = in.slower = 1; in.yaw = 0.8f; }
+            /* after the nearest enemy, firing when it is before the nose */
+            {
+                double bd = 1e18, v[3] = { 0, 0, 0 };
+                for (int k = 0; k < SW_DF_ENEMIES; k++) {
+                    if (!df.enemy[k].kind) continue;
+                    double a[3] = { df.enemy[k].b.pos[0] - df.pos[0], df.enemy[k].b.pos[1] - df.pos[1], df.enemy[k].b.pos[2] - df.pos[2] };
+                    double dd = a[0] * a[0] + a[1] * a[1] + a[2] * a[2];
+                    if (dd < bd) {
+                        bd = dd;
+                        v[0] = a[0] * df.f[0] + a[1] * df.f[1] + a[2] * df.f[2];
+                        v[1] = a[0] * df.r[0] + a[1] * df.r[1] + a[2] * df.r[2];
+                        v[2] = a[0] * df.u[0] + a[1] * df.u[1] + a[2] * df.u[2];
+                    }
+                }
+                if (bd < 1e17) {
+                    double ang_y = atan2(v[1], v[0]), ang_z = atan2(v[2], v[0]);
+                    in.yaw = (float)(ang_y * 2.5 > 1.0 ? 1.0 : ang_y * 2.5 < -1.0 ? -1.0 : ang_y * 2.5);
+                    in.pitch = (float)(ang_z * 2.5 > 1.0 ? 1.0 : ang_z * 2.5 < -1.0 ? -1.0 : ang_z * 2.5);
+                    in.fire = v[0] > 0.0 && fabs(ang_y) < 0.06 && fabs(ang_z) < 0.06 && fmod(t, 0.5) < 0.25;
+                }
+            }
             sw_dogfight_step(&df, &in, 1.0 / fps);
-            uint32_t want = (uint32_t)((f + 1) * (double)SW_SOUND_RATE / fps);
-            static const int16_t quiet[2048];
-            while (samples < want) {
-                uint32_t k = want - samples > 2048 ? 2048 : want - samples;
-                fwrite(quiet, 2, k, wav);
-                samples += k;
+            /* its sounds on the sound board, as the program asks them */
+            while ((double)irqs / SW_IRQ_HZ < now + 1.0 / fps) {
+                if (!m.sound_out_full) {
+                    int r = sw_dogfight_sound(&df);
+                    if (r >= 0) { m.sound_out = (uint8_t)r; m.sound_out_full = 1; }
+                }
+                sw_sndboard_run(&snd, SND_CYCLES_PER_IRQ);
+                irqs++;
+                for (int got; (got = sw_sndboard_read(&snd, pcm, 4096)) > 0; ) {
+                    fwrite(pcm, 2, (size_t)got, wav);
+                    samples += (uint32_t)got;
+                }
             }
             const sw_line *dl;
             int dn = sw_dogfight_lines(&df, &m, &dl);
@@ -308,6 +335,11 @@ int main(int argc, char **argv)
             sw_dogfight_attitude(&df, &pic.enhance.df_bank, &pic.enhance.df_pitch);
             pic.enhance.df_throttle = df.throttle;
             int count = sw_enhance_run(&pic.enhance, &m, now, dl, dn, &dl);
+            if (pic.occlusion) {
+                pic.solid.extra = df.faces;
+                pic.solid.n_extra = df.n_faces;
+                count = sw_solid_run(&pic.solid, dl, count, &dl);
+            }
             if (f % every != 0 || now < from) continue;
             if (every > 1) memset(after, 0, (size_t)W * H * 3 * sizeof *after);
             picture(dl, count);

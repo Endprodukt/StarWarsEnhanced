@@ -24,6 +24,7 @@
 #include "dogfight/dogfight.h"
 #include "platform/demo.h"
 #include "platform/menu.h"
+#include "platform/yoke.h"
 #include "render/config.h"
 #include "render/dvgmap.h"
 #include "render/picture.h"
@@ -290,6 +291,12 @@ static void draw_game(sw_app *app, const sw_display_cfg *cfg, board *b, double n
         sw_dogfight_attitude(&b->df, &b->pic.enhance.df_bank, &b->pic.enhance.df_pitch);
         b->pic.enhance.df_throttle = b->df.throttle;
         n = sw_enhance_run(&b->pic.enhance, &b->m, now, lines, n, &lines);
+        if (b->pic.occlusion) {
+            /* solid: the ROM's ships by their own faces, the interceptor by its */
+            b->pic.solid.extra = b->df.faces;
+            b->pic.solid.n_extra = b->df.n_faces;
+            n = sw_solid_run(&b->pic.solid, lines, n, &lines);
+        }
         sw_draw_lines(app->dvg, cfg, lines, n);
         return;
     }
@@ -475,6 +482,7 @@ int main(int argc, char **argv)
         int in_flight = brd.native && (brd.pic.enhance.plane_seen || brd.df.active) && !menu.open && !brd.demo.active;
         brd.ctl.start_fires = !in_flight;
         sw_controls_read(&brd.ctl, app.in);
+        sw_yoke_update();
         /* A coin or a button ends a demo flight: the attract mode is back
          * at once, and the coin or the button counts there. */
         if (brd.demo.active) {
@@ -489,14 +497,36 @@ int main(int argc, char **argv)
             (vp_input_pressed(app.in, "p1_button1") || vp_input_pressed(app.in, "p1_button4") || vp_input_pressed(app.in, "start1")))
             sw_dogfight_start(&brd.df, &brd.m);
         if (brd.df.active) {
+            /* the yoke itself when there is one (each of its buttons on its
+             * own, its whole travel), else the controls as the game has them */
             sw_dogfight_input din;
-            din.yaw = ((float)brd.ctl.adc_x - 128.0f) / 127.0f;
-            din.pitch = ((float)brd.ctl.adc_y - 128.0f) / 127.0f;
-            din.faster = vp_input_held(app.in, "p1_button2");
-            din.slower = vp_input_held(app.in, "p1_button3");
-            din.fire = vp_input_held(app.in, "p1_button1");
-            din.torpedo = vp_input_held(app.in, "p1_button4");
+            if (sw_yoke_present()) {
+                sw_yoke_axes(&din.yaw, &din.pitch);             /* (pulled back: the nose up) */
+                din.fire = sw_yoke_held(SW_YOKE_RIGHT_TRIGGER);
+                din.torpedo = sw_yoke_held(SW_YOKE_LEFT_TRIGGER);
+                din.faster = sw_yoke_held(SW_YOKE_RIGHT_THUMB);
+                din.slower = sw_yoke_held(SW_YOKE_LEFT_THUMB);
+            } else {
+                din.yaw = ((float)brd.ctl.adc_x - 128.0f) / 127.0f;
+                din.pitch = ((float)brd.ctl.adc_y - 128.0f) / 127.0f;
+                din.fire = vp_input_held(app.in, "p1_button1");
+                din.torpedo = vp_input_held(app.in, "p1_button4");
+                din.faster = vp_input_held(app.in, "p1_button2");
+                din.slower = vp_input_held(app.in, "p1_button3");
+            }
             sw_dogfight_step(&brd.df, &din, dt);
+            /* its sounds, one at a time, as the game asks the board */
+            if (!brd.m.sound_out_full) {
+                int r = sw_dogfight_sound(&brd.df);
+                if (r >= 0) { brd.m.sound_out = (uint8_t)r; brd.m.sound_out_full = 1; }
+            }
+            if (brd.df.finished) {
+                /* over: back to the attract mode, the board's sound stopped */
+                brd.df.active = 0;
+                brd.m.ram[SW_PHASE - 0x4800] = SW_PHSBNR;
+                brd.m.sound_out = 0;
+                brd.m.sound_out_full = 1;
+            }
         }
         if (in_flight && vp_input_pressed(app.in, "start1")) {
             cfg.enh_view = (cfg.enh_view % SW_VIEWS + 1) % SW_VIEWS;

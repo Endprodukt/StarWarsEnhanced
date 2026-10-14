@@ -105,6 +105,7 @@ add_library(swout STATIC
     src/platform/app.c
     src/platform/controls.c
     src/platform/menu.c
+    src/platform/yoke.c
     src/platform/audio.c
 )
 target_link_libraries(swout PUBLIC swcore vectorpie)

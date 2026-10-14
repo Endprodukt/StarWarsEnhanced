@@ -337,6 +337,60 @@ wiederholt sich alle 8000h, jedes Gebäude wird auf dieser und der nächsten
 Runde betrachtet. Standbilder: am Start der Oberfläche nichts neben dem
 Spieler, am Horizont die kleinen dunklen Türme.
 
+## Dogfight, Etappe 2: Gegner, Laser, Joch direkt (2026-10-14)
+
+* **Joch direkt** (`src/platform/yoke.c`, aus Time Pilot 3D übernommen):
+  Ist ein Joystick angeschlossen, dessen Name "yoke" enthält, liest der
+  Dogfight dessen Achsen (ganzer Weg) und Tasten selbst. Belegung wie das
+  Joch des Besitzers in Time Pilot 3D (yoke_layout 1 2 3 4): Taste 1 rechter
+  Trigger = Laser, 2 linker Trigger = Torpedo (Etappe 3), 3 rechter Daumen =
+  schneller, 4 linker Daumen = langsamer. Ohne Joch (PC) wie bisher über
+  `p1_button1..4` und die Achsen der Steuerung. Joch zurückziehen = Nase hoch.
+  Am Gerät nicht geprüft; noch nicht im Testmenü einstellbar.
+* **Gegner** (die Modelle des ROMs, wie im Spiel gezeichnet und mit
+  Modellnummer, Punkten und ihren Raumpunkten markiert, so dass
+  render/solid sie massiv macht): TIE Fighter (`TDSTIE`, 1 Treffer, 1000),
+  TIE Interceptor (eigenes Modell: Kugel, Pylonen, je Seite vier nach vorn
+  geknickte Dolchflügel; eigene Flächen für die Occlusion; 2 Treffer, 1500),
+  Vaders TIE (`TDSRTH`, 3 Treffer, 2000; jede fünfte Welle, mit seinem Thema
+  und "I have you now"). Sie greifen an (mit Vorhalt auf das Schiff),
+  drehen unter 1100 ab, kommen wieder, bleiben in der Box, feuern
+  Feuerbälle, wenn das Schiff vor ihrer Nase ist; rammen kostet einen
+  Schild. Explosion: die Trümmerteile des ROMs (`TDSTI1..3`), die taumelnd
+  auseinanderfliegen.
+* **Wellen:** Welle n bringt 2 + n Gegner (höchstens 14, höchstens 8
+  zugleich), ab Welle 3 Interceptors; je Welle schneller, wendiger und
+  schussfreudiger (bis zum 1,6- bzw. 2,5-fachen). Nach jeder Welle repariert
+  R2 einen Schild ("R2 MENDS A SHIELD"). 6 Schilde; leer: "GAME OVER" mit
+  Punktzahl, "The Force will be with you, always", nach 7 s zurück in den
+  Attract.
+* **Laser:** rechter Trigger, gehalten alle 0,22 s ein Schuss, abwechselnd
+  linkes und rechtes Kanonenpaar, sichtbar 0,15 s von den Kanonen zum
+  Fadenkreuz (blau, dann türkis). Getroffen wird, was unter dem Fadenkreuz
+  am nächsten liegt (bis 9000): Gegner oder Feuerball (33 Punkte).
+* **Feuerbälle:** eigene Funken (acht Strahlen weiß/rot, drehend und
+  flackernd, nach Entfernung groß). Das Sprite des ROMs (VJGNB) holt sein
+  Funkeln aus Mustern, die das Spiel jedes Bild in den VG-RAM schreibt; in
+  der eigenen Liste ergab es weiße Klumpen und brach die Liste ab.
+* **Anzeige:** SCORE oben links, Schilde in der Mitte (rot beim Treffer,
+  türkis bei der Reparatur), WAVE oben rechts, Schub darunter; "WAVE n"
+  bei jeder Welle, "DARTH VADER" in seiner. Ist kein Gegner im Bild, zeigt ein
+  roter Pfeil um das Fadenkreuz zum nächsten.
+* **Ton:** die Platine selbst, angefordert wie vom Spiel (Warteschlange,
+  eine Anforderung je Bild): Laser, TIE-Kanone, Vorbeiflug, Explosion,
+  Schildtreffer, Feuerball getroffen, R2, Sprache ("Red Five standing by",
+  "I'm hit, but not bad", "R2, try and increase the power"), Hauptthema zu
+  Beginn.
+* **Hintergrund:** alle 19 s eine Jagd in der Ferne (26000 weg, 11 s quer
+  über den Himmel): mal TIEs hinter einem X-Wing (`TDSXW`, grüne Schüsse),
+  mal X-Wings hinter einem TIE (rote Schüsse). Nur zum Ansehen.
+* `swvideo --dogfight` fliegt mit eigenem Piloten (dreht auf den nächsten
+  Gegner, feuert, wenn er vor der Nase ist) und mit Ton.
+
+Offen: Torpedos (Etappe 3), Anleitungsseite mit Joch (Etappe 4),
+Highscores und Feinschliff (Etappe 5), Tastenbelegung im Testmenü; am Gerät
+nichts gesehen.
+
 ## Dogfight, Etappe 1: Fliegen in der Box (2026-10-14)
 
 Gebaut (`src/dogfight/dogfight.c`), Plan siehe nächster Abschnitt:
@@ -546,7 +600,7 @@ sobald das Menü neu startet (nach dem Verlassen des Spiels). Nicht geprüft
 am Gerät, auch nicht, ob der längere Titel des Testmenüs (jetzt Größe 90
 statt 110) in die Breite passt.
 
-Marquee erneuert (zweites Artwork des Besitzers, ohne die Streifen unten; auf die volle Breite 1920 gezogen, 17 % breiter als das Original), Version 0.2.1. **Noch nicht auf dem Automaten**, der war aus: beim nächsten Mal `sh tools/deploy.sh` und die neueste `dist/swenhanced-<version>.vpk` (jetzt 0.3.0, mit Dogfight Etappe 1) nach `/persistent/games/packages/` (dort liegt noch 0.2.0).
+Marquee erneuert (zweites Artwork des Besitzers, ohne die Streifen unten; auf die volle Breite 1920 gezogen, 17 % breiter als das Original), Version 0.2.1. **Noch nicht auf dem Automaten**, der war aus: beim nächsten Mal `sh tools/deploy.sh` und die neueste `dist/swenhanced-<version>.vpk` (jetzt 0.3.1, mit Dogfight Etappe 2) nach `/persistent/games/packages/` (dort liegt noch 0.2.0).
 
 Paketdatei: `sh tools/pack.sh` (in WSL, nach dem Pi-Build) schreibt
 `dist/swenhanced-<version>.vpk` mit dem `vp-pack` des SDK (dessen Skript und
