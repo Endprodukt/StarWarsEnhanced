@@ -5,8 +5,10 @@
  * Death Star far off; wave after wave of enemies comes, for as long as he
  * lives (docs/STATUS.md, "Dogfight").
  *
- * Controlled as Time Pilot 3D: the yoke turns and pitches the ship (the
- * sight stays in the middle: one aims with the nose); the thumb buttons
+ * Controlled as Time Pilot 3D: the yoke moves the sight a little way out
+ * of the middle at once, and turns and pitches the ship the more, the
+ * farther out the sight is (gently near the middle, fully at its reach):
+ * small aims need no turn of the whole ship; the thumb buttons
  * make it faster and slower, the throttle going back to the middle when
  * they are let go; both together and the yoke to a side roll it about its
  * own axis. The right trigger fires the lasers.
@@ -79,6 +81,8 @@ typedef struct sw_dogfight {
     double speed;               /* units a second */
     float  throttle;            /* -1 (slowest) .. 1 (fastest); rests at 0 */
     float  yaw_rate, pitch_rate, roll_rate;     /* radians a second, as they are now (they ease) */
+    float  sight_x, sight_y;    /* the sight, from the middle of the view (the lines' units): it goes
+                                 * with the yoke, and the ship turns the more, the farther out it is */
     int    turning_back;        /* at a wall: the ship turns back by itself */
     double back_since;
     /* the game */
