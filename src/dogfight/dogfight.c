@@ -1016,6 +1016,100 @@ static void number(char *s, long v)
  * a soft line between (from where each line lies on the sphere as seen). */
 static const double SUN[3] = { 0.1, -0.8, 0.5 };    /* (from the left and above, as one first sees it) */
 
+/* The lines' units are not square: the screen's 255 across and 303 up
+ * fill a tube of 4 by 3, so a unit up is DS_K times shorter than one
+ * across. The sphere is worked out in square units (y / DS_K). */
+#define DS_K (303.0 / 255.0 * 4.0 / 3.0)
+
+/* how lit a point of the Death Star's disc is (0.18 .. 1), the sun as the ship sees it */
+static double ds_lit(double rx, double ry, const double *sv)
+{
+    double rr = rx * rx + ry * ry, n[3] = { rx, ry, rr < 1.0 ? sqrt(1.0 - rr) : 0.0 };
+    double lit = n[0] * sv[0] + n[1] * sv[1] + n[2] * sv[2];
+    return lit < -0.25 ? 0.18 : lit > 0.35 ? 1.0 : 0.18 + 0.82 * (lit + 0.25) / 0.6;
+}
+
+/* a line on the Death Star's disc, in the lines' units, lit where it lies */
+static void ds_line(sw_dogfight *d, double cx, double cy, double r, const double *sv, double x0, double y0, double x1, double y1, double base)
+{
+    sw_line *l = new_line(d);
+    if (!l) return;
+    double k = ds_lit(((x0 + x1) * 0.5 - cx) / r, ((y0 + y1) * 0.5 - cy) / r, sv);
+    l->x0 = (float)x0; l->y0 = (float)(y0 * DS_K);
+    l->x1 = (float)x1; l->y1 = (float)(y1 * DS_K);
+    l->color = WHT;
+    l->zz = 7;
+    l->intensity = (uint8_t)(base * k > 255.0 ? 255.0 : base * k);
+    l->id = ((uint64_t)SW_TAG(SW_TAG_DSTAR, 3) << 48) | (0x40000000u + d->line_id++);
+}
+
+/* More of its surface, laid on the sphere as the stamps have it (its
+ * trench, a great circle seen edge on, gives its equator): latitudes
+ * along the trench, a few meridians across, and plates of the surface
+ * here and there, none on the dish. */
+static void death_star_details(sw_dogfight *d, double cx, double cy, double r, const double *sv, double dx, double dy, double dish_r)
+{
+    /* the trench: its longest bright line gives the way along the equator */
+    double tx = 1.0, ty = 0.0, best = 0.0;
+    for (int i = 0; i < d->list.count; i++) {
+        const sw_line *l = &d->list.lines[i];
+        if (SW_TAG_SECTION((unsigned)(l->id >> 48)) != SW_TAG_DSTAR || l->color != WHT || l->intensity < 60) continue;
+        double ex = l->x1 - l->x0, ey = (l->y1 - l->y0) / DS_K, len = hypot(ex, ey);
+        if (len > best && len > r) { best = len; tx = ex / len; ty = ey / len; }
+    }
+    double ax = -ty, ay = tx;                           /* the axis: across the trench */
+    if (ax * (dx - cx) + ay * (dy - cy) < 0.0) { ax = -ax; ay = -ay; }  /* (the dish in the north) */
+    /* a point of the sphere: latitude, longitude (0 towards the ship), on the screen */
+#define DS_AT(lat, lon, X, Y) do { double cl = cos(lat); (X) = cx + r * (cl * sin(lon) * tx + sin(lat) * ax); \
+                                   (Y) = cy + r * (cl * sin(lon) * ty + sin(lat) * ay); } while (0)
+    const double PI = 3.14159265358979;
+    /* latitudes */
+    static const double LATS[6] = { -55.0, -35.0, -16.0, 16.0, 35.0, 55.0 };
+    for (int i = 0; i < 6; i++) {
+        double lat = LATS[i] * PI / 180.0;
+        for (int k = 0; k < 8; k++) {
+            double a0 = (-90.0 + k * 22.5) * PI / 180.0, a1 = a0 + 22.5 * PI / 180.0, x0, y0, x1, y1;
+            DS_AT(lat, a0, x0, y0);
+            DS_AT(lat, a1, x1, y1);
+            if (dish_r > 0.0 && (hypot(x0 - dx, y0 - dy) < dish_r * 1.05 || hypot(x1 - dx, y1 - dy) < dish_r * 1.05)) continue;
+            ds_line(d, cx, cy, r, sv, x0, y0, x1, y1, fabs(LATS[i]) < 20.0 ? 110.0 : 80.0);
+        }
+    }
+    /* meridians */
+    static const double LONS[4] = { -62.0, -30.0, 30.0, 62.0 };
+    for (int i = 0; i < 4; i++) {
+        double lon = LONS[i] * PI / 180.0;
+        for (int k = 0; k < 10; k++) {
+            double a0 = (-80.0 + k * 16.0) * PI / 180.0, a1 = a0 + 16.0 * PI / 180.0, x0, y0, x1, y1;
+            if (fabs(a0) < 0.06 || fabs(a1) < 0.06) continue;     /* (not across the trench) */
+            DS_AT(a0, lon, x0, y0);
+            DS_AT(a1, lon, x1, y1);
+            if (dish_r > 0.0 && (hypot(x0 - dx, y0 - dy) < dish_r * 1.05 || hypot(x1 - dx, y1 - dy) < dish_r * 1.05)) continue;
+            ds_line(d, cx, cy, r, sv, x0, y0, x1, y1, 70.0);
+        }
+    }
+    /* plates: small, here and there, the same every time */
+    for (int i = 0; i < 40; i++) {                  /* (each plate is four lines for the beam: not too many) */
+        uint32_t h = hash((uint32_t)i * 2246822519u + 7u);
+        double lat = ((double)(h & 0xff) / 255.0 * 150.0 - 75.0) * PI / 180.0;
+        double lon = ((double)((h >> 8) & 0xff) / 255.0 * 160.0 - 80.0) * PI / 180.0;
+        double wl = (3.0 + (double)((h >> 16) & 7)) * PI / 180.0, hl = (2.0 + (double)((h >> 19) & 3)) * PI / 180.0;
+        if (fabs(lat) < 0.07 || fabs(lat) - hl < 0.07) continue;      /* (the trench is there) */
+        double c[4][2];
+        DS_AT(lat - hl, lon - wl, c[0][0], c[0][1]);
+        DS_AT(lat - hl, lon + wl, c[1][0], c[1][1]);
+        DS_AT(lat + hl, lon + wl, c[2][0], c[2][1]);
+        DS_AT(lat + hl, lon - wl, c[3][0], c[3][1]);
+        int on_dish = 0;
+        for (int k = 0; k < 4; k++) on_dish |= dish_r > 0.0 && hypot(c[k][0] - dx, c[k][1] - dy) < dish_r * 1.1;
+        if (on_dish) continue;
+        double base = 60.0 + (double)((h >> 22) & 31);
+        for (int k = 0; k < 4; k++)
+            ds_line(d, cx, cy, r, sv, c[k][0], c[k][1], c[(k + 1) % 4][0], c[(k + 1) % 4][1], base);
+    }
+#undef DS_AT
+}
+
 static void death_star_colors(sw_dogfight *d, float cx, float cy, float r)
 {
     double sun[3] = { SUN[0], SUN[1], SUN[2] };
@@ -1029,7 +1123,7 @@ static void death_star_colors(sw_dogfight *d, float cx, float cy, float r)
         const sw_line *l = &d->list.lines[i];
         if (SW_TAG_SECTION((unsigned)(l->id >> 48)) != SW_TAG_DSTAR || l->color != RED) continue;
         dx += l->x0 + l->x1;
-        dy += l->y0 + l->y1;
+        dy += (l->y0 + l->y1) / DS_K;
         nd += 2;
     }
     if (nd) { dx /= nd; dy /= nd; }
@@ -1037,7 +1131,7 @@ static void death_star_colors(sw_dogfight *d, float cx, float cy, float r)
     for (int i = 0; i < d->list.count; i++) {
         const sw_line *l = &d->list.lines[i];
         if (SW_TAG_SECTION((unsigned)(l->id >> 48)) != SW_TAG_DSTAR || l->color != RED) continue;
-        double e0 = hypot(l->x0 - dx, l->y0 - dy), e1 = hypot(l->x1 - dx, l->y1 - dy);
+        double e0 = hypot(l->x0 - dx, l->y0 / DS_K - dy), e1 = hypot(l->x1 - dx, l->y1 / DS_K - dy);
         if (e0 > dish_r) dish_r = e0;
         if (e1 > dish_r) dish_r = e1;
     }
@@ -1045,17 +1139,14 @@ static void death_star_colors(sw_dogfight *d, float cx, float cy, float r)
         sw_line *l = &d->list.lines[i];
         if (SW_TAG_SECTION((unsigned)(l->id >> 48)) != SW_TAG_DSTAR) continue;
         /* how lit it is where it lies */
-        double mx = (l->x0 + l->x1) * 0.5 - cx, my = (l->y0 + l->y1) * 0.5 - cy;
-        double rx = mx / r, ry = my / r, rr = rx * rx + ry * ry;
-        double n[3] = { rx, ry, rr < 1.0 ? sqrt(1.0 - rr) : 0.0 };
-        double lit = n[0] * sv[0] + n[1] * sv[1] + n[2] * sv[2];
-        double k = lit < -0.25 ? 0.18 : lit > 0.35 ? 1.0 : 0.18 + 0.82 * (lit + 0.25) / 0.6;
+        double mx = (l->x0 + l->x1) * 0.5 - cx, my = (l->y0 + l->y1) * 0.5 / DS_K - cy;
+        double k = ds_lit(mx / r, my / r, sv);
         double base;
         unsigned c = WHT;
         if (l->color == RED) {
             /* the dish: its spokes green where they meet, its rim grey and bright */
             /* (a spoke runs from the middle out: long; the rim is made of short pieces) */
-            int spoke = dish_r > 0.0 && hypot(l->x1 - l->x0, l->y1 - l->y0) > dish_r * 0.55;
+            int spoke = dish_r > 0.0 && hypot(l->x1 - l->x0, (l->y1 - l->y0) / DS_K) > dish_r * 0.55;
             c = spoke ? GRN : WHT;
             base = spoke ? 170.0 : 150.0;
             if (spoke && k < 0.55) k = 0.55;    /* (the superlaser glows, lit or not) */
@@ -1068,12 +1159,14 @@ static void death_star_colors(sw_dogfight *d, float cx, float cy, float r)
         l->color = (uint8_t)c;
         l->intensity = (uint8_t)(base * k > 255.0 ? 255.0 : base * k);
     }
+    death_star_details(d, cx, cy, r, sv, dx, dy, dish_r);
 }
 
 int sw_dogfight_lines(sw_dogfight *d, const sw_machine *m, const sw_line **out)
 {
     d->at = 0;
     d->n_faces = 0;
+    d->ds_shown = 0;
     d->inst = 0x8000;
     d->line_id = 0;
     d->tag = SW_TAG(SW_TAG_INIT, 0);
@@ -1118,8 +1211,12 @@ int sw_dogfight_lines(sw_dogfight *d, const sw_machine *m, const sw_line **out)
             const uint16_t scale = SW_VGSCAL + 0x200;     /* (its stamps are big: the game draws them small at first) */
             static const uint16_t stamps[5] = { SW_VJBCIR, SW_VJBTRN, SW_VJBDSH, SW_VJBNSD, SW_VJBFRM };
             d->tag = SW_TAG(SW_TAG_DSTAR, 3);
+            d->ds_x = x;
+            d->ds_y = y;
+            d->ds_shown = 1;
             color(d, GRN, 0x80);
             for (int i = 0; i < 5; i++) {
+                d->tag = SW_TAG(SW_TAG_DSTAR, i == 0 ? 5 : 10 + i);   /* (its outline told apart: its disc is found from it) */
                 move_to(d, x, y);
                 emit(d, scale);
                 emit(d, stamps[i]);
@@ -1241,29 +1338,52 @@ int sw_dogfight_lines(sw_dogfight *d, const sw_machine *m, const sw_line **out)
     /* The Death Star hides the stars behind it: none in its disc (the
      * specks near the ship are before it). Its disc from its own lines. */
     {
-        float x0 = 1e9f, x1 = -1e9f, y0 = 1e9f, y1 = -1e9f;
-        for (int i = 0; i < d->list.count; i++) {
+        /* (its disc: from the points of its outline, the stamp VJBCIR: their
+         * middle, and how far they are from it; the stamps are not centred
+         * on the point they are put at) */
+        /* (a circle through the points of its outline, the stamp VJBCIR, in
+         * square units: the least squares of x^2 + y^2 + D x + E y + F) */
+        double sxx = 0, sxy = 0, syy = 0, sx = 0, sy = 0, sn = 0, sxz = 0, syz = 0, sz = 0;
+        for (int i = 0; d->ds_shown && i < d->list.count; i++) {
             const sw_line *l = &d->list.lines[i];
-            if (SW_TAG_SECTION((unsigned)(l->id >> 48)) != SW_TAG_DSTAR) continue;
-            if (l->x0 < x0) x0 = l->x0;
-            if (l->x0 > x1) x1 = l->x0;
-            if (l->x1 < x0) x0 = l->x1;
-            if (l->x1 > x1) x1 = l->x1;
-            if (l->y0 < y0) y0 = l->y0;
-            if (l->y0 > y1) y1 = l->y0;
-            if (l->y1 < y0) y0 = l->y1;
-            if (l->y1 > y1) y1 = l->y1;
+            unsigned tag = (unsigned)(l->id >> 48);
+            if (SW_TAG_SECTION(tag) != SW_TAG_DSTAR || (tag & 0x3ff) != 5) continue;
+            double xs[2] = { l->x0, l->x1 }, ys[2] = { l->y0 / DS_K, l->y1 / DS_K };
+            for (int k = 0; k < 2; k++) {
+                double x = xs[k], y = ys[k], z = x * x + y * y;
+                sxx += x * x; sxy += x * y; syy += y * y; sx += x; sy += y; sn += 1.0;
+                sxz += x * z; syz += y * z; sz += z;
+            }
         }
-        if (x1 > x0) {
-            float cx = (x0 + x1) * 0.5f, cy = (y0 + y1) * 0.5f;
-            float r = ((x1 - x0) > (y1 - y0) ? (x1 - x0) : (y1 - y0)) * 0.5f;
+        float cx = 0.0f, cy = 0.0f, r = 0.0f;
+        {
+            /* the three equations, by Cramer */
+            double a[3][3] = { { sxx, sxy, sx }, { sxy, syy, sy }, { sx, sy, sn } }, b[3] = { -sxz, -syz, -sz };
+            double det = a[0][0] * (a[1][1] * a[2][2] - a[1][2] * a[2][1]) - a[0][1] * (a[1][0] * a[2][2] - a[1][2] * a[2][0]) +
+                         a[0][2] * (a[1][0] * a[2][1] - a[1][1] * a[2][0]);
+            if (sn >= 6.0 && fabs(det) > 1e-9) {
+                double v[3];
+                for (int c = 0; c < 3; c++) {
+                    double m3[3][3];
+                    for (int rr = 0; rr < 3; rr++)
+                        for (int cc = 0; cc < 3; cc++) m3[rr][cc] = cc == c ? b[rr] : a[rr][cc];
+                    v[c] = (m3[0][0] * (m3[1][1] * m3[2][2] - m3[1][2] * m3[2][1]) - m3[0][1] * (m3[1][0] * m3[2][2] - m3[1][2] * m3[2][0]) +
+                            m3[0][2] * (m3[1][0] * m3[2][1] - m3[1][1] * m3[2][0])) / det;
+                }
+                cx = (float)(-v[0] / 2.0);
+                cy = (float)(-v[1] / 2.0);
+                double rr2 = (double)cx * cx + (double)cy * cy - v[2];
+                r = rr2 > 0.0 ? (float)sqrt(rr2) : 0.0f;
+            }
+        }
+        if (r > 0.0f) {
             death_star_colors(d, cx, cy, r);
             int k = 0;
             for (int i = 0; i < d->list.count; i++) {
                 const sw_line *l = &d->list.lines[i];
                 unsigned tag = (unsigned)(l->id >> 48);
                 int star = SW_TAG_SECTION(tag) == SW_TAG_STAR && (tag & 0x3ff) < 160;
-                if (star && hypotf(l->x0 - cx, l->y0 - cy) < r * 0.97f) continue;
+                if (star && hypotf(l->x0 - cx, l->y0 / (float)DS_K - cy) < r * 0.97f) continue;
                 d->list.lines[k++] = *l;
             }
             d->list.count = k;

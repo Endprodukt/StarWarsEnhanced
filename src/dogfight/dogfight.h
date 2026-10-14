@@ -104,6 +104,8 @@ typedef struct sw_dogfight {
     sw_df_shot  shot[SW_DF_SHOTS];
     sw_df_piece piece[SW_DF_PIECES];
     double chase_t;             /* the chase far off began */
+    double ds_x, ds_y;          /* where the Death Star is on the screen this picture */
+    int    ds_shown;
     uint32_t rng;
     uint8_t  sound[32];         /* requests to the sound board, waiting */
     int      sound_r, sound_w;

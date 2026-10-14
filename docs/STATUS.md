@@ -369,6 +369,15 @@ Rückmeldungen des Besitzers und was daraus wurde:
   11000, Gegner erscheinen ab 7000 Abstand, drehen unter 1800 ab, schießen
   bis 8500; Formationen 850 seitlich und 700 dahinter, lösen sich unter
   3500; Laser bis 14000.
+* **Todesstern mit mehr Details** ("paar mehr Details"): sechs Breitengrade
+  parallel zum Graben, vier gekrümmte Längengrade, 40 Oberflächenplatten (auf
+  der Kugel gekrümmt, nicht auf der Schüssel), alles von derselben Sonne
+  beleuchtet; rund 250 Linien mehr für den Strahl (Bildrate am Gerät prüfen).
+  Die Kugel wird in quadratischen Einheiten gerechnet: die Einheiten der
+  Linien sind es nicht (255 breit, 303 hoch auf einer 4:3-Röhre, Faktor
+  1,58), und die Stempel des ROMs sitzen nicht mittig auf dem Punkt, an den
+  man sie setzt; Mittelpunkt und Radius kommen deshalb aus einem Kreis durch
+  die Punkte des Umrisses (kleinste Quadrate).
 * **Todesstern in Filmfarben** (Vorschläge 1 bis 3 des 2026-10-14, vom Besitzer
   gewählt): nach dem Lauf der Liste umgefärbt: Umriss und Platten gedimmtes
   Weiß (Grau), Graben hell, Schüssel grau mit hellem Rand, ihre Speichen grün
@@ -664,7 +673,7 @@ sobald das Menü neu startet (nach dem Verlassen des Spiels). Nicht geprüft
 am Gerät, auch nicht, ob der längere Titel des Testmenüs (jetzt Größe 90
 statt 110) in die Breite passt.
 
-Marquee erneuert (zweites Artwork des Besitzers, ohne die Streifen unten; auf die volle Breite 1920 gezogen, 17 % breiter als das Original), Version 0.2.1. **Noch nicht auf dem Automaten**, der war aus: beim nächsten Mal `sh tools/deploy.sh` und die neueste `dist/swenhanced-<version>.vpk` (jetzt 0.3.7, mit Dogfight Etappe 2) nach `/persistent/games/packages/` (dort liegt noch 0.2.0).
+Marquee erneuert (zweites Artwork des Besitzers, ohne die Streifen unten; auf die volle Breite 1920 gezogen, 17 % breiter als das Original), Version 0.2.1. **Noch nicht auf dem Automaten**, der war aus: beim nächsten Mal `sh tools/deploy.sh` und die neueste `dist/swenhanced-<version>.vpk` (jetzt 0.3.8, mit Dogfight Etappe 2) nach `/persistent/games/packages/` (dort liegt noch 0.2.0).
 
 Paketdatei: `sh tools/pack.sh` (in WSL, nach dem Pi-Build) schreibt
 `dist/swenhanced-<version>.vpk` mit dem `vp-pack` des SDK (dessen Skript und
