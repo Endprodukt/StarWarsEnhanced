@@ -356,10 +356,23 @@ Welle, Radar und Zielpfeil, der Falcon als Helfer alle paar Wellen,
 Todesstern-Countdown als Option, eigene Highscores mit Kombo, alle drei
 Ansichten mit Start umschaltbar.
 
-Offen (beim Besitzer): Einstieg (vierte Wahl bei "Select a Death Star",
-eigener Startpunkt oder zweiter Eintrag im Menü des Automaten); rein
-endlos oder mit Countdown als Ziel; wie schnell die Schwierigkeit
-anzieht. Technisch: ein eigener Spielteil in C neben dem Programm von 1983
+Weiter entschieden (2026-10-14): Einstieg als vierte Wahl neben den drei
+Todessternen bei "Select a Death Star". Endlos bis zum Tod wie das
+Original, die Schwierigkeit zieht mit den Wellen an. Nach der Wahl eine
+Anleitungsseite wie die von Time Pilot 3D (`draw_howto` in dessen
+`src/attract.c`): das Joch als Drahtmodell, diesmal mit Atari-Logo, und
+daneben der X-Wing, der vormacht, was das Joch tut. Tasten: rechter
+Trigger Laser; linker Trigger (vorne links) Protonentorpedos: zwei
+Kugeln wie die Schüsse der Gegner, jede verfolgt einen eigenen Gegner
+(zwei zugleich), danach lädt der Torpedo erst wieder auf (Ladeanzeige);
+Daumentasten schneller/langsamer, beide plus Joch zur Seite rollen;
+Start schaltet die Ansicht. Treffer, bis ein Gegner fällt (Laser): TIE
+Fighter 1, ein neuer TIE Interceptor (Abfangjäger, eigenes Modell, nicht
+im ROM) 2, Vaders TIE 3. Vorschläge noch ohne Antwort: Aufladezeit der
+Torpedos etwa 8 s; ein Torpedo zerstört jeden Gegner mit einem Treffer.
+Noch nicht freigegeben: Bauen erst auf "los"; Plan in Etappen (Fliegen
+in der Box mit Todesstern; Wellen und Laser; Torpedos; Anleitungsseite;
+Highscores und Feinschliff), nach jeder Bilder oder Video. Technisch: ein eigener Spielteil in C neben dem Programm von 1983
 (das kennt nur Schienen), mit dessen Modellen, Sounds und Sprache und dem
 Bildweg von render/ (Occlusion, Ansichten).
 
