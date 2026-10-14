@@ -87,6 +87,7 @@ add_library(swcore STATIC
     src/sound/sndboard.c
     src/sound/sndprog.c
     src/sound/samples.c
+    src/platform/demo.c
 )
 target_include_directories(swcore PUBLIC src)
 target_link_libraries(swcore PUBLIC miniz)
@@ -179,6 +180,10 @@ if(BUILD_TESTING)
     add_executable(test_sound tests/test_sound.c)
     target_link_libraries(test_sound PRIVATE swcore)
     add_test(NAME sound COMMAND test_sound)
+
+    add_executable(test_demo tests/test_demo.c)
+    target_link_libraries(test_demo PRIVATE swcore)
+    add_test(NAME demo COMMAND test_demo)
 
     add_executable(test_camera tests/test_camera.c)
     target_link_libraries(test_camera PRIVATE swcore)

@@ -1,6 +1,6 @@
 /* menu.h - Star Wars Enhanced's own test menu.
  *
- * The Tab key or the cabinet's self-test button (p1_button6) opens it;
+ * The F2 key or the cabinet's self-test button (p1_button6) opens it;
  * the game stands still meanwhile. It holds what the port adds to the
  * arcade machine (the enhanced settings, each of which can be switched
  * off), the game's own options as the arcade program keeps them in its
@@ -13,7 +13,7 @@
  *   yoke left / right   change its value
  *   fire                change it, open a page, or do what the line says
  *   BACK                the main page again
- *   Tab / test button   save the settings and go back to the game
+ *   F2 / test button    save the settings and go back to the game
  */
 #ifndef SWE_MENU_H
 #define SWE_MENU_H
