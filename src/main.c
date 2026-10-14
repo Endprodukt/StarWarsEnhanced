@@ -289,8 +289,10 @@ static void draw_game(sw_app *app, const sw_display_cfg *cfg, board *b, double n
         int n = sw_dogfight_lines(&b->df, &b->m, &lines);
         b->pic.enhance.dogfight = 1;
         sw_dogfight_attitude(&b->df, &b->pic.enhance.df_bank, &b->pic.enhance.df_pitch);
-        b->pic.enhance.df_throttle = b->df.throttle;
-        n = sw_enhance_run(&b->pic.enhance, &b->m, now, lines, n, &lines);
+        b->pic.enhance.df_throttle = sw_dogfight_thrust(&b->df);
+        b->pic.enhance.df_over = b->df.over;
+        /* (on the dogfight's own clock: the game's stands still meanwhile) */
+        n = sw_enhance_run(&b->pic.enhance, &b->m, b->df.t, lines, n, &lines);
         if (b->pic.occlusion) {
             /* solid: the ROM's ships by their own faces, the interceptor by its */
             b->pic.solid.extra = b->df.faces;
@@ -327,6 +329,7 @@ static void apply_enhanced(board *b, const sw_display_cfg *cfg)
     b->pic.enhance.logo = on && cfg->logo_yellow;
     b->pic.enhance.clip = on && cfg->enh_clip;
     b->pic.enhance.falcon = on && cfg->enh_falcon;
+    b->pic.enhance.blast = on && cfg->enh_blast;
     b->pic.enhance.view = on ? cfg->enh_view % SW_VIEWS : SW_VIEW_ARCADE;
     b->demo.enabled = on && cfg->enh_demo;
     b->m.camera_ease = (uint8_t)(on && cfg->enh_camera);

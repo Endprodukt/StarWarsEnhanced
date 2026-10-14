@@ -272,6 +272,7 @@ int main(int argc, char **argv)
         pic.enhance.logo = 1;
         pic.enhance.clip = 1;
         pic.enhance.falcon = 1;
+        pic.enhance.blast = 1;
         m.camera_ease = 1;
     }
 
@@ -341,6 +342,12 @@ int main(int argc, char **argv)
                 }
             }
             sw_dogfight_step(&df, &in, 1.0 / fps);
+            /* --lose-at S: the ship is lost at S seconds (to film its end) */
+            if (arg(argc, argv, "--lose-at") && !df.over && df.t >= atof(arg(argc, argv, "--lose-at"))) {
+                df.shields = 0;
+                df.over = 1;
+                df.over_t = df.t;
+            }
             /* its sounds on the sound board, as the program asks them */
             while ((double)irqs / SW_IRQ_HZ < now + 1.0 / fps) {
                 if (!m.sound_out_full) {
@@ -359,7 +366,8 @@ int main(int argc, char **argv)
             if (views_every > 0.0) pic.enhance.view = (int)(now / views_every) % SW_VIEWS;
             pic.enhance.dogfight = 1;
             sw_dogfight_attitude(&df, &pic.enhance.df_bank, &pic.enhance.df_pitch);
-            pic.enhance.df_throttle = df.throttle;
+            pic.enhance.df_throttle = sw_dogfight_thrust(&df);
+            pic.enhance.df_over = df.over;
             int count = sw_enhance_run(&pic.enhance, &m, now, dl, dn, &dl);
             if (pic.occlusion) {
                 pic.solid.extra = df.faces;

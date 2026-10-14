@@ -376,6 +376,19 @@ Rückmeldung des Besitzers vom Automaten (0.3.10) und was daraus wurde (0.3.11):
   und hinten (2600 seitlich, 1800 bis 2600 hinter dem Spieler) und weichen
   unter 2200 aus. Gegner drehen schon unter 2200 ab (unter 3400, wenn sie
   vorbei sind) und werden unter 1600 vom Spieler weggelenkt.
+* **Flügel und Explosion (0.3.13):** Die S-Foils der Außenansicht klappten
+  im Dogfight nie, weil ihre Animation auf der Uhr des Spiels lief und die
+  im Dogfight steht. Der Renderer bekommt dort jetzt die Uhr des Dogfights.
+  Flügel und Triebwerksfeuer folgen der wirklichen Geschwindigkeit
+  (`sw_dogfight_thrust`), nicht den gehaltenen Tasten. Neu ist
+  **SHIP EXPLOSION** (Grafikseite, `enh_blast`, an): Geht das X-Wing
+  verloren, blitzt es weiß auf, Strahlen fliegen weiß, gelb und rot aus ihm
+  heraus (2,6 s), und von außen fliegen seine Teile auseinander. Im
+  Dogfight mit Crash, Explosion und R2s Abgesang, die Nase verschwindet. Auf
+  den Flügen des Originals geht es los, sobald die Schilde weg sind
+  (S.GAS 80; die Töne bleiben die des Spiels). **Im Original noch nicht im
+  Spiel gesehen.** `swvideo --lose-at S` lässt das Schiff im Dogfight bei S
+  Sekunden verloren gehen.
 * **Attract still:** Ist MUSIC IN ATTRACT auf NO, ist auch der Demo-Flug stumm
   (Lautstärke der Soundplatine 0, solange er läuft). Vorher waren seine
   Schüsse, Musik und Ansagen zu hören.
@@ -763,7 +776,7 @@ sobald das Menü neu startet (nach dem Verlassen des Spiels). Nicht geprüft
 am Gerät, auch nicht, ob der längere Titel des Testmenüs (jetzt Größe 90
 statt 110) in die Breite passt.
 
-Marquee erneuert (zweites Artwork des Besitzers, ohne die Streifen unten; auf die volle Breite 1920 gezogen, 17 % breiter als das Original), Version 0.2.1. **Noch nicht auf dem Automaten**, der war aus: beim nächsten Mal `sh tools/deploy.sh` und die neueste `dist/swenhanced-<version>.vpk` (jetzt 0.3.12, mit Dogfight Etappe 4) nach `/persistent/games/packages/` (dort liegt noch 0.2.0).
+Marquee erneuert (zweites Artwork des Besitzers, ohne die Streifen unten; auf die volle Breite 1920 gezogen, 17 % breiter als das Original), Version 0.2.1. **Noch nicht auf dem Automaten**, der war aus: beim nächsten Mal `sh tools/deploy.sh` und die neueste `dist/swenhanced-<version>.vpk` (jetzt 0.3.13, mit Dogfight Etappe 4) nach `/persistent/games/packages/` (dort liegt noch 0.2.0).
 
 Paketdatei: `sh tools/pack.sh` (in WSL, nach dem Pi-Build) schreibt
 `dist/swenhanced-<version>.vpk` mit dem `vp-pack` des SDK (dessen Skript und

@@ -74,7 +74,7 @@ enum { K_NONE, K_TIE, K_INTERCEPTOR, K_VADER };
 /* requests for the sound board (docs/SOUNDS.md) */
 enum {
     S_SPKFOA = 0x05, S_SPKHAV = 0x08, S_SPKHIT = 0x09, S_SPKR2T = 0x0f, S_SPKRED = 0x10,
-    S_PMDAR = 0x1d, S_PMTH5 = 0x24, S_AUDPB = 0x2a, S_AUDPH = 0x2d, S_AUDRY = 0x32, S_AUDSH = 0x33,
+    S_PMDAR = 0x1d, S_PMTH5 = 0x24, S_AUDCR = 0x26, S_AUDDR = 0x28, S_AUDPB = 0x2a, S_AUDPH = 0x2d, S_AUDRY = 0x32, S_AUDSH = 0x33,
     S_AUDSS = 0x34, S_AUDSX = 0x35, S_AUDTC = 0x36, S_AUDTCZ = 0x37, S_AUDXL = 0x3a,
 };
 
@@ -967,6 +967,10 @@ static void lose_shield(sw_dogfight *d)
         d->shields = 0;
         d->over = 1;
         d->over_t = d->t;
+        /* it blows up: the crash, the explosion, R2's swan song */
+        sound(d, S_AUDCR);
+        sound(d, S_AUDSX);
+        sound(d, S_AUDDR);
         /* (the game's own end, PHIEGM, says "Remember... the Force will be with you, always" after the table) */
     }
 }
@@ -1586,6 +1590,12 @@ void sw_dogfight_step(sw_dogfight *d, const sw_dogfight_input *in, double dt)
         game_frame(d);
         d->game_clock += 1.0 / GAME_HZ;
     }
+}
+
+float sw_dogfight_thrust(const sw_dogfight *d)
+{
+    double s = d->speed >= SPEED_MID ? (d->speed - SPEED_MID) / (SPEED_MAX - SPEED_MID) : (d->speed - SPEED_MID) / (SPEED_MID - SPEED_MIN);
+    return (float)(s > 1.0 ? 1.0 : s < -1.0 ? -1.0 : s);
 }
 
 void sw_dogfight_attitude(const sw_dogfight *d, float *bank, float *pitch)
@@ -2303,7 +2313,7 @@ int sw_dogfight_lines(sw_dogfight *d, const sw_machine *m, const sw_line **out)
     lasers(d, m);
 
     /* the sight, in the middle of the view: one aims with the nose */
-    int playing = d->stage == SW_DF_PLAY;   /* (not over the initials and the table) */
+    int playing = d->stage == SW_DF_PLAY && !d->over;   /* (not once it is lost, nor over the initials and the table) */
     d->tag = SW_TAG(SW_TAG_SITE, 0);
     if (playing) {
         move_to(d, SIGHT_X, SIGHT_Y);

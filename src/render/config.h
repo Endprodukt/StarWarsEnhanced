@@ -76,6 +76,9 @@ typedef struct sw_display_cfg {
     /* Enhanced, in the trench: 1: shortly before the exhaust port the
      * Millennium Falcon flies over the player and on down the trench. */
     int enh_falcon;
+    /* Enhanced: 1: the player's X-wing blows up when it is lost (in the
+     * dogfight, and on the game's own flights when the shields are gone). */
+    int enh_blast;
     /* Enhanced: from where the player sees in flight (render/enhance.h,
      * SW_VIEW_...): 0 (the default) the arcade machine's view, the X-wing's
      * nose and guns; 1 from inside its cockpit; 2 from behind it. The
