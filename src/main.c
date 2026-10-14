@@ -495,7 +495,7 @@ int main(int argc, char **argv)
          * with the yoke, the thumb buttons faster and slower. */
         if (brd.native && !brd.df.active && !menu.open && sw_dogfight_chosen(&brd.m) &&
             (vp_input_pressed(app.in, "p1_button1") || vp_input_pressed(app.in, "p1_button4") || vp_input_pressed(app.in, "start1")))
-            sw_dogfight_start(&brd.df, &brd.m);
+            sw_dogfight_start(&brd.df, &brd.m, 1);
         if (brd.df.active) {
             /* the yoke itself when there is one (each of its buttons on its
              * own, its whole travel), else the controls as the game has them */

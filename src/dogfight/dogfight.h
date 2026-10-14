@@ -55,11 +55,14 @@ typedef struct sw_df_body { double pos[3], f[3], r[3], u[3]; } sw_df_body;
 
 typedef struct sw_df_enemy {
     int        kind;            /* 0 none, 1 TIE fighter, 2 interceptor, 3 Vader */
-    int        hp, mode;        /* mode 0 attacking, 1 breaking away */
+    int        hp, mode;        /* mode 0 attacking, 1 breaking away, 2 in formation */
+    int        leader;          /* in formation: the one it flies with (its slot) */
+    double     slot_r, slot_b;  /* and where: to the right of it, behind it */
     sw_df_body b;
     double     speed, turn;     /* units a second, radians a second */
     double     mode_t, fire_t, hit_t;
     double     away[3];
+    double     knock[3], bump_t;     /* a bounce off the ship, and when */
     int        passed;          /* (its pass-by sound has been heard) */
 } sw_df_enemy;
 
@@ -79,6 +82,7 @@ typedef struct sw_dogfight {
      * and up (u), in the box's coordinates */
     double pos[3], f[3], r[3], u[3];
     double speed;               /* units a second */
+    double knock[3];            /* a bounce (units a second), dying away */
     float  throttle;            /* -1 (slowest) .. 1 (fastest); rests at 0 */
     float  yaw_rate, pitch_rate, roll_rate;     /* radians a second, as they are now (they ease) */
     float  sight_x, sight_y;    /* the sight, from the middle of the view (the lines' units): it goes
@@ -86,6 +90,7 @@ typedef struct sw_dogfight {
     int    turning_back;        /* at a wall: the ship turns back by itself */
     double back_since;
     /* the game */
+    int    preview;             /* only one enemy of this kind, turning before the ship */
     int    over;                /* the shields are gone */
     double over_t;
     int    shields, wave;
@@ -119,8 +124,11 @@ typedef struct sw_dogfight {
     float    dust[48][3];       /* specks near the ship, to see it moving */
 } sw_dogfight;
 
-/* Begins the dogfight (the models and the vector ROM are the machine's). */
-void sw_dogfight_start(sw_dogfight *d, const sw_machine *m);
+/* Begins the dogfight (the models and the vector ROM are the machine's),
+ * at the wave `wave` (1 as the player begins; more for films and tests;
+ * -1..-3: only one enemy of that kind (TIE fighter, interceptor, Vader)
+ * turning slowly before the ship, to look at it). */
+void sw_dogfight_start(sw_dogfight *d, const sw_machine *m, int wave);
 
 /* A step of dt seconds. */
 void sw_dogfight_step(sw_dogfight *d, const sw_dogfight_input *in, double dt);

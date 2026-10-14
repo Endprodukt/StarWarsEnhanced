@@ -22,21 +22,21 @@
 #define SIGHT_REACH_Y 32.0
 
 /* the box, and how fast the ship is (units a second) */
-#define BOX         8000.0
-#define SPEED_MIN   450.0
-#define SPEED_MID   900.0
-#define SPEED_MAX   1500.0
+#define BOX         9000.0
+#define SPEED_MIN   700.0
+#define SPEED_MID   1350.0
+#define SPEED_MAX   2300.0
 /* turning, radians a second at full yoke */
-#define YAW_RATE    1.3
-#define PITCH_RATE  1.1
-#define ROLL_RATE   2.6
-#define BACK_RATE   1.6                     /* turning back at a wall */
+#define YAW_RATE    1.75
+#define PITCH_RATE  1.5
+#define ROLL_RATE   3.3
+#define BACK_RATE   2.2                     /* turning back at a wall */
 /* the lasers */
-#define LASER_RANGE 9000.0
+#define LASER_RANGE 11000.0
 #define LASER_SHOW  0.15                    /* seconds a shot is seen */
-#define LASER_EVERY 0.22                    /* the trigger held fires again */
+#define LASER_EVERY 0.18                    /* the trigger held fires again */
 /* the fireballs */
-#define SHOT_SPEED  1500.0
+#define SHOT_SPEED  2300.0
 #define SHOT_LIFE   6.0
 #define SHOT_HITS   130.0                   /* how near one has to come to hit the ship */
 #define SHIELDS     6
@@ -353,49 +353,48 @@ static void draw_model(sw_dogfight *d, int k, const sw_df_body *b, double size, 
 
 /* --- the TIE interceptor: a model of its own -------------------------------------------------- */
 
-/* Its points (ahead, left, up; in the units of the ROM's TIE fighter, whose
- * wings stand 208 to each side): on each side a wing of four daggers bent
- * forward (0-7, 8-15), the ball of the cockpit (rings of six at its front
- * and back, 16-27), its window (28-33), and a pylon on each side (34-39). */
-#define INT_PTS 40
-static double int_pt[INT_PTS][3];
-static int int_ready;
+/* Drawn as the ROM draws its TIE fighter, and of the TIE fighter's own
+ * parts: its ball (two octagons, points 37-52), its pylons (rings of six,
+ * 25-36) and the hubs on its wings (7-12, 19-24). Only its wings are its
+ * own: daggers, each wing (ahead, up, in the plane of the TIE's wing) from
+ * its rear point (-170, 0) to the upper rear corner, forward to the upper
+ * tip far ahead (long and narrow), back into a deep notch at the hub, out to the lower
+ * tip, to the lower rear corner; the corners above and below bent in
+ * towards the ball. As on the TIE fighter, spokes run from the hub to each
+ * corner, and an inner frame follows the outline. */
+static const double INT_WING[7][2] = {          /* ahead, up */
+    { -170, 0 }, { -120, 240 }, { 300, 232 }, { 25, 28 }, { 25, -28 }, { 300, -232 }, { -120, -240 },
+};
+static const int INT_BENT[7] = { 0, 1, 1, 0, 0, 1, 1 };         /* bent in, towards the ball */
+static const int INT_HUB[7] = { 12, 7, 8, 9, 9, 10, 11 };       /* the hub point each spoke starts from */
 
-static void interceptor_build(void)
+/* the TIE fighter's lines that are not of its wings' outline */
+static int tie_inner_line(int a, int b)
 {
-    static const double W[8][2] = {             /* the wing's outline: ahead, up */
-        { -70, 0 }, { -115, 195 }, { 0, 80 }, { 160, 235 }, { 60, 0 }, { 160, -235 }, { 0, -80 }, { -115, -195 },
-    };
-    for (int s = 0; s < 2; s++)
-        for (int i = 0; i < 8; i++) {
-            int_pt[s * 8 + i][0] = W[i][0];
-            int_pt[s * 8 + i][1] = s ? -205.0 : 205.0;
-            int_pt[s * 8 + i][2] = W[i][1];
-        }
-    for (int i = 0; i < 6; i++) {
-        double a = i * 1.0471976;
-        int_pt[16 + i][0] = 42.0;  int_pt[16 + i][1] = 55.0 * cos(a); int_pt[16 + i][2] = 55.0 * sin(a);
-        int_pt[22 + i][0] = -42.0; int_pt[22 + i][1] = 55.0 * cos(a); int_pt[22 + i][2] = 55.0 * sin(a);
-        int_pt[28 + i][0] = 50.0;  int_pt[28 + i][1] = 24.0 * cos(a); int_pt[28 + i][2] = 24.0 * sin(a);
-    }
-    for (int s = 0; s < 2; s++) {
-        double y = s ? -1.0 : 1.0;
-        int_pt[34 + s * 3][0] = 0.0; int_pt[34 + s * 3][1] = 55.0 * y;  int_pt[34 + s * 3][2] = 10.0;
-        int_pt[35 + s * 3][0] = 0.0; int_pt[35 + s * 3][1] = 205.0 * y; int_pt[35 + s * 3][2] = 10.0;
-        int_pt[36 + s * 3][0] = 0.0; int_pt[36 + s * 3][1] = 205.0 * y; int_pt[36 + s * 3][2] = -10.0;
-    }
-    int_ready = 1;
+    int wa = (a >= 1 && a <= 6) || (a >= 13 && a <= 18), wb = (b >= 1 && b <= 6) || (b >= 13 && b <= 18);
+    return !wa && !wb;
+}
+
+/* a point of a wing: side 0 the TIE's y -208, side 1 +208; k its corner,
+ * inner 1 for the frame inside the outline */
+static void int_wing_pt(int side, int k, int inner, double *q)
+{
+    double x = INT_WING[k][0], z = INT_WING[k][1];
+    if (inner) { x = x * 0.86 - 4.0; z *= 0.84; }
+    double y = 208.0 - (INT_BENT[k] ? 62.0 : 0.0) * (1.0 - 0.15 * inner);
+    q[0] = x;
+    q[1] = side ? y : -y;
+    q[2] = z;
 }
 
 /* a face of the interceptor on the screen, for render/solid */
-static void int_face(sw_dogfight *d, const sw_df_body *b, const int *pts, int n)
+static void int_face(sw_dogfight *d, const double (*p)[3], int n)
 {
-    if (d->n_faces == SW_DF_FACES) return;
+    if (d->n_faces == SW_DF_FACES || n > 6) return;
     sw_solid_extra *f = &d->faces[d->n_faces];
     for (int i = 0; i < n; i++) {
-        double p[3], v[3], x, y;
-        place(b, int_pt[pts[i]], 1.0, p);
-        view_of(d, p, v);
+        double v[3], x, y;
+        view_of(d, p[i], v);
         if (v[0] < NEAR) return;
         screen_of(v, &x, &y);
         f->x[i] = (float)x;
@@ -409,36 +408,66 @@ static void int_face(sw_dogfight *d, const sw_df_body *b, const int *pts, int n)
 
 static void draw_interceptor(sw_dogfight *d, const sw_df_body *b, float lum)
 {
-    if (!int_ready) interceptor_build();
     if (++d->inst == 0) d->inst = 0x8000;
-    double p[INT_PTS][3];
-    for (int i = 0; i < INT_PTS; i++) place(b, int_pt[i], 1.0, p[i]);
+    const int k = M_TIE;
+    double tie[64][3];
+    for (int i = 0; i < d->mnp[k] && i < 64; i++) {
+        double q[3] = { d->mp[k][i][0], d->mp[k][i][1], d->mp[k][i][2] };
+        place(b, q, 1.0, tie[i]);
+    }
+    /* the ball, the pylons, the hubs: the TIE fighter's own */
+    for (int i = 0; i < d->mne[k]; i++) {
+        int e0 = d->me[k][i][0], e1 = d->me[k][i][1];
+        if (e0 >= d->mnp[k] || e1 >= d->mnp[k] || !tie_inner_line(e0, e1)) continue;
+        line3(d, tie[e0], tie[e1], GRN, lum, 0, 0, 0);
+    }
+    /* the wings */
     for (int s = 0; s < 2; s++) {
-        int w = s * 8;
-        for (int i = 0; i < 8; i++) line3(d, p[w + i], p[w + (i + 1) % 8], GRN, lum, 0, 0, 0);
-        line3(d, p[w + 0], p[w + 4], GRN, lum * 0.6f, 0, 0, 0);                  /* its spar */
-        line3(d, p[34 + s * 3], p[35 + s * 3], GRN, lum, 0, 0, 0);               /* the pylon */
-        line3(d, p[34 + s * 3], p[36 + s * 3], GRN, lum * 0.7f, 0, 0, 0);
-        /* the wing's faces: four convex pieces */
-        int q0[3] = { w + 0, w + 1, w + 2 }, q1[4] = { w + 0, w + 2, w + 3, w + 4 };
-        int q2[4] = { w + 0, w + 4, w + 5, w + 6 }, q3[3] = { w + 0, w + 6, w + 7 };
-        int_face(d, b, q0, 3);
-        int_face(d, b, q1, 4);
-        int_face(d, b, q2, 4);
-        int_face(d, b, q3, 3);
+        double out[7][3], in[7][3];
+        for (int c = 0; c < 7; c++) {
+            double q[3];
+            int_wing_pt(s, c, 0, q);
+            place(b, q, 1.0, out[c]);
+            int_wing_pt(s, c, 1, q);
+            place(b, q, 1.0, in[c]);
+        }
+        int hub = s ? 12 : 0;                   /* (the hubs: 7-12 on the TIE's -208 side, 19-24 on its +208) */
+        for (int c = 0; c < 7; c++) {
+            int n = (c + 1) % 7;
+            line3(d, out[c], out[n], GRN, lum, 0, 0, 0);
+            line3(d, in[c], in[n], GRN, lum * 0.55f, 0, 0, 0);
+            if (c != 4) line3(d, tie[INT_HUB[c] + hub], out[c], GRN, lum * 0.8f, 0, 0, 0);   /* (one spoke into the notch) */
+        }
+        /* its faces: three convex pieces */
+        double f1[4][3], f2[3][3], f3[4][3];
+        memcpy(f1[0], out[0], sizeof f1[0]); memcpy(f1[1], out[1], sizeof f1[0]);
+        memcpy(f1[2], out[2], sizeof f1[0]); memcpy(f1[3], out[3], sizeof f1[0]);
+        memcpy(f2[0], out[0], sizeof f2[0]); memcpy(f2[1], out[3], sizeof f2[0]); memcpy(f2[2], out[4], sizeof f2[0]);
+        memcpy(f3[0], out[0], sizeof f3[0]); memcpy(f3[1], out[4], sizeof f3[0]);
+        memcpy(f3[2], out[5], sizeof f3[0]); memcpy(f3[3], out[6], sizeof f3[0]);
+        int_face(d, (const double (*)[3])f1, 4);
+        int_face(d, (const double (*)[3])f2, 3);
+        int_face(d, (const double (*)[3])f3, 4);
     }
-    for (int i = 0; i < 6; i++) {
-        int j = (i + 1) % 6;
-        line3(d, p[16 + i], p[16 + j], GRN, lum, 0, 0, 0);
-        line3(d, p[22 + i], p[22 + j], GRN, lum, 0, 0, 0);
-        line3(d, p[16 + i], p[22 + i], GRN, lum * 0.8f, 0, 0, 0);
-        line3(d, p[28 + i], p[28 + j], GRN, lum * 0.8f, 0, 0, 0);
-        int side[4] = { 16 + i, 16 + j, 22 + j, 22 + i };
-        int_face(d, b, side, 4);
+    /* the ball's faces: its two octagons (each in two pieces) and its sides */
+    if (d->mnp[k] >= 53) {
+        for (int s = 0; s < 2; s++) {
+            int o = s ? 45 : 37;
+            double a[6][3], c[4][3];
+            for (int i = 0; i < 6; i++) memcpy(a[i], tie[o + i], sizeof a[i]);
+            for (int i = 0; i < 4; i++) memcpy(c[i], tie[o + (5 + i) % 8], sizeof c[i]);
+            int_face(d, (const double (*)[3])a, 6);
+            int_face(d, (const double (*)[3])c, 4);
+        }
+        for (int i = 0; i < 8; i++) {
+            double q[4][3];
+            memcpy(q[0], tie[37 + i], sizeof q[0]);
+            memcpy(q[1], tie[37 + (i + 1) % 8], sizeof q[0]);
+            memcpy(q[2], tie[45 + (i + 1) % 8], sizeof q[0]);
+            memcpy(q[3], tie[45 + i], sizeof q[0]);
+            int_face(d, (const double (*)[3])q, 4);
+        }
     }
-    int front[6] = { 16, 17, 18, 19, 20, 21 }, back[6] = { 22, 23, 24, 25, 26, 27 };
-    int_face(d, b, front, 6);
-    int_face(d, b, back, 6);
 }
 
 /* --- the dogfight ---------------------------------------------------------------------------- */
@@ -486,6 +515,8 @@ static void spawn(sw_dogfight *d)
         else if (slot < 0) slot = i;
     }
     if (slot < 0 || alive >= 8) return;
+    /* TIE fighters come three together in a V now and then */
+    int group = kind == K_TIE && d->pending[K_TIE] >= 3 && alive <= 5 && rnd(d) < 0.55 ? 3 : 1;
     double pos[3] = { BOX * 0.95, 0.0, 0.0 };
     for (int tries = 0; tries < 20; tries++) {
         double az = rnd(d) * 6.2831853, el = (rnd(d) - 0.5) * 1.2;
@@ -501,10 +532,25 @@ static void spawn(sw_dogfight *d)
     body_facing(&e->b, pos, d->pos);
     double hard = 1.0 + 0.03 * (d->wave - 1);
     if (hard > 1.6) hard = 1.6;
-    e->speed = (kind == K_INTERCEPTOR ? 1150.0 : kind == K_VADER ? 1050.0 : 950.0) * hard;
-    e->turn = (kind == K_INTERCEPTOR ? 1.7 : kind == K_VADER ? 1.4 : 1.1) * hard;
-    e->fire_t = d->t + 2.0 + rnd(d) * 2.0;
+    e->speed = (kind == K_INTERCEPTOR ? 1650.0 : kind == K_VADER ? 1500.0 : 1350.0) * hard;
+    e->turn = (kind == K_INTERCEPTOR ? 2.2 : kind == K_VADER ? 1.8 : 1.45) * hard;
+    e->fire_t = d->t + 1.5 + rnd(d) * 1.5;
     d->pending[kind]--;
+    for (int w = 1; w < group; w++) {
+        /* its wingmen: behind it, one to each side */
+        int ws = -1;
+        for (int i = 0; i < SW_DF_ENEMIES && ws < 0; i++) if (!d->enemy[i].kind) ws = i;
+        if (ws < 0) break;
+        sw_df_enemy *g = &d->enemy[ws];
+        *g = *e;
+        g->mode = 2;
+        g->leader = slot;
+        g->slot_r = w == 1 ? -420.0 : 420.0;
+        g->slot_b = 380.0;
+        for (int k = 0; k < 3; k++) g->b.pos[k] = e->b.pos[k] + e->b.r[k] * g->slot_r - e->b.f[k] * g->slot_b;
+        g->fire_t = d->t + 2.5 + rnd(d) * 1.5;
+        d->pending[kind]--;
+    }
 }
 
 static void explode(sw_dogfight *d, const sw_df_body *b, double speed)
@@ -528,7 +574,7 @@ static void explode(sw_dogfight *d, const sw_df_body *b, double speed)
     sound(d, S_AUDSX);
 }
 
-void sw_dogfight_start(sw_dogfight *d, const sw_machine *m)
+void sw_dogfight_start(sw_dogfight *d, const sw_machine *m, int wave)
 {
     sw_line *keep = d->list.lines;
     int cap = d->list.cap;
@@ -559,6 +605,18 @@ void sw_dogfight_start(sw_dogfight *d, const sw_machine *m)
     }
     sound(d, S_SPKRED);                     /* "Red Five standing by" */
     sound(d, S_PMTH5);
+    if (wave < 0) {
+        /* to look at one enemy: before the ship, nothing else */
+        d->preview = -wave;
+        sw_df_enemy *e = &d->enemy[0];
+        e->kind = -wave;
+        e->hp = 99;
+        double at[3] = { d->pos[0] + 1100.0, d->pos[1], d->pos[2] - 120.0 }, to[3] = { at[0], at[1] + 1000.0, at[2] };
+        body_facing(&e->b, at, to);
+        d->sound_r = d->sound_w = 0;
+        return;
+    }
+    d->wave = wave > 1 ? wave - 1 : 0;
     begin_wave(d);
 }
 
@@ -640,7 +698,38 @@ static void enemies_step(sw_dogfight *d, double dt)
         double far = sqrt(dot(to, to));
         norm(to);
         double want[3] = { to[0], to[1], to[2] };
-        if (e->mode == 0 && (far < 1100.0 || (far < 1800.0 && dot(e->b.f, to) < 0.0))) {
+        double pace = e->speed;
+        if (e->mode == 2) {
+            /* in formation: its place by the leader; it breaks off when the
+             * leader is gone or near the ship */
+            sw_df_enemy *l = &d->enemy[e->leader];
+            if (!l->kind || l->mode == 2 || dist(l->b.pos, d->pos) < 2600.0) {
+                e->mode = 0;
+            } else {
+                double at[3];
+                for (int k = 0; k < 3; k++) at[k] = l->b.pos[k] + l->b.r[k] * e->slot_r - l->b.f[k] * e->slot_b - e->b.pos[k];
+                double gap = sqrt(dot(at, at));
+                for (int k = 0; k < 3; k++) want[k] = l->b.f[k] * 900.0 + at[k] * 2.0;
+                norm(want);
+                pace = l->speed + (gap > 60.0 ? gap * 0.8 : 0.0);
+                if (pace > l->speed * 1.6) pace = l->speed * 1.6;
+            }
+        }
+        /* keeping apart from the others */
+        for (int j = 0; j < SW_DF_ENEMIES; j++) {
+            sw_df_enemy *o = &d->enemy[j];
+            if (j == i || !o->kind) continue;
+            double v[3] = { e->b.pos[0] - o->b.pos[0], e->b.pos[1] - o->b.pos[1], e->b.pos[2] - o->b.pos[2] };
+            double dd = sqrt(dot(v, v));
+            int mates = (e->mode == 2 && e->leader == j) || (o->mode == 2 && o->leader == i) ||
+                        (e->mode == 2 && o->mode == 2 && e->leader == o->leader);
+            if (dd < 1e-6 || dd > (mates ? 280.0 : 900.0)) continue;
+            double k2 = (mates ? 280.0 : 900.0) / dd - 1.0;
+            for (int k = 0; k < 3; k++) want[k] += v[k] / dd * k2 * 1.5;
+            if (dd < 260.0) for (int k = 0; k < 3; k++) e->b.pos[k] += v[k] / dd * (260.0 - dd) * 0.5;
+        }
+        norm(want);
+        if (e->mode == 0 && (far < 1300.0 || (far < 2200.0 && dot(e->b.f, to) < 0.0))) {
             /* close in: break away, somewhere aside */
             e->mode = 1;
             e->mode_t = d->t + 1.5 + rnd(d) * 1.5;
@@ -650,27 +739,48 @@ static void enemies_step(sw_dogfight *d, double dt)
         }
         if (e->mode == 1) {
             for (int k = 0; k < 3; k++) want[k] = e->away[k];
+            norm(want);
             if (d->t > e->mode_t) e->mode = 0;
         }
         if (fabs(e->b.pos[0]) > BOX * 1.15 || fabs(e->b.pos[1]) > BOX * 1.15 || fabs(e->b.pos[2]) > BOX * 1.15) {
             for (int k = 0; k < 3; k++) want[k] = -e->b.pos[k];
             norm(want);
         }
-        aim(e->b.f, e->b.r, e->b.u, want, e->turn * dt);
-        for (int k = 0; k < 3; k++) e->b.pos[k] += e->b.f[k] * e->speed * dt;
+        aim(e->b.f, e->b.r, e->b.u, want, e->turn * (e->mode == 2 ? 1.6 : 1.0) * dt);
+        for (int k = 0; k < 3; k++) e->b.pos[k] += e->b.f[k] * pace * dt;
         /* it passes close: its sound */
         double near = dist(e->b.pos, d->pos);
         if (near < 700.0 && !e->passed) { e->passed = 1; sound(d, S_AUDPB); }
         if (near > 1500.0) e->passed = 0;
-        /* it rams the ship */
-        if (near < 110.0) {
-            explode(d, &e->b, e->speed);
-            e->kind = K_NONE;
+        /* it runs into the ship: both bounce off, both are hurt */
+        if (near < 230.0 && d->t - e->bump_t > 0.8) {
+            double n[3] = { e->b.pos[0] - d->pos[0], e->b.pos[1] - d->pos[1], e->b.pos[2] - d->pos[2] };
+            norm(n);
+            for (int k = 0; k < 3; k++) {
+                d->knock[k] = -n[k] * 900.0;
+                e->knock[k] = n[k] * 900.0;
+                e->away[k] = n[k];
+            }
+            e->bump_t = d->t;
+            e->mode = 1;
+            e->mode_t = d->t + 1.5;
+            d->yaw_rate += (float)((rnd(d) - 0.5) * 2.0);           /* (a jolt) */
+            d->pitch_rate += (float)((rnd(d) - 0.5) * 1.6);
             lose_shield(d);
-            continue;
+            e->hit_t = d->t;
+            if (--e->hp <= 0) {
+                d->score += KIND_SCORE[e->kind];
+                explode(d, &e->b, e->speed);
+                e->kind = K_NONE;
+                continue;
+            }
+        }
+        for (int k = 0; k < 3; k++) {
+            e->b.pos[k] += e->knock[k] * dt;
+            e->knock[k] *= exp(-2.5 * dt);
         }
         /* it fires: the ship before its nose, not too far */
-        if (!d->over && e->mode == 0 && d->t > e->fire_t && far < 5500.0 && dot(e->b.f, to) > 0.93) {
+        if (!d->over && e->mode != 1 && d->t > e->fire_t && far < 6500.0 && dot(e->b.f, to) > 0.93) {
             for (int s = 0; s < SW_DF_SHOTS; s++) {
                 sw_df_shot *sh = &d->shot[s];
                 if (sh->live) continue;
@@ -684,7 +794,7 @@ static void enemies_step(sw_dogfight *d, double dt)
                 break;
             }
             sound(d, S_AUDTC);
-            double every = (e->kind == K_VADER ? 1.6 : e->kind == K_INTERCEPTOR ? 2.2 : 2.8) / hard;
+            double every = (e->kind == K_VADER ? 1.3 : e->kind == K_INTERCEPTOR ? 1.8 : 2.3) / hard;
             e->fire_t = d->t + every * (0.7 + 0.6 * rnd(d));
         }
     }
@@ -709,7 +819,7 @@ static void enemies_step(sw_dogfight *d, double dt)
     }
     /* the wave: in, and when it is over, R2 mends a shield and the next comes */
     int waiting = d->pending[K_TIE] + d->pending[K_INTERCEPTOR] + d->pending[K_VADER];
-    if (waiting && d->t - d->wave_t > 2.5) spawn(d);
+    if (waiting && d->t - d->wave_t > 2.0) spawn(d);
     if (!waiting && !alive && !d->over && d->t - d->wave_t > 3.0) {
         if (d->shields < SHIELDS) {
             d->shields++;
@@ -725,6 +835,13 @@ void sw_dogfight_step(sw_dogfight *d, const sw_dogfight_input *in, double dt)
     if (!d->active || dt <= 0.0) return;
     if (dt > 0.1) dt = 0.1;
     d->t += dt;
+    if (d->preview) {
+        sw_df_body *b = &d->enemy[0].b;
+        turn(b->f, b->r, 0.5 * dt);
+        turn(b->f, b->u, 0.13 * sin(d->t * 0.7) * dt);
+        square3(b->f, b->r, b->u);
+        return;
+    }
     if (d->over && d->t - d->over_t > 7.0) d->finished = 1;
 
     /* the throttle: a button held pulls it its way, twice as fast while it
@@ -777,7 +894,10 @@ void sw_dogfight_step(sw_dogfight *d, const sw_dogfight_input *in, double dt)
         turn(d->r, d->u, -d->roll_rate * dt);       /* rolling right: r goes down */
         square3(d->f, d->r, d->u);
     }
-    for (int i = 0; i < 3; i++) d->pos[i] += d->f[i] * d->speed * dt;
+    for (int i = 0; i < 3; i++) {
+        d->pos[i] += (d->f[i] * d->speed + d->knock[i]) * dt;
+        d->knock[i] *= exp(-2.5 * dt);              /* (a bounce dies away) */
+    }
 
     /* the lasers: a shot for each pull of the trigger, and again and again while it is held */
     if (!d->over && in->fire && d->t >= d->fire_next) {
@@ -929,7 +1049,7 @@ int sw_dogfight_lines(sw_dogfight *d, const sw_machine *m, const sw_line **out)
     {
         double x, y;
         if (project(d, DEATH_STAR, &x, &y, NULL) && on_screen(x, y, 60.0)) {
-            const uint16_t scale = SW_VGSCAL + 0x300 + 0x40;     /* (its stamps are big: the game draws them small at first) */
+            const uint16_t scale = SW_VGSCAL + 0x200;     /* (its stamps are big: the game draws them small at first) */
             static const uint16_t stamps[5] = { SW_VJBCIR, SW_VJBTRN, SW_VJBDSH, SW_VJBNSD, SW_VJBFRM };
             d->tag = SW_TAG(SW_TAG_DSTAR, 3);
             color(d, GRN, 0x80);
@@ -1010,11 +1130,11 @@ int sw_dogfight_lines(sw_dogfight *d, const sw_machine *m, const sw_line **out)
         text_mid(d, m, 0.0, 60.0, RED, 0xc0, SW_VGSCAL, LETTER, "GAME OVER");
         number(s, d->score);
         text_mid(d, m, 0.0, 48.0, GRN, 0xa0, SW_VGSCAL, LETTER, s);
-    } else if (d->t - d->wave_t < 2.5) {
+    } else if (d->t - d->wave_t < 2.5 && !d->preview) {
         char s[24] = "WAVE ";
         number(s + 5, d->wave);
         text_mid(d, m, 0.0, 70.0, RED, 0xa0, SW_VGSCAL, LETTER, d->wave == 1 && d->t < 2.5 ? "DOGFIGHT" : s);
-        if (d->wave % 5 == 0) text_mid(d, m, 0.0, 60.0, RED, 0x80, SW_VGSCAL, LETTER, "DARTH VADER");
+        if (d->wave % 5 == 0 && d->wave) text_mid(d, m, 0.0, 60.0, RED, 0x80, SW_VGSCAL, LETTER, "DARTH VADER");
     } else if (d->mend_t > 0.0 && d->t - d->mend_t < 2.0) {
         text_mid(d, m, 0.0, 70.0, TRQ, 0xa0, SW_VGSCAL, LETTER, "R2 MENDS A SHIELD");
     }

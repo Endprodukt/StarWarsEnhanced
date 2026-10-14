@@ -17,7 +17,7 @@
  *   --attract, so that no coin of the script ends it.
  * --dogfight: the dogfight (dogfight/dogfight.h) from the start, flown by
  *   itself (the yoke weaving, the throttle up and down, a roll now and
- *   then); no sound yet.
+ *   then), with sound; --wave N begins it at the wave N.
  * --aim 80,4c: the first game starts on the Death Star in the middle (wave
  * 3, which has the surface).
  * --every N: only every Nth picture is written (stills to look at).
@@ -265,7 +265,7 @@ int main(int argc, char **argv)
     int base_view = pic.enhance.view;
     static sw_dogfight df;
     int dogfight = arg_flag(argc, argv, "--dogfight");
-    if (dogfight) sw_dogfight_start(&df, &m);
+    if (dogfight) sw_dogfight_start(&df, &m, arg(argc, argv, "--wave") ? atoi(arg(argc, argv, "--wave")) : 1);
     if (!arg_flag(argc, argv, "--plain")) {
         pic.enhance.surface = pic.enhance.stars = pic.enhance.towers = pic.enhance.dogfights = 1;
         pic.enhance.logo = 1;
@@ -284,6 +284,29 @@ int main(int argc, char **argv)
     long start = (long)(attract * SW_IRQ_HZ);      /* the interrupt the first coin drops at */
     for (long f = 0; f < frames; f++) {
         double now = (double)f / fps;
+        if (dogfight && df.preview) {
+            sw_dogfight_input in0 = { 0 };
+            sw_dogfight_step(&df, &in0, 1.0 / fps);
+            const sw_line *dl;
+            int dn = sw_dogfight_lines(&df, &m, &dl);
+            uint32_t want = (uint32_t)((f + 1) * (double)SW_SOUND_RATE / fps);
+            static const int16_t quiet[2048];
+            while (samples < want) {
+                uint32_t k = want - samples > 2048 ? 2048 : want - samples;
+                fwrite(quiet, 2, k, wav);
+                samples += k;
+            }
+            if (pic.occlusion) {
+                pic.solid.extra = df.faces;
+                pic.solid.n_extra = df.n_faces;
+                dn = sw_solid_run(&pic.solid, dl, dn, &dl);
+            }
+            if (f % every != 0 || now < from) continue;
+            if (every > 1) memset(after, 0, (size_t)W * H * 3 * sizeof *after);
+            picture(dl, dn);
+            if (fwrite(rgb, 3, (size_t)W * H, stdout) != (size_t)W * H) return 1;
+            continue;
+        }
         if (dogfight) {
             /* the dogfight's own pilot */
             double t = now;
