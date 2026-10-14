@@ -335,6 +335,8 @@ int main(int argc, char **argv)
                     in.yaw = (float)(ang_y * 2.5 > 1.0 ? 1.0 : ang_y * 2.5 < -1.0 ? -1.0 : ang_y * 2.5);
                     in.pitch = (float)(ang_z * 2.5 > 1.0 ? 1.0 : ang_z * 2.5 < -1.0 ? -1.0 : ang_z * 2.5);
                     in.fire = v[0] > 0.0 && fabs(ang_y) < 0.06 && fabs(ang_z) < 0.06 && fmod(t, 0.5) < 0.25;
+                    /* the torpedoes, charged, at what is ahead */
+                    in.torpedo = df.torp_charge >= 1.0 && v[0] > 0.0 && fabs(ang_y) < 0.5 && fabs(ang_z) < 0.4 && fmod(t, 0.4) < 0.2;
                 }
             }
             sw_dogfight_step(&df, &in, 1.0 / fps);

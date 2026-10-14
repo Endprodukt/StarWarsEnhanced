@@ -337,6 +337,45 @@ wiederholt sich alle 8000h, jedes Gebäude wird auf dieser und der nächsten
 Runde betrachtet. Standbilder: am Start der Oberfläche nichts neben dem
 Spieler, am Horizont die kleinen dunklen Türme.
 
+## Dogfight: Originalschüsse, Protonentorpedos, große Schlacht (2026-10-14)
+
+Rückmeldung des Besitzers: falsche Schüsse, kein Torpedo, Gegner greifen zu
+wenig an, es fehlt das Gefühl einer großen Schlacht. Nur lokal gebaut und
+gefilmt, **nicht auf dem Automaten**.
+
+* **VG-RAM wie im Original:** Der Dogfight hat jetzt das, was der Interrupt
+  bei jedem Neustart des Vektorgenerators unten in den VG-RAM schreibt
+  (VRLZF-Farben rotiert, VRLZS, VRGNB/VRGNX jedes vierte Mal, VRGNT, VRFLS,
+  VRMFL, Splash-Quadranten über `sw_splash_into`), mit 41 Hz. Dazu kommt
+  das "Fake VG ROM" (DOWNVG, ab 2800h), in dem die Funkelbilder der Schüsse
+  liegen. Die Liste beginnt bei VGVARB (70h) und endet unter 2800h.
+* **Laser wie VWLAZ/LAZVW:** Je Schuss das andere Kanonenpaar, 8 Spielframes
+  (20,5 Hz) lang, in halbierenden Schritten mit den wandernden Farben aus
+  TLZFR. Bei Treffer steht der Strahl 4 Frames türkis und verblassend auf
+  dem Ziel, dazu der Splash VJLZS.
+* **Feuerbälle wie GN1DRW:** Maßstab aus der Entfernung, Funkelbild VJGNB.
+  Abgeschossen bleiben sie stehen und lösen sich lila auf (VJGNX). Treffen
+  sie die Schilde, glühen sie dort weiß (GLOWVW).
+* **Protonentorpedos (linker Trigger):** laden in 7 s (Balken TORPEDO
+  links oben, blinkt türkis, wenn bereit; R2 piepst). Es sind zwei Kugeln
+  wie die Feuerbälle, jede verfolgt einen anderen Gegner (den nächsten am
+  Fadenkreuz) und zerstört ihn mit einem Treffer. Fällt ihr Ziel, sucht
+  sie ein neues.
+* **Angriffslustiger:** Wellen 4 + 2 × Welle Gegner (höchstens 30),
+  Interceptors ab Welle 2, bis zu 7 + Welle/2 gleichzeitig (höchstens 11),
+  Interceptors auch paarweise. Feuer in Salven (TIE 2, Interceptor 3,
+  Vader 4, 0,22 s Abstand), schon ab 10000 Entfernung, dazwischen
+  1,6/1,3/1,0 s. Sie drehen erst unter 1100 ab und kommen nach 1–2 s wieder.
+* **Schlacht:** drei Flügelmänner (X-Wings) fliegen mit, jagen die Gegner und
+  feuern rote Bolzen (jeder zweite trifft, kein Punkt für den Spieler). Ein
+  Viertel der Gegner jagt sie mit grünen Bolzen. Nach drei Treffern
+  explodiert ein Flügelmann und kommt nach 14 s an der Wand wieder.
+  Im Hintergrund laufen drei Verfolgungsjagden gleichzeitig, und alle 1–3 s
+  explodiert in der Ferne ein Schiff. Explosionen in der Nähe blitzen mit
+  dem Funkelbild auf.
+* Offen: abwägen, ob Flügelmänner zu viele Gegner abschießen; Sichtbarkeit
+  der Laser am Automaten prüfen.
+
 ## Dogfight: mehr Tempo, Formationen, Abprallen, neuer Interceptor (2026-10-14)
 
 Rückmeldungen des Besitzers und was daraus wurde:
@@ -673,7 +712,7 @@ sobald das Menü neu startet (nach dem Verlassen des Spiels). Nicht geprüft
 am Gerät, auch nicht, ob der längere Titel des Testmenüs (jetzt Größe 90
 statt 110) in die Breite passt.
 
-Marquee erneuert (zweites Artwork des Besitzers, ohne die Streifen unten; auf die volle Breite 1920 gezogen, 17 % breiter als das Original), Version 0.2.1. **Noch nicht auf dem Automaten**, der war aus: beim nächsten Mal `sh tools/deploy.sh` und die neueste `dist/swenhanced-<version>.vpk` (jetzt 0.3.8, mit Dogfight Etappe 2) nach `/persistent/games/packages/` (dort liegt noch 0.2.0).
+Marquee erneuert (zweites Artwork des Besitzers, ohne die Streifen unten; auf die volle Breite 1920 gezogen, 17 % breiter als das Original), Version 0.2.1. **Noch nicht auf dem Automaten**, der war aus: beim nächsten Mal `sh tools/deploy.sh` und die neueste `dist/swenhanced-<version>.vpk` (jetzt 0.3.9, mit Dogfight Etappe 3; auf dem Automaten ist 0.3.8) nach `/persistent/games/packages/` (dort liegt noch 0.2.0).
 
 Paketdatei: `sh tools/pack.sh` (in WSL, nach dem Pi-Build) schreibt
 `dist/swenhanced-<version>.vpk` mit dem `vp-pack` des SDK (dessen Skript und
