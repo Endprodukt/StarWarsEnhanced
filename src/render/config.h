@@ -82,7 +82,8 @@ typedef struct sw_display_cfg {
     /* Enhanced: from where the player sees in flight (render/enhance.h,
      * SW_VIEW_...): 0 (the default) the arcade machine's view, the X-wing's
      * nose and guns; 1 from inside its cockpit; 2 from behind it. The
-     * start button steps through them in play. */
+     * start button steps through them in play; every game (and every
+     * dogfight) begins from the arcade view, whatever was last chosen. */
     int enh_view;
     /* Enhanced: 1 (the default): in the attract mode, before the high
      * scores, a demo flight, each part of it from another view

@@ -2561,6 +2561,10 @@ int sw_dogfight_lines(sw_dogfight *d, const sw_machine *m, const sw_line **out)
         int k = 0;
         for (int i = 0; i < d->list.count; i++) {
             sw_line l = d->list.lines[i];
+            /* (not the X-wing's nose and guns: they run off the screen as in
+             * the game, and render/solid closes their shape with the edge
+             * only where their lines go beyond it) */
+            if (SW_TAG_SECTION((unsigned)(l.id >> 48)) == SW_TAG_PLANE) { d->list.lines[k++] = l; continue; }
             double t0 = 0.0, t1 = 1.0, dx = l.x1 - l.x0, dy = l.y1 - l.y0;
             double p[4] = { -dx, dx, -dy, dy }, q[4] = { l.x0 + 127.5, 127.5 - l.x0, l.y0 + 153.0, 150.0 - l.y0 };
             int out = 0;
