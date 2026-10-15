@@ -22,8 +22,17 @@ static const char *const ENGINE[SW_ENGINE_LOOPS] = { "XWENG", "XWEXT" };
 enum {
     FIRST_SPEECH = 3, SPKSKP = 20, LAST_SPEECH = 26,
     FIRST_MUSIC = 27, LAST_MUSIC = 37,
-    AUDNAY = 41, AUDPB = 42, AUDPBZ = 43, AUDTC = 54, AUDTCZ = 55, AUDYEA = 59,
+    AUDCR = 38, AUDDF = 39, AUDNAY = 41, AUDPB = 42, AUDPBZ = 43, AUDSX = 53, AUDTC = 54, AUDTCZ = 55, AUDYEA = 59,
 };
+
+/* the ducking (samples.h): how much, how fast */
+#define DUCK_SPEECH  0.7079f        /* -3 dB under speech */
+#define DUCK_BIG     0.8414f        /* -1.5 dB under a big explosion */
+#define DUCK_ATTACK  0.020f         /* seconds */
+#define DUCK_RELEASE 0.300f
+#define BOARD_HOLD   0.15f          /* the speech chip's pauses between words still count */
+
+static int is_big(int id) { return id == AUDSX || id == AUDDF || id == AUDCR; }
 
 const char *sw_sound_name(int n)
 {
@@ -231,6 +240,8 @@ int sw_samples_load(sw_samples *s, const char *dir, int rate)
         if (got) found++;
     }
     if (!s->engine_rate) s->engine_rate = 1.0f;
+    if (!s->duck_speech) s->duck_speech = s->duck_big = 1.0f;
+    s->rate = rate;
     if (!s->rng) s->rng = 0x9e3779b9u;
     return found;
 }
@@ -324,12 +335,41 @@ static int play(int *id, const sw_sample *rec, uint32_t *at)
     return v;
 }
 
+/* eases a ducking gain to where it is to be */
+static float ease_duck(float g, float to, int rate)
+{
+    float k = 1.0f / ((g > to ? DUCK_ATTACK : DUCK_RELEASE) * (float)(rate > 0 ? rate : 44100));
+    return g + (to - g) * (k > 1.0f ? 1.0f : k);
+}
+
+float sw_samples_board_gain(const sw_samples *s)
+{
+    if (!s->enabled || !s->duck_speech) return 1.0f;
+    return s->duck_speech * s->duck_big;
+}
+
 int sw_samples_next(sw_samples *s)
 {
+    /* the ducking: under speech everything else, under a big explosion the rest */
+    if (s->board_speaks) s->board_hold = (uint32_t)(BOARD_HOLD * (float)(s->rate > 0 ? s->rate : 44100));
+    else if (s->board_hold) s->board_hold--;
+    int big = 0;
+    for (int i = 0; i < SW_SAMPLE_VOICES; i++) big |= is_big(s->effect[i].id);
+    int speaking = s->speech.id != 0 || s->board_hold > 0;
+    if (!s->duck_speech) s->duck_speech = s->duck_big = 1.0f;
+    s->duck_speech = ease_duck(s->duck_speech, s->enabled && speaking ? DUCK_SPEECH : 1.0f, s->rate);
+    s->duck_big = ease_duck(s->duck_big, s->enabled && big ? DUCK_BIG : 1.0f, s->rate);
+    float rest = s->duck_speech * s->duck_big, bigs = s->duck_speech;
+
     int sum = 0;
-    for (int i = 0; i < SW_SAMPLE_VOICES; i++)
-        if (s->effect[i].id) sum += play(&s->effect[i].id, s->effect[i].rec, &s->effect[i].at);
-    if (s->music.id) sum += play(&s->music.id, s->music.rec, &s->music.at);
+    float under = 0.0f, over = 0.0f;    /* (ducked by both, by speech only) */
+    for (int i = 0; i < SW_SAMPLE_VOICES; i++) {
+        if (!s->effect[i].id) continue;
+        int b = is_big(s->effect[i].id), v = play(&s->effect[i].id, s->effect[i].rec, &s->effect[i].at);
+        if (b) over += (float)v;
+        else under += (float)v;
+    }
+    if (s->music.id) under += (float)play(&s->music.id, s->music.rec, &s->music.at);
     if (s->speech.id) {
         sum += play(&s->speech.id, s->speech.rec, &s->speech.at);
         if (!s->speech.id && s->queued) {   /* the next sentence waiting */
@@ -352,9 +392,9 @@ int sw_samples_next(sw_samples *s)
         if (g <= 0.0f || !r->pcm || r->n < 2) continue;
         uint32_t i0 = (uint32_t)s->engine[i].at, i1 = i0 + 1 < r->n ? i0 + 1 : 0;
         float k = (float)(s->engine[i].at - i0);
-        sum += (int)((r->pcm[i0] + (r->pcm[i1] - r->pcm[i0]) * k) * g);
+        under += (r->pcm[i0] + (r->pcm[i1] - r->pcm[i0]) * k) * g;
         s->engine[i].at += s->engine_rate;
         while (s->engine[i].at >= r->n) s->engine[i].at -= r->n;
     }
-    return sum;
+    return sum + (int)(under * rest + over * bigs);
 }

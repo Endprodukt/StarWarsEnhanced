@@ -25,6 +25,13 @@
  *   speech   one sentence after the other; SPKSKP drops those waiting.
  * Request 00 (the board's reset) silences everything.
  *
+ * Ducking (so that it is not all too much at once, and speech is always
+ * understood): while a sentence is spoken (a recording, or the board's own
+ * speech chip) everything else is 3 dB lower; while a big explosion or a
+ * crash sounds (AUDSX, AUDDF, AUDCR) the other effects, the engine and the
+ * music are 1.5 dB lower. It comes in within 20 ms and goes in 300 ms. The
+ * board's own music and effects (its POKEYs) duck too (sw_samples_board_gain).
+ *
  * Besides the requests, the X-wing's own engine (enhanced: the arcade game
  * has none): a loop, one heard from inside the cockpit (XWENG.wav), one
  * from outside (XWEXT.wav), in effects/. The program says which, how loud
@@ -69,6 +76,11 @@ typedef struct sw_samples {
         float     want;
     } engine[SW_ENGINE_LOOPS];
     float    engine_rate;           /* how fast it is played (1: as recorded) */
+    /* ducking: the gains as they are now (1: none), and the board's speech */
+    float    duck_speech, duck_big;
+    int      board_speaks;          /* set by the board: its speech chip makes sound now */
+    uint32_t board_hold;            /* (samples it still counts as speaking) */
+    int      rate;
 } sw_samples;
 
 /* What request n asks for ("AUDXL"), "" if nothing. */
@@ -99,5 +111,9 @@ void sw_samples_engine(sw_samples *s, int which, float level, float rate);
 
 /* The next sample of everything playing (16 bit range, not clipped). */
 int  sw_samples_next(sw_samples *s);
+
+/* How loud the board's own POKEYs (its music and effects) are to be now,
+ * after the ducking (1 when nothing ducks, or the recordings are off). */
+float sw_samples_board_gain(const sw_samples *s);
 
 #endif

@@ -202,6 +202,31 @@ int main(void)
             sw_samples_free(&s);
         }
     }
+    /* ducking: under speech the rest -3 dB, under a big explosion -1.5 dB, then back */
+    {
+        char ps[1024], px[1024];
+        snprintf(ps, sizeof ps, "%s/SPKRED.wav", dir);
+        snprintf(px, sizeof px, "%s/AUDSX.wav", dir);
+        if (write_wav(ps, 4410) == 0 && write_wav(px, 4410) == 0) {
+            found = sw_samples_load(&s, dir, 44100);
+            remove(ps); remove(px);
+            s.enabled = 1;
+            float g0 = sw_samples_board_gain(&s);
+            sw_samples_request(&s, 0x10);
+            loud(6000);                                 /* (SPKRED is 8820 samples long) */
+            float g1 = sw_samples_board_gain(&s);
+            loud(40000);
+            float g2 = sw_samples_board_gain(&s);
+            sw_samples_request(&s, 0x35);
+            loud(6000);
+            float g3 = sw_samples_board_gain(&s);
+            if (found != 2 || g0 < 0.99f || g1 > 0.72f || g1 < 0.69f || g2 < 0.97f || g3 > 0.86f || g3 < 0.80f) {
+                printf("ducking: %d found, gains %.3f %.3f %.3f %.3f\n", found, g0, g1, g2, g3);
+                fail = 1;
+            }
+            sw_samples_free(&s);
+        }
+    }
     printf("test_samples: %s\n", fail ? "FAILED" : "ok");
     return fail;
 }
