@@ -99,6 +99,10 @@ typedef struct sw_display_cfg {
      * are played from it (sound/samples.h, docs/SOUNDS.md). 0: every sound
      * comes from the board's chips, as on the arcade machine. */
     int sound_replace;
+    /* Enhanced: 1: the X-wing's own engine is heard in flight (a recording,
+     * one from inside the cockpit, one from outside, as the view is; in the
+     * dogfight it runs up as the ship speeds up). Needs sound_replace. */
+    int enh_engine;
 } sw_display_cfg;
 
 void sw_display_cfg_defaults(sw_display_cfg *c);

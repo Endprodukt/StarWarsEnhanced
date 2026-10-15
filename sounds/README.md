@@ -1,5 +1,12 @@
 # Replacement sounds
 
+The recordings the game comes with are in `package/sounds`, made by
+`tools/swsamples/build.py` from `tools/swsamples/samples.txt`: from the film
+lines here in `voice/` and from the SW Ultimate SFX Collection (docs/SOUNDS.md,
+"The recordings that come with the game"). This folder holds the sources:
+`voice/` the film lines (`voice/original/` the board's own speech), and the
+board's own sounds `swsound` writes, to compare with.
+
 A WAV file named after a sound of the game is played in its place:
 `effects/AUDXL.wav` for the X-wing's lasers, `music/PMTH5.wav` for the main
 theme, `voice/SPKRED.wav` for "Red Five standing by". The 59 names, the

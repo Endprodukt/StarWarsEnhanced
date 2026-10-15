@@ -201,3 +201,7 @@ endif()
 configure_file(package/swenhanced.ini ${CMAKE_CURRENT_BINARY_DIR}/swenhanced.ini COPYONLY)
 configure_file(package/marquee.png ${CMAKE_CURRENT_BINARY_DIR}/marquee.png COPYONLY)
 configure_file(package/game.ini ${CMAKE_CURRENT_BINARY_DIR}/game.ini COPYONLY)
+# the recordings that replace the board's sounds, next to the program (vp_asset_path)
+add_custom_target(sounds ALL
+    COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_CURRENT_BINARY_DIR}/sounds
+    COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/package/sounds ${CMAKE_CURRENT_BINARY_DIR}/sounds)

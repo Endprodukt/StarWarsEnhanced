@@ -40,6 +40,7 @@ void sw_display_cfg_defaults(sw_display_cfg *c)
     c->enh_camera = 1;
     c->enh_demo = 1;
     c->sound_replace = 1;
+    c->enh_engine = 1;
 }
 
 static char *trim(char *s)
@@ -70,7 +71,7 @@ static int set(sw_display_cfg *c, const char *key, const char *val)
         { "enh_towers", &c->enh_towers }, { "enh_dogfights", &c->enh_dogfights },
         { "enh_clip", &c->enh_clip }, { "enh_falcon", &c->enh_falcon }, { "enh_blast", &c->enh_blast }, { "enh_camera", &c->enh_camera },
         { "enh_view", &c->enh_view }, { "enh_demo", &c->enh_demo },
-        { "logo_yellow", &c->logo_yellow }, { "sound_replace", &c->sound_replace },
+        { "logo_yellow", &c->logo_yellow }, { "sound_replace", &c->sound_replace }, { "enh_engine", &c->enh_engine },
     };
     if (strcmp(key, "sort_strokes") == 0) return 0;     /* (gone: settings files from before may still have it) */
     for (size_t i = 0; i < sizeof floats / sizeof floats[0]; i++)
@@ -172,6 +173,8 @@ int sw_display_cfg_save(const sw_display_cfg *c, const char *path)
                "logo_yellow = %d\n", c->logo_yellow);
     fprintf(f, "\n; enhanced: play sounds/NAME.wav in place of the sound NAME where there is such a file\n"
                "sound_replace = %d\n", c->sound_replace);
+    fprintf(f, "\n; enhanced: the X-wing's engine is heard in flight (inside or outside, as the view)\n"
+               "enh_engine = %d\n", c->enh_engine);
     fclose(f);
     return 0;
 }

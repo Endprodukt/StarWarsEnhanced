@@ -5,3 +5,6 @@ roms/
 video/
 sounds/*.wav
 sounds/*/*.wav
+sounds/*/*/*.wav
+# (the collection of sounds the recordings are taken from: in the project's folder, 1.4 GB)
+SW Ultimate SFX Collection/
