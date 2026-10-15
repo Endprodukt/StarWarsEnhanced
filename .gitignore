@@ -9,4 +9,6 @@ sounds/*/*/*.wav
 # (the collection of sounds the recordings are taken from: in the project's folder, 1.4 GB)
 SW Ultimate SFX Collection/
 # (the owner's film music: private, made from sounds/music, never in the repository)
-package/sounds/music/
+package/sounds/music/*
+!package/sounds/music/PMSF2.wav
+# (PMSF2 is the collection's torpedo sound, not film music: it stays in the repository)
