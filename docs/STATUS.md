@@ -369,6 +369,17 @@ platzsparendes Format, höchstens 16 kHz.
   `tools/swsamples/build.py` baut `package/sounds`. Die Dateien liegen im
   Paket und neben dem Programm (CMake kopiert sie), `deploy.sh` und `pack.sh`
   nehmen sie mit.
+* **Nachgebessert (0.3.15), nach dem ersten Hören am Automaten:**
+  Ducking: unter Sprache alles andere −3 dB (auch Musik und Effekte der
+  Platine), unter einer großen Explosion oder einem Crash der Rest −1,5 dB
+  (`samples.c`, `sndboard.c`, getestet). Die roten Kanonen (AUDTL) klangen
+  wie Vorbeiflüge: "DS Turret" schwillt nach dem Einsatz auf das 2,4- bis
+  2,9-Fache an. Jetzt Turbolaser 9, 3R, 1, Heavy Cannon 10 und 9, Heavy
+  Blaster 2A, alle mit hartem Einsatz und unter 0,5 s abklingend. Sprache:
+  Alle 22 hörbaren Sätze des Originals sind belegt. Bei Vaders vier Sätzen
+  fehlte sein Atmen vor und nach dem Satz, das das Original hat; es ist
+  jetzt aus der Sammlung davor- und dahintergesetzt (Inhale/Exhale, 9 dB
+  leiser), die Sätze sind damit 3 bis 5 s lang wie im Original.
 * **Nicht angehört:** Die Auswahl ist nach Namen und Messwerten (Länge,
   Einzelschuss, Gleichmäßigkeit, Helligkeit) getroffen. Ob jede Datei passt,
   muss am Automaten gehört werden. Die Musik bleibt die der Platine.
@@ -812,7 +823,7 @@ sobald das Menü neu startet (nach dem Verlassen des Spiels). Nicht geprüft
 am Gerät, auch nicht, ob der längere Titel des Testmenüs (jetzt Größe 90
 statt 110) in die Breite passt.
 
-Marquee erneuert (zweites Artwork des Besitzers, ohne die Streifen unten; auf die volle Breite 1920 gezogen, 17 % breiter als das Original), Version 0.2.1. **Noch nicht auf dem Automaten**, der war aus: beim nächsten Mal `sh tools/deploy.sh` und die neueste `dist/swenhanced-<version>.vpk` (jetzt 0.3.14, mit Dogfight Etappe 4) nach `/persistent/games/packages/` (dort liegt noch 0.2.0).
+Marquee erneuert (zweites Artwork des Besitzers, ohne die Streifen unten; auf die volle Breite 1920 gezogen, 17 % breiter als das Original), Version 0.2.1. **Noch nicht auf dem Automaten**, der war aus: beim nächsten Mal `sh tools/deploy.sh` und die neueste `dist/swenhanced-<version>.vpk` (jetzt 0.3.15, mit Dogfight Etappe 4) nach `/persistent/games/packages/` (dort liegt noch 0.2.0).
 
 Paketdatei: `sh tools/pack.sh` (in WSL, nach dem Pi-Build) schreibt
 `dist/swenhanced-<version>.vpk` mit dem `vp-pack` des SDK (dessen Skript und

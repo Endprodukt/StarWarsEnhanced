@@ -10,11 +10,16 @@ ADPCM (4 bit, a quarter of 16-bit PCM). The engine's loops are cut from the
 middle of their sources and joined end to start with a crossfade, so that
 they go round without a click. Several sources of one name become NAME.wav,
 NAME_2.wav, ... (multisamples: one of them each time, src/sound/samples.h).
+A source of pieces joined by " + " is one recording made of them, one after
+the other with a short pause (Vader's breath before and after his line, as
+the arcade game has it); a piece with "(-9 dB)" after it is that much below
+the loudness of the piece without one.
 
 Needs numpy, scipy, soundfile. Prints what it made, and how loud each is.
 """
 import argparse
 import os
+import re
 import shutil
 import sys
 from math import gcd
@@ -102,6 +107,43 @@ def level(m, sr, db):
     return m * g
 
 
+def resolve(src, args, name):
+    if src.startswith('@sfx/'):
+        path = os.path.join(args.sfx, src[5:])
+    elif src.startswith('@voice/'):
+        path = os.path.join(args.voice, src[7:])
+    else:
+        sys.exit('%s: a source is @sfx/ or @voice/: %s' % (name, src))
+    if not os.path.exists(path):
+        sys.exit('%s: no such file: %s' % (name, path))
+    return path
+
+
+PIECE = re.compile(r'^(.*?)\s*\((-?\d+(?:\.\d+)?) dB\)$')
+PAUSE = 0.12                                    # seconds between the pieces of one recording
+
+
+def pieces(src, args, name, db):
+    """one recording of one or more pieces: each to mono, 16 kHz, its silence cut, to its loudness"""
+    parts = []
+    for piece in src.split(' + '):
+        piece = piece.strip()
+        rel = 0.0
+        mm = PIECE.match(piece)
+        if mm:
+            piece, rel = mm.group(1), float(mm.group(2))
+        m, sr = read_mono(resolve(piece, args, name))
+        m = trim(to_rate(m, sr), RATE, 60.0)
+        parts.append(level(m, RATE, db + rel))
+    if len(parts) == 1:
+        return parts[0]
+    gap = np.zeros(int(PAUSE * RATE))
+    out = []
+    for i, m in enumerate(parts):
+        out += ([gap] if i else []) + [m]
+    return np.concatenate(out)
+
+
 def main():
     here = os.path.dirname(os.path.abspath(__file__))
     root = os.path.normpath(os.path.join(here, '..', '..'))
@@ -131,22 +173,16 @@ def main():
     total = 0
     for name, db, longest, srcs in entries:
         for k, src in enumerate(srcs):
-            if src.startswith('@sfx/'):
-                path = os.path.join(args.sfx, src[5:])
-            elif src.startswith('@voice/'):
-                path = os.path.join(args.voice, src[7:])
-            else:
-                sys.exit('%s: a source is @sfx/ or @voice/: %s' % (name, src))
-            if not os.path.exists(path):
-                sys.exit('%s: no such file: %s' % (name, path))
-            m, sr = read_mono(path)
-            m = to_rate(m, sr)
             if '@' in longest:
+                m, sr = read_mono(resolve(src, args, name))
                 length, start = (float(v) for v in longest.split('@'))
-                m = make_loop(m, RATE, length, start)
+                m = make_loop(to_rate(m, sr), RATE, length, start)
+                m = level(m, RATE, db)
             else:
+                m = pieces(src, args, name, db)
                 m = trim(m, RATE, float(longest))
-            m = level(m, RATE, db)
+                if ' + ' not in src:
+                    m = level(m, RATE, db)
             out = os.path.join(args.out, folder_of(name), name + ('.wav' if k == 0 else '_%d.wav' % (k + 1)))
             sf.write(out, np.clip(m, -1.0, 1.0).astype('float32'), RATE, format='WAV', subtype='IMA_ADPCM')
             size = os.path.getsize(out)

@@ -48,7 +48,8 @@ typedef struct sw_sndboard {
     float    pokey_sum;         /* POKEY output times ticks since the last sample */
     uint32_t pokey_done;        /* of pending_ticks, how many the POKEYs have run */
     float    last_pokey;
-    float    dc;                /* the standing part of the output, taken out */
+    float    dc;                /* the standing part of the POKEYs' output, taken out */
+    float    dc_speech;         /* and of the speech chip's */
     int32_t  budget;            /* CPU cycles to run */
     int16_t  ring[SW_SOUND_RING];
     volatile uint32_t ring_w, ring_r;

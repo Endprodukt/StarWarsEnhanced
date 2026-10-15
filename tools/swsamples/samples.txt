@@ -17,14 +17,16 @@
 # Every sound is a recording from those two folders; nothing is made up.
 
 # --- speech: the films' lines (sounds/voice), one each ---------------------------------
+# (Darth Vader's, as in the arcade game: his breath before and after the line,
+# from the collection; the films' lines have none)
 SPKALW  -27  3   @voice/SPKALW.wav
 SPKELE  -29  3   @voice/SPKELE.wav
 SPKFOA  -27  4   @voice/SPKFOA.wav
 SPKFOR  -27  3   @voice/SPKFOR.wav
 SPKGRE  -27  3   @voice/SPKGRE.wav
-SPKHAV  -27  3   @voice/SPKHAV.wav
+SPKHAV  -27  6   @sfx/Characters/Darth Vader/Vader Inhale 1A.wav (-9 dB) + @voice/SPKHAV.wav + @sfx/Characters/Darth Vader/Vader Exhale 1A.wav (-9 dB)
 SPKHIT  -27  4   @voice/SPKHIT.wav
-SPKIMO  -27  3   @voice/SPKIMO.wav
+SPKIMO  -27  6   @sfx/Characters/Darth Vader/Vader Inhale 1B.wav (-9 dB) + @voice/SPKIMO.wav + @sfx/Characters/Darth Vader/Vader Exhale 1B.wav (-9 dB)
 SPKLET  -27  3   @voice/SPKLET.wav
 SPKLOS  -27  4   @voice/SPKLOS.wav
 SPKR2T  -27  3   @voice/SPKR2T.wav
@@ -32,8 +34,8 @@ SPKRED  -27  3   @voice/SPKRED.wav
 SPKREM  -27  3   @voice/SPKREM.wav
 SPKSHK  -27  3   @voice/SPKSHK.wav
 SPKSIZ  -27  3   @voice/SPKSIZ.wav
-SPKSTA  -27  3   @voice/SPKSTA.wav
-SPKSTR  -27  3   @voice/SPKSTR.wav
+SPKSTA  -27  7   @sfx/Characters/Darth Vader/Vader Inhale 2.wav (-9 dB) + @voice/SPKSTA.wav + @sfx/Characters/Darth Vader/Vader Exhale 2.wav (-9 dB)
+SPKSTR  -27  6   @sfx/Characters/Darth Vader/Vader Inhale 1C.wav (-9 dB) + @voice/SPKSTR.wav + @sfx/Characters/Darth Vader/Vader Exhale 1C.wav (-9 dB)
 SPKTHI  -27  3   @voice/SPKTHI.wav
 SPKTRU  -27  3   @voice/SPKTRU.wav
 SPKUSE  -27  3   @voice/SPKUSE.wav
@@ -44,8 +46,9 @@ SPKR2N  -30  2   @sfx/Droids/R2-D2/Damaged/R2 Freakout 1A.wav
 # --- the X-wing's and the TIE fighters' guns -------------------------------------------
 AUDXL   -32  0.6 @sfx/Weapons/Blasters and Cannons/XW Laser 1B.wav; @sfx/Weapons/Blasters and Cannons/XW Laser 2C.wav; @sfx/Weapons/Blasters and Cannons/XW Laser 4A.wav; @sfx/Weapons/Blasters and Cannons/XW Laser 4B.wav; @sfx/Weapons/Blasters and Cannons/XW Laser 5B.wav; @sfx/Weapons/Blasters and Cannons/XW Laser 7.wav
 AUDTC   -33  1.0 @sfx/Weapons/Blasters and Cannons/TIE Laser 1C.wav; @sfx/Weapons/Blasters and Cannons/TIE Laser 2B.wav; @sfx/Weapons/Blasters and Cannons/TIE Laser 2C.wav; @sfx/Weapons/Blasters and Cannons/TIE Laser 2D.wav
-# the towers' and the trench's guns: the Death Star's turrets
-AUDTL   -33  1.2 @sfx/Weapons/Blasters and Cannons/DS Turret 1A.wav; @sfx/Weapons/Blasters and Cannons/DS Turret 1D.wav; @sfx/Weapons/Blasters and Cannons/DS Turret 1F.wav; @sfx/Weapons/Blasters and Cannons/DS Turret 1G.wav; @sfx/Weapons/Blasters and Cannons/DS Turret 1I.wav
+# the towers' and the trench's guns (the red cannons): short hard shots that die at once (turbolasers,
+# heavy cannons; the collection's "DS Turret" swells after it starts, as a fly-by does: not taken)
+AUDTL   -33  0.9 @sfx/Weapons/Blasters and Cannons/Turbolaser 9.wav; @sfx/Weapons/Blasters and Cannons/Turbolaser 3R.wav; @sfx/Weapons/Blasters and Cannons/Turbolaser 1.wav; @sfx/Weapons/Blasters and Cannons/Heavy Cannon 10.wav; @sfx/Weapons/Blasters and Cannons/Heavy Cannon 9.wav; @sfx/Weapons/Blasters and Cannons/Heavy Blaster 2A.wav
 # proton torpedoes (the exhaust port; the dogfight's torpedoes)
 AUDPH   -29  2.5 @sfx/Weapons/Warheads and Explosives/Proton Torpedo 2.wav; @sfx/Weapons/Warheads and Explosives/Proton Torpedo 3.wav; @sfx/Weapons/Warheads and Explosives/Proton Torpedo 4.wav; @sfx/Weapons/Warheads and Explosives/Proton Torpedo 7A.wav
 PMSF2   -27  4.5 @sfx/Weapons/Warheads and Explosives/Proton Torpedo Enters Exhaust Port.wav

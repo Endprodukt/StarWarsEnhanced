@@ -194,10 +194,16 @@ static void emit_sample(sw_sndboard *s)
     if (s->pending_ticks) s->last_pokey = s->pokey_sum / (float)s->pending_ticks / 60.0f * 0.2f;
     float pk = s->last_pokey;
     float sp = (float)s->tms_out / 8192.0f * 0.5f;
-    float v = pk + sp;
-    /* The POKEYs' output is all positive: take the standing part out. */
-    s->dc += (v - s->dc) * 0.002f;
-    v = (v - s->dc) * s->volume * 28000.0f;
+    /* The POKEYs' output is all positive: take the standing part out (of
+     * each part on its own: the POKEYs may be ducked, samples.h). */
+    s->dc += (pk - s->dc) * 0.002f;
+    s->dc_speech += (sp - s->dc_speech) * 0.002f;
+    float bg = 1.0f;
+    if (s->samples) {
+        s->samples->board_speaks = s->tms_out != 0;
+        bg = sw_samples_board_gain(s->samples);
+    }
+    float v = ((pk - s->dc) * bg + (sp - s->dc_speech)) * s->volume * 28000.0f;
     if (s->samples) v += (float)sw_samples_next(s->samples) * s->volume;
     if (v > 32767.0f) v = 32767.0f;
     if (v < -32768.0f) v = -32768.0f;
