@@ -109,6 +109,13 @@ typedef struct sw_enhance {
     double   plate_at;
     double   falcon_at;                         /* when the Falcon's run began (0: not on its way) */
     int      falcon_done;                       /* it has flown past this port */
+    /* its sound: set once a run, a little before it (the program takes it
+     * and clears it): it will pass over the player falcon_pass_in seconds
+     * after the picture of falcon_cue_at */
+    int      falcon_cue, falcon_cued;
+    double   falcon_pass_in;
+    double   falcon_seen_at, falcon_seen_dist, falcon_rate;     /* (how fast the port comes nearer, really) */
+    double   falcon_speed, falcon_plan;                         /* (the game's speed, smoothed; when the run begins) */
 
     float    star[SW_ENHANCE_STARS][3];         /* directions */
     uint8_t  star_lum[SW_ENHANCE_STARS];

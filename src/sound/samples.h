@@ -32,6 +32,13 @@
  * music are 1.5 dB lower. It comes in within 20 ms and goes in 300 ms. The
  * board's own music and effects (its POKEYs) duck too (sw_samples_board_gain).
  *
+ * Cues: a recording the program itself starts, a while from now, in a
+ * voice of its own (sw_samples_cue): the Millennium Falcon's fly-by
+ * (effects/FALCON.wav, FALCON_2.wav ...; each has its loudest at
+ * SW_FALCON_PEAK seconds), and "Yahoo, you're all clear, kid" just as it
+ * passes over the player. While the Falcon flies (hold_yahoo) the game's own
+ * request for that line is taken and not played: it comes with the Falcon.
+ *
  * Besides the requests, the X-wing's own engine (enhanced: the arcade game
  * has none): a loop, one heard from inside the cockpit (XWENG.wav), one
  * from outside (XWEXT.wav), in effects/. The program says which, how loud
@@ -52,12 +59,26 @@ enum { SW_ENGINE_COCKPIT, SW_ENGINE_OUTSIDE, SW_ENGINE_LOOPS };
 
 typedef struct sw_sample { int16_t *pcm; uint32_t n; } sw_sample;     /* mono, at the board's rate */
 
+/* the recordings of one sound, and which played last */
+typedef struct sw_sample_set {
+    sw_sample var[SW_SAMPLE_VARIANTS];
+    int       count, last;
+} sw_sample_set;
+
+#define SW_CUES        4
+#define SW_CUE_FALCON  (-1)         /* sw_samples_cue: the Falcon's fly-by */
+#define SW_FALCON_PEAK 0.85         /* seconds into each of its recordings: its loudest (tools/swsamples) */
+
 typedef struct sw_samples {
     int      enabled;
+    sw_sample_set sound[SW_SOUND_REQUESTS];     /* the recordings of each; none: not replaced */
+    sw_sample_set falcon;                       /* the Millennium Falcon's fly-by */
     struct {
-        sw_sample var[SW_SAMPLE_VARIANTS];      /* its recordings; none: not replaced */
-        int       count, last;                  /* how many, which played last */
-    } sound[SW_SOUND_REQUESTS];
+        const sw_sample *rec;       /* NULL: free */
+        uint32_t wait, at;          /* samples to wait yet, where it is */
+        int      speech;            /* (it counts as speech for the ducking) */
+    } cue[SW_CUES];
+    int      hold_yahoo;            /* the game's SPKYAU is taken and not played (the Falcon brings it) */
     struct {
         int      id;                /* the request playing, 0: free */
         const sw_sample *rec;       /* which of its recordings */
@@ -102,6 +123,11 @@ void sw_samples_free(sw_samples *s);
  * itself, 1 if a recording plays instead, 2 the same and the board's own
  * music is to stop. */
 int  sw_samples_request(sw_samples *s, int n);
+
+/* Request n's recording (or, n SW_CUE_FALCON, the Falcon's fly-by) to begin
+ * `delay` seconds from now, in a voice of its own (a negative delay: that
+ * much of its beginning left out). Speech among them counts as speech. */
+void sw_samples_cue(sw_samples *s, int n, double delay);
 
 /* The engine as it is to be heard: `which` SW_ENGINE_COCKPIT or
  * SW_ENGINE_OUTSIDE (-1: none, it fades out), `level` 0..1 (of its full

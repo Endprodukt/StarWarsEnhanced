@@ -380,6 +380,15 @@ platzsparendes Format, höchstens 16 kHz.
   fehlte sein Atmen vor und nach dem Satz, das das Original hat; es ist
   jetzt aus der Sammlung davor- und dahintergesetzt (Inhale/Exhale, 9 dB
   leiser), die Sätze sind damit 3 bis 5 s lang wie im Original.
+* **Falcon (0.3.16):** Der Überflug hat einen eigenen Vorbeiflug (FALC
+  Flyby 10, 2, 3, 4B, 13; so geschnitten, dass jeder 0,85 s nach Beginn am
+  lautesten ist), und "Yahoo, you're all clear, kid" kommt genau, wenn er über
+  dem Spieler ist. Sein Flug wird 1,3 s vorher geplant (aus der wirklichen
+  Annäherung an den Abluftschacht; die Geschwindigkeit des Spiels springt von
+  Bild zu Bild), Bild und Ton halten sich daran: im Film über dem Spieler bei
+  132,40 s, der Vorbeiflug am lautesten bei 132,38 s. Das eigene SPKYAU des
+  Spiels (im Graben zu seiner Zeit) wird dann nicht gespielt. Die Explosion
+  des Todessterns ist 4,5 dB leiser (−28,5 dB).
 * **Nicht angehört:** Die Auswahl ist nach Namen und Messwerten (Länge,
   Einzelschuss, Gleichmäßigkeit, Helligkeit) getroffen. Ob jede Datei passt,
   muss am Automaten gehört werden. Die Musik bleibt die der Platine.
@@ -823,7 +832,7 @@ sobald das Menü neu startet (nach dem Verlassen des Spiels). Nicht geprüft
 am Gerät, auch nicht, ob der längere Titel des Testmenüs (jetzt Größe 90
 statt 110) in die Breite passt.
 
-Marquee erneuert (zweites Artwork des Besitzers, ohne die Streifen unten; auf die volle Breite 1920 gezogen, 17 % breiter als das Original), Version 0.2.1. **Noch nicht auf dem Automaten**, der war aus: beim nächsten Mal `sh tools/deploy.sh` und die neueste `dist/swenhanced-<version>.vpk` (jetzt 0.3.15, mit Dogfight Etappe 4) nach `/persistent/games/packages/` (dort liegt noch 0.2.0).
+Marquee erneuert (zweites Artwork des Besitzers, ohne die Streifen unten; auf die volle Breite 1920 gezogen, 17 % breiter als das Original), Version 0.2.1. **Noch nicht auf dem Automaten**, der war aus: beim nächsten Mal `sh tools/deploy.sh` und die neueste `dist/swenhanced-<version>.vpk` (jetzt 0.3.16, mit Dogfight Etappe 4) nach `/persistent/games/packages/` (dort liegt noch 0.2.0).
 
 Paketdatei: `sh tools/pack.sh` (in WSL, nach dem Pi-Build) schreibt
 `dist/swenhanced-<version>.vpk` mit dem `vp-pack` des SDK (dessen Skript und
