@@ -204,12 +204,19 @@ static void emit_sample(sw_sndboard *s)
         bg = sw_samples_board_gain(s->samples);
     }
     float v = ((pk - s->dc) * bg + (sp - s->dc_speech)) * s->volume * 28000.0f;
-    if (s->samples) v += (float)sw_samples_next(s->samples) * s->volume;
-    if (v > 32767.0f) v = 32767.0f;
-    if (v < -32768.0f) v = -32768.0f;
+    float lr[2] = { v, v };
+    if (s->samples) {
+        int l, r;
+        sw_samples_next2(s->samples, &l, &r);
+        lr[0] += (float)l * s->volume;
+        lr[1] += (float)r * s->volume;
+    }
     uint32_t w = s->ring_w;
     if (w - s->ring_r < SW_SOUND_RING) {
-        s->ring[w % SW_SOUND_RING] = (int16_t)v;
+        for (int c = 0; c < 2; c++) {
+            float x = lr[c] > 32767.0f ? 32767.0f : lr[c] < -32768.0f ? -32768.0f : lr[c];
+            s->ring[w % SW_SOUND_RING][c] = (int16_t)x;
+        }
         s->ring_w = w + 1;
     }
     s->pending_ticks = 0;
@@ -258,7 +265,23 @@ int sw_sndboard_read(sw_sndboard *s, int16_t *out, int n)
 {
     uint32_t r = s->ring_r, avail = s->ring_w - r;
     if ((uint32_t)n > avail) n = (int)avail;
-    for (int i = 0; i < n; i++) out[i] = s->ring[(r + (uint32_t)i) % SW_SOUND_RING];
+    for (int i = 0; i < n; i++) {
+        const int16_t *f = s->ring[(r + (uint32_t)i) % SW_SOUND_RING];
+        out[i] = (int16_t)(((int)f[0] + (int)f[1]) / 2);
+    }
+    s->ring_r = r + (uint32_t)n;
+    return n;
+}
+
+int sw_sndboard_read2(sw_sndboard *s, int16_t *out, int n)
+{
+    uint32_t r = s->ring_r, avail = s->ring_w - r;
+    if ((uint32_t)n > avail) n = (int)avail;
+    for (int i = 0; i < n; i++) {
+        const int16_t *f = s->ring[(r + (uint32_t)i) % SW_SOUND_RING];
+        out[2 * i] = f[0];
+        out[2 * i + 1] = f[1];
+    }
     s->ring_r = r + (uint32_t)n;
     return n;
 }

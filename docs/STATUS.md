@@ -337,6 +337,24 @@ wiederholt sich alle 8000h, jedes Gebäude wird auf dieser und der nächsten
 Runde betrachtet. Standbilder: am Start der Oberfläche nichts neben dem
 Spieler, am Horizont die kleinen dunklen Türme.
 
+## Filmmusik im Spiel, Ton in Stereo (2026-10-15, 0.3.18)
+
+* Die fünf Stücke des Besitzers in `sounds/music` (PMTH5, PMTHB, PMDAR, PM4TH,
+  PMCNT) ersetzen die der Platine, so wie er sie abgelegt hat (nur
+  umgewandelt: 16 kHz, ADPCM, −30 dB). Privat: `package/sounds/music` ist in
+  der `.gitignore`, die Stücke kommen über `deploy.sh` und die vpk auf den
+  Automaten, nicht ins Repo; fehlen sie, lässt `build.py` sie aus.
+* **Stereo** ("bitte nicht mono"): Die Tonausgabe ist jetzt stereo
+  (Ringpuffer der Platine in Frames links/rechts, SDL mit 2 Kanälen). Eine
+  Stereo-Aufnahme behält ihre Seiten, Mono-Aufnahmen und der Ton der Platine
+  liegen in der Mitte. Die Musik wird in Stereo gebaut, Effekte und Sprache
+  bleiben mono. `sw_sndboard_read` liefert für Werkzeuge und Tests weiter den
+  Mono-Mix.
+* **Fehler gefunden:** libsndfile schreibt bei Stereo-IMA-ADPCM die halbe
+  Frame-Zahl ins fact-Feld; der Lader nahm sie und spielte nur die erste
+  Hälfte. Er nimmt "fact" jetzt nur, wo es zu den Blöcken passt. Alle
+  Dateien (auch stereo) sind bitgenau wie libsndfile.
+
 ## Nase im Dogfight, Ansicht beim Spielstart, Filmmusik (2026-10-15, 0.3.17)
 
 * **Nase im Dogfight durchsichtig:** Der Dogfight schnitt alle Linien seiner
@@ -855,7 +873,7 @@ sobald das Menü neu startet (nach dem Verlassen des Spiels). Nicht geprüft
 am Gerät, auch nicht, ob der längere Titel des Testmenüs (jetzt Größe 90
 statt 110) in die Breite passt.
 
-Marquee erneuert (zweites Artwork des Besitzers, ohne die Streifen unten; auf die volle Breite 1920 gezogen, 17 % breiter als das Original), Version 0.2.1. **Noch nicht auf dem Automaten**, der war aus: beim nächsten Mal `sh tools/deploy.sh` und die neueste `dist/swenhanced-<version>.vpk` (jetzt 0.3.17, mit Dogfight Etappe 4) nach `/persistent/games/packages/` (dort liegt noch 0.2.0).
+Marquee erneuert (zweites Artwork des Besitzers, ohne die Streifen unten; auf die volle Breite 1920 gezogen, 17 % breiter als das Original), Version 0.2.1. **Noch nicht auf dem Automaten**, der war aus: beim nächsten Mal `sh tools/deploy.sh` und die neueste `dist/swenhanced-<version>.vpk` (jetzt 0.3.18, mit Dogfight Etappe 4) nach `/persistent/games/packages/` (dort liegt noch 0.2.0).
 
 Paketdatei: `sh tools/pack.sh` (in WSL, nach dem Pi-Build) schreibt
 `dist/swenhanced-<version>.vpk` mit dem `vp-pack` des SDK (dessen Skript und

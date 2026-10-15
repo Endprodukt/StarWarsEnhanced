@@ -51,7 +51,7 @@ typedef struct sw_sndboard {
     float    dc;                /* the standing part of the POKEYs' output, taken out */
     float    dc_speech;         /* and of the speech chip's */
     int32_t  budget;            /* CPU cycles to run */
-    int16_t  ring[SW_SOUND_RING];
+    int16_t  ring[SW_SOUND_RING][2];        /* frames: left, right */
     volatile uint32_t ring_w, ring_r;
     float    volume;
 
@@ -87,7 +87,12 @@ void sw_sndprog_late(sw_sndboard *s);
 /* Run the sound CPU for `cycles` of the 1.512 MHz clock. */
 void sw_sndboard_run(sw_sndboard *s, int cycles);
 
-/* Take up to n samples out of the ring (mono, 16 bit). Returns how many. */
+/* Take up to n samples out of the ring, mono (its two sides together), 16
+ * bit. Returns how many. */
 int sw_sndboard_read(sw_sndboard *s, int16_t *out, int n);
+
+/* The same in stereo: up to n frames, left and right interleaved. The
+ * board's own sound is in the middle, the recordings as they are. */
+int sw_sndboard_read2(sw_sndboard *s, int16_t *out, int n);
 
 #endif

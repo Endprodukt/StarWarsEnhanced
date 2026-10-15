@@ -118,9 +118,10 @@ static uint32_t ima_decode(const uint8_t *d, uint32_t bytes, unsigned channels, 
     return made;
 }
 
-/* The file as mono samples at `rate`. Returns 0, or -1 if it is not a WAV
- * file of PCM (8 or 16 bit) or IMA ADPCM. */
-static int load_wav(const char *path, int rate, int16_t **pcm, uint32_t *n)
+/* The file at `rate`: stereo if it is (and `mono` is not asked for), else
+ * mono. Returns 0, or -1 if it is not a WAV file of PCM (8 or 16 bit) or IMA
+ * ADPCM. */
+static int load_wav(const char *path, int rate, int16_t **pcm, uint32_t *n, uint8_t *ch_out, int mono)
 {
     FILE *f = fopen(path, "rb");
     if (!f) return -1;
@@ -169,31 +170,42 @@ static int load_wav(const char *path, int rate, int16_t **pcm, uint32_t *n)
                 src[i] = bits == 8 ? (int16_t)(((int)data[i] - 128) * 256) : (int16_t)le16(data + 2 * i);
         } else {
             unsigned per_block = (align - 4 * channels) * 2 / channels + 1;
-            uint32_t most = (bytes / align + 1) * per_block;
-            frames = fact && fact < most ? fact : most;
+            uint32_t most = (bytes + align - 1) / align * per_block;     /* (whole blocks) */
+            /* (the frames in the last block, by "fact" where it fits: libsndfile
+             * writes half of them there for a stereo file) */
+            frames = fact && fact <= most && fact + per_block > most ? fact : most;
             src = frames ? (int16_t *)malloc((size_t)frames * channels * sizeof *src) : NULL;
             if (src) frames = ima_decode(data, bytes, channels, align, frames, src);
         }
     }
     if (src && frames) {
+        unsigned och = channels == 2 && !mono ? 2 : 1;
         uint32_t out = (uint32_t)((uint64_t)frames * (unsigned)rate / hz);
-        int16_t *p = out ? (int16_t *)malloc(out * sizeof *p) : NULL;
+        int16_t *p = out ? (int16_t *)malloc((size_t)out * och * sizeof *p) : NULL;
         if (p) {
             for (uint32_t i = 0; i < out; i++) {
                 /* between the two samples it falls between */
                 double at = (double)i * hz / rate;
                 uint32_t i0 = (uint32_t)at, i1 = i0 + 1 < frames ? i0 + 1 : i0;
-                double k = at - (double)i0, v[2];
-                uint32_t idx[2] = { i0, i1 };
-                for (int q = 0; q < 2; q++) {
-                    double sum = 0;
-                    for (unsigned c = 0; c < channels; c++) sum += src[(size_t)idx[q] * channels + c];
-                    v[q] = sum / channels;
+                double k = at - (double)i0;
+                for (unsigned oc = 0; oc < och; oc++) {
+                    double v[2];
+                    uint32_t idx[2] = { i0, i1 };
+                    for (int q = 0; q < 2; q++) {
+                        if (och == 2) {
+                            v[q] = src[(size_t)idx[q] * channels + oc];
+                        } else {
+                            double sum = 0;
+                            for (unsigned c = 0; c < channels; c++) sum += src[(size_t)idx[q] * channels + c];
+                            v[q] = sum / channels;
+                        }
+                    }
+                    p[(size_t)i * och + oc] = (int16_t)(v[0] + (v[1] - v[0]) * k);
                 }
-                p[i] = (int16_t)(v[0] + (v[1] - v[0]) * k);
             }
             *pcm = p;
             *n = out;
+            *ch_out = (uint8_t)och;
             ok = 0;
         }
     }
@@ -204,14 +216,14 @@ static int load_wav(const char *path, int rate, int16_t **pcm, uint32_t *n)
 
 /* NAME.wav, NAME_2.wav ... in one folder: into rec[] (count of them at
  * most); returns how many. */
-static int load_set(const char *folder, const char *name, int rate, sw_sample *rec, int most)
+static int load_set(const char *folder, const char *name, int rate, sw_sample *rec, int most, int mono)
 {
     int got = 0;
     for (int k = 1; k <= most && got < most; k++) {
         char path[1024];
         if (k == 1) snprintf(path, sizeof path, "%s/%s.wav", folder, name);
         else snprintf(path, sizeof path, "%s/%s_%d.wav", folder, name, k);
-        if (load_wav(path, rate, &rec[got].pcm, &rec[got].n) == 0) got++;
+        if (load_wav(path, rate, &rec[got].pcm, &rec[got].n, &rec[got].ch, mono) == 0) got++;
     }
     return got;
 }
@@ -223,10 +235,10 @@ int sw_samples_load(sw_samples *s, const char *dir, int rate)
     for (int i = 1; i < SW_SOUND_REQUESTS; i++) {
         if (s->sound[i].count || !NAMES[i][0]) continue;    /* (already there, from a folder asked before) */
         /* in the folder itself, or in its folder for that kind of sound */
-        int got = load_set(dir, NAMES[i], rate, s->sound[i].var, SW_SAMPLE_VARIANTS);
+        int got = load_set(dir, NAMES[i], rate, s->sound[i].var, SW_SAMPLE_VARIANTS, 0);
         if (!got) {
             snprintf(sub, sizeof sub, "%s/%s", dir, sw_sound_folder(i));
-            got = load_set(sub, NAMES[i], rate, s->sound[i].var, SW_SAMPLE_VARIANTS);
+            got = load_set(sub, NAMES[i], rate, s->sound[i].var, SW_SAMPLE_VARIANTS, 0);
         }
         s->sound[i].count = got;
         s->sound[i].last = -1;
@@ -234,18 +246,18 @@ int sw_samples_load(sw_samples *s, const char *dir, int rate)
     }
     if (!s->falcon.count) {
         snprintf(sub, sizeof sub, "%s/effects", dir);
-        int got = load_set(dir, FALCON, rate, s->falcon.var, SW_SAMPLE_VARIANTS);
-        if (!got) got = load_set(sub, FALCON, rate, s->falcon.var, SW_SAMPLE_VARIANTS);
+        int got = load_set(dir, FALCON, rate, s->falcon.var, SW_SAMPLE_VARIANTS, 0);
+        if (!got) got = load_set(sub, FALCON, rate, s->falcon.var, SW_SAMPLE_VARIANTS, 0);
         s->falcon.count = got;
         s->falcon.last = -1;
         if (got) found++;
     }
     for (int i = 0; i < SW_ENGINE_LOOPS; i++) {
         if (s->engine[i].rec.pcm) continue;
-        int got = load_set(dir, ENGINE[i], rate, &s->engine[i].rec, 1);
+        int got = load_set(dir, ENGINE[i], rate, &s->engine[i].rec, 1, 1);
         if (!got) {
             snprintf(sub, sizeof sub, "%s/effects", dir);
-            got = load_set(sub, ENGINE[i], rate, &s->engine[i].rec, 1);
+            got = load_set(sub, ENGINE[i], rate, &s->engine[i].rec, 1, 1);
         }
         if (got) found++;
     }
@@ -358,12 +370,17 @@ void sw_samples_engine(sw_samples *s, int which, float level, float rate)
     s->engine_rate = rate > 0.25f ? rate : 0.25f;
 }
 
-/* One sample of a recording playing; 0 when it has ended (and the voice is freed). */
-static int play(int *id, const sw_sample *rec, uint32_t *at)
+/* One frame of a recording playing, its two sides (a mono one in both);
+ * when it has ended the voice is freed. */
+static void play(int *id, const sw_sample *rec, uint32_t *at, float *l, float *r)
 {
-    int v = rec->pcm[*at];
+    if (rec->ch == 2) {
+        *l = rec->pcm[(size_t)*at * 2];
+        *r = rec->pcm[(size_t)*at * 2 + 1];
+    } else {
+        *l = *r = rec->pcm[*at];
+    }
     if (++*at >= rec->n) *id = 0;
-    return v;
 }
 
 /* eases a ducking gain to where it is to be */
@@ -381,6 +398,13 @@ float sw_samples_board_gain(const sw_samples *s)
 
 int sw_samples_next(sw_samples *s)
 {
+    int l, r;
+    sw_samples_next2(s, &l, &r);
+    return (l + r) / 2;
+}
+
+void sw_samples_next2(sw_samples *s, int *left, int *right)
+{
     /* the ducking: under speech everything else, under a big explosion the rest */
     if (s->board_speaks) s->board_hold = (uint32_t)(BOARD_HOLD * (float)(s->rate > 0 ? s->rate : 44100));
     else if (s->board_hold) s->board_hold--;
@@ -393,26 +417,36 @@ int sw_samples_next(sw_samples *s)
     s->duck_big = ease_duck(s->duck_big, s->enabled && big ? DUCK_BIG : 1.0f, s->rate);
     float rest = s->duck_speech * s->duck_big, bigs = s->duck_speech;
 
-    int sum = 0;
-    float under = 0.0f, over = 0.0f;    /* (ducked by both, by speech only) */
+    /* each side: as it is (speech), ducked by both (under), by speech only (over) */
+    float sum[2] = { 0.0f, 0.0f }, under[2] = { 0.0f, 0.0f }, over[2] = { 0.0f, 0.0f }, l, r;
     for (int i = 0; i < SW_SAMPLE_VOICES; i++) {
         if (!s->effect[i].id) continue;
-        int b = is_big(s->effect[i].id), v = play(&s->effect[i].id, s->effect[i].rec, &s->effect[i].at);
-        if (b) over += (float)v;
-        else under += (float)v;
+        int b = is_big(s->effect[i].id);
+        play(&s->effect[i].id, s->effect[i].rec, &s->effect[i].at, &l, &r);
+        float *to = b ? over : under;
+        to[0] += l;
+        to[1] += r;
     }
-    if (s->music.id) under += (float)play(&s->music.id, s->music.rec, &s->music.at);
+    if (s->music.id) {
+        play(&s->music.id, s->music.rec, &s->music.at, &l, &r);
+        under[0] += l;
+        under[1] += r;
+    }
     /* the cues: speech over everything, the Falcon under speech only */
     for (int i = 0; i < SW_CUES; i++) {
         if (!s->cue[i].rec) continue;
         if (s->cue[i].wait) { s->cue[i].wait--; continue; }
-        int v = s->cue[i].rec->pcm[s->cue[i].at];
-        if (++s->cue[i].at >= s->cue[i].rec->n) s->cue[i].rec = NULL;
-        if (s->cue[i].speech) sum += v;
-        else over += (float)v;
+        int live = 1;
+        play(&live, s->cue[i].rec, &s->cue[i].at, &l, &r);
+        if (!live) s->cue[i].rec = NULL;
+        float *to = s->cue[i].speech ? sum : over;
+        to[0] += l;
+        to[1] += r;
     }
     if (s->speech.id) {
-        sum += play(&s->speech.id, s->speech.rec, &s->speech.at);
+        play(&s->speech.id, s->speech.rec, &s->speech.at, &l, &r);
+        sum[0] += l;
+        sum[1] += r;
         if (!s->speech.id && s->queued) {   /* the next sentence waiting */
             s->speech.id = s->queue[0];
             s->speech.rec = pick(s, s->speech.id);
@@ -433,9 +467,12 @@ int sw_samples_next(sw_samples *s)
         if (g <= 0.0f || !r->pcm || r->n < 2) continue;
         uint32_t i0 = (uint32_t)s->engine[i].at, i1 = i0 + 1 < r->n ? i0 + 1 : 0;
         float k = (float)(s->engine[i].at - i0);
-        under += (r->pcm[i0] + (r->pcm[i1] - r->pcm[i0]) * k) * g;
+        float v = (r->pcm[i0] + (r->pcm[i1] - r->pcm[i0]) * k) * g;
+        under[0] += v;
+        under[1] += v;
         s->engine[i].at += s->engine_rate;
         while (s->engine[i].at >= r->n) s->engine[i].at -= r->n;
     }
-    return sum + (int)(under * rest + over * bigs);
+    *left = (int)(sum[0] + under[0] * rest + over[0] * bigs);
+    *right = (int)(sum[1] + under[1] * rest + over[1] * bigs);
 }

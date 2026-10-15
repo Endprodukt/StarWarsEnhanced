@@ -6,21 +6,23 @@
 #include <string.h>
 
 static SDL_AudioDeviceID g_dev;
-static int16_t g_last;
+static int16_t g_last[2];
 
+/* (stereo: the recordings, the music above all, keep their two sides) */
 static void SDLCALL fill(void *user, Uint8 *stream, int len)
 {
     sw_sndboard *snd = (sw_sndboard *)user;
     int16_t *out = (int16_t *)stream;
-    int want = len / 2;
-    int got = sw_sndboard_read(snd, out, want);
-    if (got > 0) g_last = out[got - 1];
+    int want = len / 4;
+    int got = sw_sndboard_read2(snd, out, want);
+    if (got > 0) { g_last[0] = out[2 * got - 2]; g_last[1] = out[2 * got - 1]; }
     /* Run dry (the game stalled or is just starting): let the last level
      * die away instead of clicking. */
-    for (int i = got; i < want; i++) {
-        g_last = (int16_t)(g_last - g_last / 64);
-        out[i] = g_last;
-    }
+    for (int i = got; i < want; i++)
+        for (int c = 0; c < 2; c++) {
+            g_last[c] = (int16_t)(g_last[c] - g_last[c] / 64);
+            out[2 * i + c] = g_last[c];
+        }
 }
 
 int sw_audio_open(sw_sndboard *snd)
@@ -33,7 +35,7 @@ int sw_audio_open(sw_sndboard *snd)
     memset(&want, 0, sizeof want);
     want.freq = SW_SOUND_RATE;
     want.format = AUDIO_S16SYS;
-    want.channels = 1;
+    want.channels = 2;
     want.samples = 1024;
     want.callback = fill;
     want.userdata = snd;
