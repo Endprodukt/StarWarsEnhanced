@@ -1,0 +1,76 @@
+# samples.txt - which recordings take the place of which sound of the game
+# (tools/swsamples/build.py makes package/sounds from it).
+#
+# A line: NAME  LOUDNESS  LONGEST  source; source; ...
+#   NAME      the request it replaces (docs/SOUNDS.md), or XWENG / XWEXT (the
+#             X-wing's engine, from inside the cockpit / from outside: loops)
+#   LOUDNESS  dB (full scale) of its loud part, so that all fit together:
+#             as loud as the board's own sound for the same thing, about
+#             (its speech -29, its effects -37, its music -32), a little
+#             louder where a recording has more to it
+#   LONGEST   seconds it is cut to at most (faded out at the end); a loop:
+#             its length, and where in the source it begins (LEN@START)
+#   sources   several: one of them each time, at random (multisamples).
+#             @sfx/ is the SW Ultimate SFX Collection, @voice/ the film
+#             recordings in sounds/voice.
+#
+# Every sound is a recording from those two folders; nothing is made up.
+
+# --- speech: the films' lines (sounds/voice), one each ---------------------------------
+SPKALW  -27  3   @voice/SPKALW.wav
+SPKELE  -29  3   @voice/SPKELE.wav
+SPKFOA  -27  4   @voice/SPKFOA.wav
+SPKFOR  -27  3   @voice/SPKFOR.wav
+SPKGRE  -27  3   @voice/SPKGRE.wav
+SPKHAV  -27  3   @voice/SPKHAV.wav
+SPKHIT  -27  4   @voice/SPKHIT.wav
+SPKIMO  -27  3   @voice/SPKIMO.wav
+SPKLET  -27  3   @voice/SPKLET.wav
+SPKLOS  -27  4   @voice/SPKLOS.wav
+SPKR2T  -27  3   @voice/SPKR2T.wav
+SPKRED  -27  3   @voice/SPKRED.wav
+SPKREM  -27  3   @voice/SPKREM.wav
+SPKSHK  -27  3   @voice/SPKSHK.wav
+SPKSIZ  -27  3   @voice/SPKSIZ.wav
+SPKSTA  -27  3   @voice/SPKSTA.wav
+SPKSTR  -27  3   @voice/SPKSTR.wav
+SPKTHI  -27  3   @voice/SPKTHI.wav
+SPKTRU  -27  3   @voice/SPKTRU.wav
+SPKUSE  -27  3   @voice/SPKUSE.wav
+SPKYAU  -27  5   @voice/SPKYAU.wav
+# R2 swears (the exhaust port missed): not a line of the films, R2 himself
+SPKR2N  -30  2   @sfx/Droids/R2-D2/Damaged/R2 Freakout 1A.wav
+
+# --- the X-wing's and the TIE fighters' guns -------------------------------------------
+AUDXL   -32  0.6 @sfx/Weapons/Blasters and Cannons/XW Laser 1B.wav; @sfx/Weapons/Blasters and Cannons/XW Laser 2C.wav; @sfx/Weapons/Blasters and Cannons/XW Laser 4A.wav; @sfx/Weapons/Blasters and Cannons/XW Laser 4B.wav; @sfx/Weapons/Blasters and Cannons/XW Laser 5B.wav; @sfx/Weapons/Blasters and Cannons/XW Laser 7.wav
+AUDTC   -33  1.0 @sfx/Weapons/Blasters and Cannons/TIE Laser 1C.wav; @sfx/Weapons/Blasters and Cannons/TIE Laser 2B.wav; @sfx/Weapons/Blasters and Cannons/TIE Laser 2C.wav; @sfx/Weapons/Blasters and Cannons/TIE Laser 2D.wav
+# the towers' and the trench's guns: the Death Star's turrets
+AUDTL   -33  1.2 @sfx/Weapons/Blasters and Cannons/DS Turret 1A.wav; @sfx/Weapons/Blasters and Cannons/DS Turret 1D.wav; @sfx/Weapons/Blasters and Cannons/DS Turret 1F.wav; @sfx/Weapons/Blasters and Cannons/DS Turret 1G.wav; @sfx/Weapons/Blasters and Cannons/DS Turret 1I.wav
+# proton torpedoes (the exhaust port; the dogfight's torpedoes)
+AUDPH   -29  2.5 @sfx/Weapons/Warheads and Explosives/Proton Torpedo 2.wav; @sfx/Weapons/Warheads and Explosives/Proton Torpedo 3.wav; @sfx/Weapons/Warheads and Explosives/Proton Torpedo 4.wav; @sfx/Weapons/Warheads and Explosives/Proton Torpedo 7A.wav
+PMSF2   -27  4.5 @sfx/Weapons/Warheads and Explosives/Proton Torpedo Enters Exhaust Port.wav
+
+# --- TIE fighters flying past -----------------------------------------------------------
+AUDPB   -31  2.6 @sfx/Vehicles/TIE Fighter/TIE Flyby 2.wav; @sfx/Vehicles/TIE Fighter/TIE Flyby 4.wav; @sfx/Vehicles/TIE Fighter/TIE Flyby 10.wav; @sfx/Vehicles/TIE Fighter/TIE Flyby 12.wav; @sfx/Vehicles/TIE Fighter/TIE Flyby 13.wav; @sfx/Vehicles/TIE Fighter/TIE Flyby 16B.wav; @sfx/Vehicles/TIE Fighter/TIE Flyby 21.wav; @sfx/Vehicles/TIE Fighter/TIE Flyby 27A.wav
+AUDPS   -32  1.6 @sfx/Vehicles/TIE Fighter/TIE Flyby 14.wav; @sfx/Vehicles/TIE Fighter/TIE Flyby 7A.wav; @sfx/Vehicles/TIE Fighter/TIE Flyby 8B.wav; @sfx/Vehicles/TIE Fighter/TIE Flyby 17A.wav; @sfx/Vehicles/TIE Fighter/TIE Flyby 20.wav
+
+# --- explosions, hits, crashes ------------------------------------------------------------
+AUDSX   -27  2.4 @sfx/Impacts and Explosions/TIE EXPL 1A.wav; @sfx/Impacts and Explosions/TIE EXPL 3.wav; @sfx/Impacts and Explosions/TIE EXPL 4C.wav; @sfx/Impacts and Explosions/TIE EXPL 5A.wav; @sfx/Impacts and Explosions/TIE EXPL 7.wav; @sfx/Impacts and Explosions/Fighter EXPL 1.wav; @sfx/Impacts and Explosions/Fighter EXPL 11.wav; @sfx/Impacts and Explosions/Fighter EXPL 13.wav
+AUDDF   -24  6.0 @sfx/Impacts and Explosions/DS-I EXPL 1A.wav; @sfx/Impacts and Explosions/DS-I EXPL 1B.wav
+AUDCR   -27  1.8 @sfx/Impacts and Explosions/Ship Crash 1.wav; @sfx/Impacts and Explosions/Ship Crash 2.wav; @sfx/Impacts and Explosions/Ship Crash 3.wav; @sfx/Impacts and Explosions/Ship Crash 4.wav; @sfx/Impacts and Explosions/Ship Crash 5.wav
+AUDSH   -29  1.2 @sfx/Impacts and Explosions/Deflector Hit 1A.wav; @sfx/Impacts and Explosions/Deflector Hit 2.wav; @sfx/Impacts and Explosions/Hull Hit 1.WAV; @sfx/Impacts and Explosions/Hull Hit 2.WAV; @sfx/Impacts and Explosions/Hull Hit 3.WAV
+AUDSS   -32  0.9 @sfx/Impacts and Explosions/Sparking Impact 1A.wav; @sfx/Impacts and Explosions/Sparking Impact 1B.wav; @sfx/Impacts and Explosions/Sparking Impact 3A.wav; @sfx/Impacts and Explosions/Sparking Impact 3B.wav
+AUDPF   -34  1.0 @sfx/Impacts and Explosions/Hissing Impact 2.wav; @sfx/Vehicles/Slave I/Slave I Hiss 1B.wav; @sfx/Vehicles/Slave I/Slave I Hiss 1C.wav
+
+# --- the X-wing -------------------------------------------------------------------------------
+AUDTH   -30  3.0 @sfx/Vehicles/X-wing/XW Afterburner 3.wav; @sfx/Vehicles/X-wing/XW Boost.wav
+# its engine, a loop each: from inside (the arcade's view and the cockpit), from outside
+XWENG   -34  6@8 @sfx/Vehicles/X-wing/XW ENG 19B.wav
+XWEXT   -33  6@5 @sfx/Vehicles/X-wing/XW EXT 9G.wav
+
+# --- R2-D2 ----------------------------------------------------------------------------------------
+AUDDR   -31  2.5 @sfx/Droids/R2-D2/Damaged/R2 Shutdown 1.wav; @sfx/Droids/R2-D2/Damaged/R2 Shutdown 2.wav; @sfx/Droids/R2-D2/Damaged/R2 Shutdown 3.wav; @sfx/Droids/R2-D2/Damaged/R2 Shutdown 4.wav
+AUDRC   -31  2.0 @sfx/Droids/R2-D2/Damaged/R2 Freakout 2.wav; @sfx/Droids/R2-D2/Damaged/R2 Freakout 3.wav; @sfx/Droids/R2-D2/Damaged/R2 Freakout 1B.wav
+AUDRD   -31  2.0 @sfx/Droids/R2-D2/Damaged/R2 WOW 1A.wav; @sfx/Droids/R2-D2/Damaged/R2 WOW 1B.wav
+AUDRS   -31  0.6 @sfx/Droids/R2-D2/Chatter/R2 Chatter 17B.wav; @sfx/Droids/R2-D2/Chatter/R2 Chatter 17C.wav; @sfx/Droids/R2-D2/Chatter/R2 Chatter 19D.wav; @sfx/Droids/R2-D2/Chatter/R2 Chatter 28C.wav; @sfx/Droids/R2-D2/Chatter/R2 Chatter 29.wav
+AUDRY   -31  1.2 @sfx/Droids/R2-D2/Chatter/R2 Chatter 10D.wav; @sfx/Droids/R2-D2/Chatter/R2 Chatter 11.wav; @sfx/Droids/R2-D2/Chatter/R2 Chatter 13.wav; @sfx/Droids/R2-D2/Chatter/R2 Chatter 32.wav; @sfx/Droids/R2-D2/Chatter/R2 Chatter 33B.wav

@@ -31,6 +31,60 @@ static int write_wav(const char *path, uint32_t frames)
     return 0;
 }
 
+/* The same wave as IMA ADPCM, mono, 22050 Hz, blocks of 256 bytes
+ * (505 frames): the encoder as the format has it. */
+static int write_ima(const char *path, uint32_t frames)
+{
+    static const int STEP[89] = {
+        7, 8, 9, 10, 11, 12, 13, 14, 16, 17, 19, 21, 23, 25, 28, 31, 34, 37, 41, 45, 50, 55, 60, 66, 73, 80, 88, 97,
+        107, 118, 130, 143, 157, 173, 190, 209, 230, 253, 279, 307, 337, 371, 408, 449, 494, 544, 598, 658, 724, 796,
+        876, 963, 1060, 1166, 1282, 1411, 1552, 1707, 1878, 2066, 2272, 2499, 2749, 3024, 3327, 3660, 4026, 4428,
+        4871, 5358, 5894, 6484, 7132, 7845, 8630, 9493, 10442, 11487, 12635, 13899, 15289, 16818, 18500, 20350,
+        22385, 24623, 27086, 29794, 32767,
+    };
+    static const int INDEX[16] = { -1, -1, -1, -1, 2, 4, 6, 8, -1, -1, -1, -1, 2, 4, 6, 8 };
+    const unsigned ALIGN = 256, PER = (ALIGN - 4) * 2 + 1;
+    uint32_t blocks = (frames + PER - 1) / PER, bytes = blocks * ALIGN, u;
+    uint16_t v;
+    FILE *f = fopen(path, "wb");
+    if (!f) return -1;
+    fwrite("RIFF", 1, 4, f); u = 4 + 28 + 12 + 8 + bytes; fwrite(&u, 4, 1, f);
+    fwrite("WAVEfmt ", 1, 8, f); u = 20; fwrite(&u, 4, 1, f);
+    v = 0x11; fwrite(&v, 2, 1, f); v = 1; fwrite(&v, 2, 1, f);
+    u = 22050; fwrite(&u, 4, 1, f); u = 22050 * ALIGN / PER; fwrite(&u, 4, 1, f);
+    v = (uint16_t)ALIGN; fwrite(&v, 2, 1, f); v = 4; fwrite(&v, 2, 1, f);
+    v = 2; fwrite(&v, 2, 1, f); v = (uint16_t)PER; fwrite(&v, 2, 1, f);
+    fwrite("fact", 1, 4, f); u = 4; fwrite(&u, 4, 1, f); fwrite(&frames, 4, 1, f);
+    fwrite("data", 1, 4, f); fwrite(&bytes, 4, 1, f);
+    for (uint32_t b = 0; b < blocks; b++) {
+        uint8_t blk[256];
+        memset(blk, 0, sizeof blk);
+        uint32_t f0 = b * PER;
+        int pred = (f0 / 20) & 1 ? 8000 : 4000, index = 0;
+        blk[0] = (uint8_t)pred; blk[1] = (uint8_t)(pred >> 8); blk[2] = 0;
+        for (unsigned k = 1; k < PER; k++) {
+            uint32_t i = f0 + k;
+            int x = i < frames ? ((i / 20) & 1 ? 8000 : 4000) : pred;
+            int step = STEP[index], diff = x - pred, code = 0;
+            if (diff < 0) { code = 8; diff = -diff; }
+            int dq = step >> 3;
+            if (diff >= step) { code |= 4; diff -= step; dq += step; }
+            if (diff >= step >> 1) { code |= 2; diff -= step >> 1; dq += step >> 1; }
+            if (diff >= step >> 2) { code |= 1; dq += step >> 2; }
+            pred += code & 8 ? -dq : dq;
+            if (pred > 32767) pred = 32767;
+            if (pred < -32768) pred = -32768;
+            index += INDEX[code];
+            index = index < 0 ? 0 : index > 88 ? 88 : index;
+            unsigned at = 4 + (k - 1) / 2;
+            blk[at] |= (uint8_t)((k - 1) & 1 ? code << 4 : code);
+        }
+        fwrite(blk, 1, ALIGN, f);
+    }
+    fclose(f);
+    return 0;
+}
+
 static int loud(int samples)
 {
     int n = 0;
@@ -93,6 +147,61 @@ int main(void)
     if (loud(1000) != 0) { printf("sound after the reset\n"); fail = 1; }
 
     sw_samples_free(&s);
+
+    /* several recordings for one request (AUDTC, AUDTC_2, AUDTC_3: of
+     * different lengths), IMA ADPCM among them; each is played in turn at
+     * random, never the same twice running */
+    {
+        char p1[1024], p2[1024], p3[1024], pe[1024];
+        snprintf(p1, sizeof p1, "%s/AUDTC.wav", dir);
+        snprintf(p2, sizeof p2, "%s/AUDTC_2.wav", dir);
+        snprintf(p3, sizeof p3, "%s/AUDTC_3.wav", dir);
+        snprintf(pe, sizeof pe, "%s/XWENG.wav", dir);
+        if (write_wav(p1, 1000) != 0 || write_wav(p2, 2000) != 0 || write_ima(p3, 3000) != 0 || write_wav(pe, 500) != 0) {
+            printf("test_samples: cannot write the variants, skipped\n");
+        } else {
+            found = sw_samples_load(&s, dir, 44100);
+            remove(p1); remove(p2); remove(p3); remove(pe);
+            if (found != 2 || s.sound[0x36].count != 3) { printf("variants: %d found, %d of AUDTC\n", found, s.sound[0x36].count); fail = 1; }
+            /* the ADPCM one, decoded: 3000 frames at 22050 are 6000 at 44100, and as the wave was */
+            int ok_ima = 0;
+            for (int k = 0; k < s.sound[0x36].count; k++) {
+                const sw_sample *r = &s.sound[0x36].var[k];
+                if (r->n != 6000) continue;
+                int bad = 0;
+                for (uint32_t i = 200; i < r->n; i += 7) {
+                    int want = ((i / 2) / 20) & 1 ? 8000 : 4000, got = r->pcm[i];
+                    if ((i / 2) % 20 > 11 && (i / 2) % 20 < 19 && abs(got - want) > 600) bad++;     /* (once settled after an edge) */
+                }
+                ok_ima = bad == 0;
+            }
+            if (!ok_ima) { printf("the ADPCM recording is not as it was\n"); fail = 1; }
+            s.enabled = 1;
+            int prev = -1, seen[3] = { 0, 0, 0 }, twice = 0;
+            for (int t = 0; t < 30; t++) {
+                sw_samples_request(&s, 0x36);
+                int len = loud(7000);
+                int k = len == 2000 ? 0 : len == 4000 ? 1 : len == 6000 ? 2 : -1;
+                if (k < 0) { printf("a variant sounded for %d samples\n", len); fail = 1; break; }
+                seen[k] = 1;
+                if (k == prev) twice = 1;
+                prev = k;
+            }
+            if (!seen[0] || !seen[1] || !seen[2] || twice) { printf("variants not each, or twice running\n"); fail = 1; }
+            /* two shots at once: the second does not cut the first */
+            sw_samples_request(&s, 0x36);
+            loud(100);
+            sw_samples_request(&s, 0x36);
+            if (loud(8000) < 2000) { printf("a second shot cut the first\n"); fail = 1; }
+            /* the engine: on, it sounds for as long as it is wanted, round and round; off, it fades */
+            sw_samples_engine(&s, SW_ENGINE_COCKPIT, 1.0f, 1.0f);
+            if (loud(30000) < 25000) { printf("the engine does not go on\n"); fail = 1; }
+            sw_samples_engine(&s, -1, 0.0f, 1.0f);
+            loud(20000);
+            if (loud(1000) != 0) { printf("the engine does not stop\n"); fail = 1; }
+            sw_samples_free(&s);
+        }
+    }
     printf("test_samples: %s\n", fail ? "FAILED" : "ok");
     return fail;
 }

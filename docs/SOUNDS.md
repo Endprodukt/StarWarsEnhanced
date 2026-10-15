@@ -107,12 +107,16 @@ lasers, `sounds/music/PMTH5.wav` the main theme, `sounds/voice/SPKRED.wav`
 directly in `sounds` is taken too, and goes first. A request without a file
 sounds as before, so sounds can be replaced one at a time.
 
-* Format: WAV, PCM, 8 or 16 bit, mono or stereo, any sample rate (converted
-  to mono at 44.1 kHz when loaded). Full scale in the file is full scale at
-  the output; the board's own sounds stay well below that, so keep
-  replacements at a moderate level.
-* Effects: several play at once; one requested again starts again.
-  `AUDPBZ` stops `AUDPB`, `AUDTCZ` stops `AUDTC`.
+* Format: WAV, PCM 8 or 16 bit, or IMA ADPCM (4 bit), mono or stereo, any
+  sample rate (converted to mono at 44.1 kHz when loaded). Full scale in the
+  file is full scale at the output; the board's own sounds stay well below
+  that, so keep replacements at a moderate level.
+* Several recordings for one request: `NAME.wav`, `NAME_2.wav`, up to
+  `NAME_12.wav`. Each request plays one of them, at random, never the same
+  one twice running (multisamples: a pass-by or a shot does not sound the
+  same every time).
+* Effects: several play at once, the same one too (a new shot does not cut
+  the last off). `AUDPBZ` stops `AUDPB`, `AUDTCZ` stops `AUDTC`.
 * Music: one piece at a time. A new piece, replaced or not, ends the one
   playing; a replaced piece also ends the board's own music.
 * Speech: sentences play one after the other; `SPKSKP` drops those waiting.
@@ -123,6 +127,33 @@ sounds as before, so sounds can be replaced one at a time.
 
 The code is `src/sound/samples.c`; the board's program asks it in
 `request()` (`src/sound/sndprog.c`).
+
+## The recordings that come with the game
+
+`package/sounds` (shipped with the program and in the package) holds 105
+recordings for 41 requests and the X-wing's engine: the film lines of
+`sounds/voice`, and sounds of the SW Ultimate SFX Collection (in the
+project's folder, not in the repository). `tools/swsamples/samples.txt` says
+which recording takes the place of which sound, how loud it is and how long
+at most; `tools/swsamples/build.py` makes the folder from it:
+
+    python tools/swsamples/build.py
+
+Each recording is brought to mono (the board's sound is mono), cut (silence
+before and after, its longest, faded out), to 16 kHz (nothing above 8 kHz)
+and to its loudness, and written as IMA ADPCM: 8 KB a second, 1.4 MB in
+all. Loudness: the RMS of the loud part, about as loud as the board's own
+sound for the same thing (its speech -29 dB, its effects -37 dB, its music
+-32 dB); speech -27 dB, lasers -32 dB, explosions -27 dB, R2 -31 dB, the
+Death Star -24 dB. The board's music is not replaced.
+
+The engine (enhanced, the arcade game has none; setting ENGINE SOUND,
+`enh_engine`): `effects/XWENG.wav` from inside (the arcade's view and the
+cockpit), `effects/XWEXT.wav` from outside, loops of 6 s cut from the
+collection's own X-wing engines (XW ENG 19B, XW EXT 9G) and joined end to
+start. Heard in flight as the view is, a change of view crossfades; in the
+dogfight it runs up (louder, faster) as the ship speeds up. It is quieter
+inside than outside, and under everything else.
 
 To start from the originals: `swsound` (`tools/swsound`) runs the sound
 board on its own and writes any sound as a WAV file, a piece of music

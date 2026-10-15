@@ -13,6 +13,8 @@ stage=$(mktemp -d)
 trap 'rm -rf "$stage"' EXIT
 mkdir "$stage/swenhanced"
 cp build-pi/swenhanced package/game.ini package/swenhanced.ini package/marquee.png "$stage/swenhanced/"
+cp -r package/sounds "$stage/swenhanced/sounds"     # (the recordings that replace the board's sounds)
+find "$stage/swenhanced/sounds" -type d -exec chmod 755 {} + -o -type f -exec chmod 644 {} +
 chmod 755 "$stage/swenhanced/swenhanced"
 chmod 644 "$stage/swenhanced/game.ini" "$stage/swenhanced/swenhanced.ini" "$stage/swenhanced/marquee.png"
 # (a Windows checkout may give the SDK's script and the manifest CR LF line ends)

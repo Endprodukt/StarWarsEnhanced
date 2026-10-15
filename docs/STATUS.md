@@ -337,6 +337,42 @@ wiederholt sich alle 8000h, jedes Gebäude wird auf dieser und der nächsten
 Runde betrachtet. Standbilder: am Start der Oberfläche nichts neben dem
 Spieler, am Horizont die kleinen dunklen Türme.
 
+## Sounds aus den Filmen und der SFX-Sammlung (2026-10-15)
+
+Auftrag des Besitzers: die neuen Filmstimmen (`sounds/voice`, 21 statt 22),
+passende Originalsamples aus der SW Ultimate SFX Collection für alles, ein
+eigenes Triebwerk (innen und außen verschieden), Multisamples, Lautstärken,
+platzsparendes Format, höchstens 16 kHz.
+
+* **Fehlende Stimme:** SPKR2N (R2 schimpft, Abluftschacht verfehlt). Es ist
+  kein Satz aus dem Film, sondern R2 selbst; genommen ist "R2 Freakout 1A"
+  der Sammlung. Das einzelne "Always" (SPKALW) ist da: Es ist genau das Ende
+  von SPKFOA (Kreuzkorrelation 0,92 bei 1,56 s), es muss nicht geschnitten
+  werden.
+* **Multisamples:** `NAME.wav`, `NAME_2.wav` ... `NAME_12.wav`, zufällig,
+  nie zweimal dieselbe hintereinander; gleiche Effekte schneiden sich nicht
+  mehr ab (12 Stimmen statt 8). TIE-Vorbeiflug 8 + 5 Varianten, TIE-Kanone 4,
+  X-Wing-Laser 6, Explosionen 8, Türme 5, Torpedos 4, R2 je 2 bis 5.
+* **Triebwerk** (ENGINE SOUND, `enh_engine`, an): XWENG von innen (Arcade-
+  und Cockpitansicht), XWEXT von außen, Schleifen aus den X-Wing-Aufnahmen der
+  Sammlung; im Dogfight lauter und schneller mit der Geschwindigkeit; beim
+  Wechsel der Ansicht überblendet; aus im Menü, beim Verlust des Schiffs,
+  außerhalb des Flugs.
+* **Format:** 16 kHz, Mono (die Platine gibt Mono aus), IMA ADPCM (4 Bit);
+  105 Dateien, 1,4 MB (als 16-Bit-PCM 5,6 MB, die Quellen 1,4 GB). Der Lader
+  liest IMA ADPCM jetzt selbst, bitgenau wie libsndfile (alle 105 geprüft).
+* **Lautstärken:** an die Platine angelehnt (Sprache der Platine −29 dB,
+  Effekte −37, Musik −32), die neuen Stimmen streuten von −19 bis −31 dB und
+  stehen jetzt alle bei −27. Ein Dogfight-Film (45 s) übersteuert nicht
+  (Spitze 0,33).
+* Auswahl und Pegel stehen in `tools/swsamples/samples.txt`,
+  `tools/swsamples/build.py` baut `package/sounds`. Die Dateien liegen im
+  Paket und neben dem Programm (CMake kopiert sie), `deploy.sh` und `pack.sh`
+  nehmen sie mit.
+* **Nicht angehört:** Die Auswahl ist nach Namen und Messwerten (Länge,
+  Einzelschuss, Gleichmäßigkeit, Helligkeit) getroffen. Ob jede Datei passt,
+  muss am Automaten gehört werden. Die Musik bleibt die der Platine.
+
 ## Dogfight: Radar, Anleitung, eigene Bestenliste, Ende; Attract still (2026-10-14)
 
 Rückmeldung des Besitzers vom Automaten (0.3.10) und was daraus wurde (0.3.11):
@@ -776,7 +812,7 @@ sobald das Menü neu startet (nach dem Verlassen des Spiels). Nicht geprüft
 am Gerät, auch nicht, ob der längere Titel des Testmenüs (jetzt Größe 90
 statt 110) in die Breite passt.
 
-Marquee erneuert (zweites Artwork des Besitzers, ohne die Streifen unten; auf die volle Breite 1920 gezogen, 17 % breiter als das Original), Version 0.2.1. **Noch nicht auf dem Automaten**, der war aus: beim nächsten Mal `sh tools/deploy.sh` und die neueste `dist/swenhanced-<version>.vpk` (jetzt 0.3.13, mit Dogfight Etappe 4) nach `/persistent/games/packages/` (dort liegt noch 0.2.0).
+Marquee erneuert (zweites Artwork des Besitzers, ohne die Streifen unten; auf die volle Breite 1920 gezogen, 17 % breiter als das Original), Version 0.2.1. **Noch nicht auf dem Automaten**, der war aus: beim nächsten Mal `sh tools/deploy.sh` und die neueste `dist/swenhanced-<version>.vpk` (jetzt 0.3.14, mit Dogfight Etappe 4) nach `/persistent/games/packages/` (dort liegt noch 0.2.0).
 
 Paketdatei: `sh tools/pack.sh` (in WSL, nach dem Pi-Build) schreibt
 `dist/swenhanced-<version>.vpk` mit dem `vp-pack` des SDK (dessen Skript und

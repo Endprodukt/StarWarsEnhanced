@@ -23,7 +23,7 @@ enum {
     /* graphics */
     L_SMOOTH, L_CAMERA, L_STEADY, L_OCCLUSION, L_LOGO, L_SURFACE, L_TOWERS, L_DOGFIGHTS, L_STARS, L_CLIP, L_FALCON, L_COCKPIT, L_DEMO, L_BLAST,
     /* sound */
-    L_SAMPLES, L_SOUND_TEST,
+    L_SAMPLES, L_ENGINE, L_SOUND_TEST,
     /* controls and screen */
     L_YOKE, L_CALIBRATE,
     /* the game's options, in the order of the arcade program's option page */
@@ -43,7 +43,7 @@ enum { P_MAIN, P_GRAPHICS, P_SOUND, P_CONTROLS, P_OPTIONS, N_PAGES };
 static const struct { const char *title; uint8_t lines[PAGE_MAX + 4]; } PAGES[N_PAGES] = {
     { "TEST MENU", { L_PAGE_GRAPHICS, L_PAGE_SOUND, L_PAGE_CONTROLS, L_PAGE_OPTIONS, 0, L_OPERATOR, L_EXIT, N_LINES } },
     { "GRAPHICS", { L_SMOOTH, L_CAMERA, L_STEADY, L_OCCLUSION, L_LOGO, L_COCKPIT, L_DEMO, L_BLAST, L_SURFACE, L_TOWERS, L_DOGFIGHTS, 0, L_STARS, L_CLIP, L_FALCON, 0, L_BACK, N_LINES } },
-    { "SOUND", { L_SAMPLES, L_SOUND_TEST, 0, L_BACK, N_LINES } },
+    { "SOUND", { L_SAMPLES, L_ENGINE, L_SOUND_TEST, 0, L_BACK, N_LINES } },
     { "CONTROLS AND SCREEN", { L_YOKE, L_CALIBRATE, 0, L_BACK, N_LINES } },
     { "GAME OPTIONS", { L_OPT0, L_OPT0 + 1, L_OPT0 + 2, L_OPT0 + 3, 0, L_OPT0 + 4, L_OPT0 + 5, L_OPT0 + 6, L_OPT0 + 7, 0, L_BACK, N_LINES } },
 };
@@ -146,6 +146,7 @@ int sw_menu_update(sw_menu *u, sw_display_cfg *cfg, sw_machine *m, vp_input *in,
     case L_COCKPIT:       cfg->enh_view = step(cfg->enh_view % SW_VIEWS, d, 0, SW_VIEWS - 1); return SW_MENU_CHANGED;
     case L_CAMERA:        return toggle(&cfg->enh_camera);
     case L_SAMPLES:       return toggle(&cfg->sound_replace);
+    case L_ENGINE:        return toggle(&cfg->enh_engine);
     case L_SOUND_TEST:
         if (dx) u->sound = step(u->sound, dx, 1, N_SOUNDS - 1);
         if (fire) return SW_MENU_SOUND;
@@ -194,6 +195,7 @@ static void describe(int line, const sw_menu *u, const sw_display_cfg *cfg, cons
     case L_BLAST:         *label = "SHIP EXPLOSION";    snprintf(value, size, "%s", on_off(cfg->enh_blast)); break;
     case L_CAMERA:        *label = "SMOOTH CAMERA";     snprintf(value, size, "%s", on_off(cfg->enh_camera)); break;
     case L_SAMPLES:       *label = "REPLACED SOUNDS";   snprintf(value, size, "%s", on_off(cfg->sound_replace)); break;
+    case L_ENGINE:        *label = "ENGINE SOUND";      snprintf(value, size, "%s", on_off(cfg->enh_engine)); break;
     case L_SOUND_TEST:    *label = "SOUND TEST";        snprintf(value, size, "%02X %s", u->sound, sw_menu_sound_name(u->sound)); break;
     case L_YOKE:          *label = "YOKE AUTO CENTER";  snprintf(value, size, "%s", on_off(cfg->yoke_autocenter)); break;
     case L_CALIBRATE:     *label = "SCREEN CALIBRATION"; break;

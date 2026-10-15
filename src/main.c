@@ -666,6 +666,17 @@ int main(int argc, char **argv)
          * flight, a game the program plays itself in the attract mode, is
          * quiet as well: its shots, music and voices are not heard. */
         if (brd.snd) brd.snd->volume = roms_ok && brd.demo.active && sw_option_get(&brd.m, 7, NULL) == 1 ? 0.0f : 1.0f;
+        /* The X-wing's own engine (enhanced): in flight, from inside the
+         * cockpit (the arcade's view too: it is the pilot's) or from outside,
+         * as the view is; in the dogfight it runs up as the ship speeds up. */
+        if (brd.snd && brd.snd->samples) {
+            int flying = !menu.open && cfg.enh_engine &&
+                         (brd.df.active ? brd.df.stage == SW_DF_PLAY && !brd.df.over : brd.pic.enhance.plane_seen);
+            float thrust = brd.df.active ? sw_dogfight_thrust(&brd.df) : 0.0f;
+            int outside = brd.pic.enhance.view == SW_VIEW_OUTSIDE;
+            sw_samples_engine(brd.snd->samples, !flying ? -1 : outside ? SW_ENGINE_OUTSIDE : SW_ENGINE_COCKPIT,
+                              (outside ? 0.75f : 0.6f) * (0.8f + 0.2f * thrust), 1.0f + 0.15f * thrust);   /* (under the rest) */
+        }
         if (brd.snd) sw_audio_balance(brd.snd);
         /* (a demo flight keeps nothing: the machine is put back after it) */
         if (brd.m.nv_stores != nv_saved && !brd.demo.active) {      /* the program stored its NOVRAM */

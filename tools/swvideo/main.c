@@ -369,6 +369,11 @@ int main(int argc, char **argv)
             pic.enhance.df_throttle = sw_dogfight_thrust(&df);
             pic.enhance.df_over = df.over;
             int count = sw_enhance_run(&pic.enhance, &m, now, dl, dn, &dl);
+            /* the X-wing's engine, as swenhanced plays it */
+            sw_samples_engine(&replaced_sounds, df.stage != SW_DF_PLAY || df.over ? -1 :
+                              pic.enhance.view == SW_VIEW_OUTSIDE ? SW_ENGINE_OUTSIDE : SW_ENGINE_COCKPIT,
+                              (pic.enhance.view == SW_VIEW_OUTSIDE ? 0.75f : 0.6f) * (0.8f + 0.2f * sw_dogfight_thrust(&df)),
+                              1.0f + 0.15f * sw_dogfight_thrust(&df));
             if (pic.occlusion) {
                 pic.solid.extra = df.faces;
                 pic.solid.n_extra = df.n_faces;
@@ -428,6 +433,9 @@ int main(int argc, char **argv)
         clock_t t0 = clock();
         if (views_every > 0.0) pic.enhance.view = (int)(now / views_every) % SW_VIEWS;   /* (--views-every: each view in turn) */
         int count = sw_picture_lines(&pic, now, 3, &lines);
+        sw_samples_engine(&replaced_sounds, !pic.enhance.plane_seen ? -1 :
+                          pic.enhance.view == SW_VIEW_OUTSIDE ? SW_ENGINE_OUTSIDE : SW_ENGINE_COCKPIT,
+                          pic.enhance.view == SW_VIEW_OUTSIDE ? 0.6f : 0.48f, 1.0f);
         if (m.ram[SW_PHASE - 0x4800] == SW_PHSSDS + 1) {
             /* the dogfight as a fourth choice of Death Star */
             static sw_line more[8192];
