@@ -108,7 +108,9 @@ directly in `sounds` is taken too, and goes first. A request without a file
 sounds as before, so sounds can be replaced one at a time.
 
 * Format: WAV, PCM 8 or 16 bit, or IMA ADPCM (4 bit), mono or stereo, any
-  sample rate (converted to mono at 44.1 kHz when loaded). Full scale in the
+  sample rate (converted to 44.1 kHz when loaded). The program's sound is
+  stereo: a stereo recording keeps its two sides (the music), a mono one
+  plays in the middle, as the board's own sound does (it is mono). Full scale in the
   file is full scale at the output; the board's own sounds stay well below
   that, so keep replacements at a moderate level.
 * Several recordings for one request: `NAME.wav`, `NAME_2.wav`, up to
@@ -151,7 +153,13 @@ and to its loudness, and written as IMA ADPCM: 8 KB a second, 1.4 MB in
 all. Loudness: the RMS of the loud part, about as loud as the board's own
 sound for the same thing (its speech -29 dB, its effects -37 dB, its music
 -32 dB); speech -27 dB, lasers -32 dB, explosions -27 dB, R2 -31 dB, the
-Death Star -28.5 dB. The board's music is not replaced. Darth Vader's four
+Death Star -28.5 dB.
+
+Music: the owner's own cuts from the films' soundtrack (private: in
+`sounds/music`, made into `package/sounds/music`, both kept out of git;
+the build tool leaves them out where they are not there), in stereo, -30
+dB (a little under speech): PMTH5, PMTHB, PMDAR, PM4TH, PMCNT. The other
+pieces are the board's own. Darth Vader's four
 lines (SPKHAV, SPKIMO, SPKSTA, SPKSTR) have his breath before and after, as
 the arcade game's have (the films' lines have none; the breath is the
 collection's, 9 dB below his voice). The towers' guns (AUDTL) are turbolasers

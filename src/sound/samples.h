@@ -13,9 +13,11 @@
  * cannon do not sound the same every time.
  *
  * The files: WAV, PCM 8 or 16 bit, or IMA ADPCM (4 bit: a quarter of the
- * size); mono or stereo, any rate (they are brought to the board's rate and
- * to mono when loaded). package/sounds has them at 16 kHz, mono, ADPCM
- * (tools/swsamples).
+ * size); mono or stereo, any rate (they are brought to the board's rate when
+ * loaded). A stereo recording plays in stereo (the music), a mono one in the
+ * middle; the board's own sound is mono, as the arcade machine's. The
+ * engine's loops are made mono. package/sounds has the effects and speech at
+ * 16 kHz mono, the music stereo, ADPCM (tools/swsamples).
  *
  * How they play, after what the board's program does with its own:
  *   effects  several at once, the same one too (a new shot does not cut the
@@ -57,7 +59,9 @@
 /* The engine's loops. */
 enum { SW_ENGINE_COCKPIT, SW_ENGINE_OUTSIDE, SW_ENGINE_LOOPS };
 
-typedef struct sw_sample { int16_t *pcm; uint32_t n; } sw_sample;     /* mono, at the board's rate */
+/* A recording at the board's rate: n frames of `ch` samples (1 mono, 2 left
+ * and right, interleaved). */
+typedef struct sw_sample { int16_t *pcm; uint32_t n; uint8_t ch; } sw_sample;
 
 /* the recordings of one sound, and which played last */
 typedef struct sw_sample_set {
@@ -135,7 +139,11 @@ void sw_samples_cue(sw_samples *s, int n, double delay);
  * speeds up). Called as often as it changes. */
 void sw_samples_engine(sw_samples *s, int which, float level, float rate);
 
-/* The next sample of everything playing (16 bit range, not clipped). */
+/* The next frame of everything playing, left and right (16 bit range, not
+ * clipped). */
+void sw_samples_next2(sw_samples *s, int *left, int *right);
+
+/* The same as one sample, the two sides together. */
 int  sw_samples_next(sw_samples *s);
 
 /* How loud the board's own POKEYs (its music and effects) are to be now,
