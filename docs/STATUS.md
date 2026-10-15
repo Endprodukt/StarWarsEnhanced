@@ -337,6 +337,29 @@ wiederholt sich alle 8000h, jedes Gebäude wird auf dieser und der nächsten
 Runde betrachtet. Standbilder: am Start der Oberfläche nichts neben dem
 Spieler, am Horizont die kleinen dunklen Türme.
 
+## Nase im Dogfight, Ansicht beim Spielstart, Filmmusik (2026-10-15, 0.3.17)
+
+* **Nase im Dogfight durchsichtig:** Der Dogfight schnitt alle Linien seiner
+  Liste am Bildrand ab (wegen des Todessterns), auch Nase und Kanonen.
+  render/solid schließt deren Umriss mit dem Bildrand aber nur, wo Linien
+  über ihn hinausgehen; so blieb die Nase unten offen und deckte nicht ab.
+  Nase und Kanonen werden jetzt nicht mehr abgeschnitten (wie im Spiel).
+  Geprüft mit einem TIE hinter der Nase: vorher 6 bis 8 seiner Linien in
+  ihrer Mitte sichtbar, jetzt keine.
+* **Ansicht beim Spielstart:** Jedes Spiel und jeder Dogfight beginnt in der
+  Arcade-Ansicht, gleich was zuletzt mit Start gewählt war; Start schaltet
+  wie bisher weiter.
+* **Filmmusik (privat, nicht im Repo, nicht im Paket):** Aus Soundtrack-
+  Ausschnitten des Besitzers (Desktop) geschnitten, nach dem Arcade-Stück
+  gefunden (Melodieband-Chroma, Tempo und Tonart gesucht, Einsätze
+  verglichen), mit hartem Schnitt wie im Original und Nachhall danach:
+  PMTH5 (Film 7,00–16,19 s, 1,18× schneller, 7,79 s; das Spiel lässt bis
+  PMTHB 8 s), PMTHB (16,19–26,08 s, 1,06×, 9,33 s; bis PMDES 10 s), PMCNT
+  (Cantina 15,00–43,13 s, Originaltempo, 28,13 s, seine Achtel liegen genau
+  auf denen des Arcade-Stücks). Die Werkzeuge liegen noch im Scratchpad;
+  wenn die Stücke bleiben, kommen sie nach `tools/` und die Stücke als
+  lokaler Musikordner neben die Sounds.
+
 ## Sounds aus den Filmen und der SFX-Sammlung (2026-10-15)
 
 Auftrag des Besitzers: die neuen Filmstimmen (`sounds/voice`, 21 statt 22),
@@ -832,7 +855,7 @@ sobald das Menü neu startet (nach dem Verlassen des Spiels). Nicht geprüft
 am Gerät, auch nicht, ob der längere Titel des Testmenüs (jetzt Größe 90
 statt 110) in die Breite passt.
 
-Marquee erneuert (zweites Artwork des Besitzers, ohne die Streifen unten; auf die volle Breite 1920 gezogen, 17 % breiter als das Original), Version 0.2.1. **Noch nicht auf dem Automaten**, der war aus: beim nächsten Mal `sh tools/deploy.sh` und die neueste `dist/swenhanced-<version>.vpk` (jetzt 0.3.16, mit Dogfight Etappe 4) nach `/persistent/games/packages/` (dort liegt noch 0.2.0).
+Marquee erneuert (zweites Artwork des Besitzers, ohne die Streifen unten; auf die volle Breite 1920 gezogen, 17 % breiter als das Original), Version 0.2.1. **Noch nicht auf dem Automaten**, der war aus: beim nächsten Mal `sh tools/deploy.sh` und die neueste `dist/swenhanced-<version>.vpk` (jetzt 0.3.17, mit Dogfight Etappe 4) nach `/persistent/games/packages/` (dort liegt noch 0.2.0).
 
 Paketdatei: `sh tools/pack.sh` (in WSL, nach dem Pi-Build) schreibt
 `dist/swenhanced-<version>.vpk` mit dem `vp-pack` des SDK (dessen Skript und

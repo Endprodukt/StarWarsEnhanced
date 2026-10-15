@@ -522,6 +522,17 @@ int main(int argc, char **argv)
     while (sw_app_poll(&app, &dt)) {
         /* (the yoke's rest is learned while nobody plays: in the attract mode) */
         brd.ctl.learn = RAM8(&brd.m, SW_PHASE) >= SW_PHSBNR && RAM8(&brd.m, SW_PHASE) <= SW_PHSHIS + 1;
+        /* A game begins (the attract mode left, not by a demo flight): from
+         * the arcade machine's own view; start steps on from there. */
+        {
+            static int was_attract = 1;
+            int attract = brd.ctl.learn;
+            if (was_attract && !attract && !brd.demo.active && cfg.enh_view != SW_VIEW_ARCADE) {
+                cfg.enh_view = SW_VIEW_ARCADE;
+                apply_enhanced(&brd, &cfg);
+            }
+            was_attract = attract;
+        }
         /* In flight (the X-wing's nose and guns in the picture) the start
          * button steps through the views; else it fires, to start a game. */
         int in_flight = brd.native && (brd.pic.enhance.plane_seen || brd.df.active) && !menu.open && !brd.demo.active;
@@ -546,6 +557,10 @@ int main(int argc, char **argv)
             brd.df.scores = &df_scores;
             sw_dogfight_start(&brd.df, &brd.m, 1);
             sw_dogfight_howto(&brd.df);         /* (first how it is flown) */
+            if (cfg.enh_view != SW_VIEW_ARCADE) {   /* (from the arcade's own view, as every game) */
+                cfg.enh_view = SW_VIEW_ARCADE;
+                apply_enhanced(&brd, &cfg);
+            }
             brd.df.fire_held = 1;               /* (the pull that chose it does not end that page) */
         }
         if (brd.df.active) {
