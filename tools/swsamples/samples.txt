@@ -59,11 +59,16 @@ AUDPS   -32  1.6 @sfx/Vehicles/TIE Fighter/TIE Flyby 14.wav; @sfx/Vehicles/TIE F
 
 # --- explosions, hits, crashes ------------------------------------------------------------
 AUDSX   -27  2.4 @sfx/Impacts and Explosions/TIE EXPL 1A.wav; @sfx/Impacts and Explosions/TIE EXPL 3.wav; @sfx/Impacts and Explosions/TIE EXPL 4C.wav; @sfx/Impacts and Explosions/TIE EXPL 5A.wav; @sfx/Impacts and Explosions/TIE EXPL 7.wav; @sfx/Impacts and Explosions/Fighter EXPL 1.wav; @sfx/Impacts and Explosions/Fighter EXPL 11.wav; @sfx/Impacts and Explosions/Fighter EXPL 13.wav
-AUDDF   -24  6.0 @sfx/Impacts and Explosions/DS-I EXPL 1A.wav; @sfx/Impacts and Explosions/DS-I EXPL 1B.wav
+AUDDF   -28.5  6.0 @sfx/Impacts and Explosions/DS-I EXPL 1A.wav; @sfx/Impacts and Explosions/DS-I EXPL 1B.wav
 AUDCR   -27  1.8 @sfx/Impacts and Explosions/Ship Crash 1.wav; @sfx/Impacts and Explosions/Ship Crash 2.wav; @sfx/Impacts and Explosions/Ship Crash 3.wav; @sfx/Impacts and Explosions/Ship Crash 4.wav; @sfx/Impacts and Explosions/Ship Crash 5.wav
 AUDSH   -29  1.2 @sfx/Impacts and Explosions/Deflector Hit 1A.wav; @sfx/Impacts and Explosions/Deflector Hit 2.wav; @sfx/Impacts and Explosions/Hull Hit 1.WAV; @sfx/Impacts and Explosions/Hull Hit 2.WAV; @sfx/Impacts and Explosions/Hull Hit 3.WAV
 AUDSS   -32  0.9 @sfx/Impacts and Explosions/Sparking Impact 1A.wav; @sfx/Impacts and Explosions/Sparking Impact 1B.wav; @sfx/Impacts and Explosions/Sparking Impact 3A.wav; @sfx/Impacts and Explosions/Sparking Impact 3B.wav
 AUDPF   -34  1.0 @sfx/Impacts and Explosions/Hissing Impact 2.wav; @sfx/Vehicles/Slave I/Slave I Hiss 1B.wav; @sfx/Vehicles/Slave I/Slave I Hiss 1C.wav
+
+# --- the Millennium Falcon flying over (the trench, before the exhaust port) ------------------
+# LONGEST^PEAK: cut so that its loudest is PEAK seconds into it (SW_FALCON_PEAK):
+# the program starts it so that this is just as the Falcon passes over the player
+FALCON  -26  3.4^0.85 @sfx/Vehicles/Millennium Falcon/FALC Flyby 10.wav; @sfx/Vehicles/Millennium Falcon/FALC Flyby 2.WAV; @sfx/Vehicles/Millennium Falcon/FALC Flyby 3.WAV; @sfx/Vehicles/Millennium Falcon/FALC Flyby 4B.wav; @sfx/Vehicles/Millennium Falcon/FALC Flyby 13.wav
 
 # --- the X-wing -------------------------------------------------------------------------------
 AUDTH   -30  3.0 @sfx/Vehicles/X-wing/XW Afterburner 3.wav; @sfx/Vehicles/X-wing/XW Boost.wav

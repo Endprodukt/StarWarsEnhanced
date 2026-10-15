@@ -666,6 +666,17 @@ int main(int argc, char **argv)
          * flight, a game the program plays itself in the attract mode, is
          * quiet as well: its shots, music and voices are not heard. */
         if (brd.snd) brd.snd->volume = roms_ok && brd.demo.active && sw_option_get(&brd.m, 7, NULL) == 1 ? 0.0f : 1.0f;
+        /* The Falcon flies over (render/enhance.h): its fly-by loudest just as
+         * it passes, and "Yahoo, you're all clear, kid" with it (the game's
+         * own request for that line is then not played: samples.h). */
+        if (brd.snd && brd.snd->samples) {
+            brd.snd->samples->hold_yahoo = brd.pic.enhance.falcon;
+            if (brd.pic.enhance.falcon_cue) {
+                brd.pic.enhance.falcon_cue = 0;
+                sw_samples_cue(brd.snd->samples, SW_CUE_FALCON, brd.pic.enhance.falcon_pass_in - SW_FALCON_PEAK);
+                sw_samples_cue(brd.snd->samples, 0x1a, brd.pic.enhance.falcon_pass_in);     /* SPKYAU */
+            }
+        }
         /* The X-wing's own engine (enhanced): in flight, from inside the
          * cockpit (the arcade's view too: it is the pilot's) or from outside,
          * as the view is; in the dogfight it runs up as the ship speeds up. */

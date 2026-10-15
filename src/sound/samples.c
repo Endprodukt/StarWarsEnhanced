@@ -16,11 +16,13 @@ static const char *const NAMES[SW_SOUND_REQUESTS] = {
     "AUDRS", "AUDRY", "AUDSH", "AUDSS", "AUDSX", "AUDTC", "AUDTCZ", "AUDTH", "AUDTL", "AUDXL", "AUDYEA",
 };
 
+/* the Falcon's fly-by, in effects/ */
+static const char *const FALCON = "FALCON";
 /* the engine's loops, in effects/ */
 static const char *const ENGINE[SW_ENGINE_LOOPS] = { "XWENG", "XWEXT" };
 
 enum {
-    FIRST_SPEECH = 3, SPKSKP = 20, LAST_SPEECH = 26,
+    FIRST_SPEECH = 3, SPKSKP = 20, SPKYAU = 26, LAST_SPEECH = 26,
     FIRST_MUSIC = 27, LAST_MUSIC = 37,
     AUDCR = 38, AUDDF = 39, AUDNAY = 41, AUDPB = 42, AUDPBZ = 43, AUDSX = 53, AUDTC = 54, AUDTCZ = 55, AUDYEA = 59,
 };
@@ -230,6 +232,14 @@ int sw_samples_load(sw_samples *s, const char *dir, int rate)
         s->sound[i].last = -1;
         if (got) found++;
     }
+    if (!s->falcon.count) {
+        snprintf(sub, sizeof sub, "%s/effects", dir);
+        int got = load_set(dir, FALCON, rate, s->falcon.var, SW_SAMPLE_VARIANTS);
+        if (!got) got = load_set(sub, FALCON, rate, s->falcon.var, SW_SAMPLE_VARIANTS);
+        s->falcon.count = got;
+        s->falcon.last = -1;
+        if (got) found++;
+    }
     for (int i = 0; i < SW_ENGINE_LOOPS; i++) {
         if (s->engine[i].rec.pcm) continue;
         int got = load_set(dir, ENGINE[i], rate, &s->engine[i].rec, 1);
@@ -250,6 +260,7 @@ void sw_samples_free(sw_samples *s)
 {
     for (int i = 0; i < SW_SOUND_REQUESTS; i++)
         for (int k = 0; k < s->sound[i].count; k++) free(s->sound[i].var[k].pcm);
+    for (int k = 0; k < s->falcon.count; k++) free(s->falcon.var[k].pcm);
     for (int i = 0; i < SW_ENGINE_LOOPS; i++) free(s->engine[i].rec.pcm);
     memset(s, 0, sizeof *s);
 }
@@ -262,23 +273,42 @@ static void stop_effect(sw_samples *s, int id)
         if (s->effect[i].id == id) s->effect[i].id = 0;
 }
 
-/* One of the request's recordings, at random, not the one before. */
-static const sw_sample *pick(sw_samples *s, int n)
+/* One of a set's recordings, at random, not the one before. */
+static const sw_sample *pick_of(sw_samples *s, sw_sample_set *set)
 {
-    int c = s->sound[n].count, k = 0;
+    int c = set->count, k = 0;
     if (c > 1) {
         s->rng = s->rng * 1664525u + 1013904223u;
-        k = (int)((s->rng >> 8) % (uint32_t)(c - (s->sound[n].last >= 0 ? 1 : 0)));
-        if (s->sound[n].last >= 0 && k >= s->sound[n].last) k++;
+        k = (int)((s->rng >> 8) % (uint32_t)(c - (set->last >= 0 ? 1 : 0)));
+        if (set->last >= 0 && k >= set->last) k++;
     }
-    s->sound[n].last = k;
-    return &s->sound[n].var[k];
+    set->last = k;
+    return &set->var[k];
+}
+
+static const sw_sample *pick(sw_samples *s, int n) { return pick_of(s, &s->sound[n]); }
+
+void sw_samples_cue(sw_samples *s, int n, double delay)
+{
+    sw_sample_set *set = n == SW_CUE_FALCON ? &s->falcon : n > 0 && n < SW_SOUND_REQUESTS ? &s->sound[n] : NULL;
+    if (!s->enabled || !set || !set->count) return;
+    int v = 0;
+    for (int i = 0; i < SW_CUES; i++)
+        if (!s->cue[i].rec) { v = i; break; }
+    const sw_sample *r = pick_of(s, set);
+    double k = (double)(s->rate > 0 ? s->rate : 44100);
+    s->cue[v].rec = r;
+    s->cue[v].wait = delay > 0.0 ? (uint32_t)(delay * k) : 0;
+    s->cue[v].at = delay < 0.0 ? (uint32_t)(-delay * k) : 0;
+    s->cue[v].speech = n >= FIRST_SPEECH && n <= LAST_SPEECH;
+    if (s->cue[v].at >= r->n) s->cue[v].rec = NULL;
 }
 
 int sw_samples_request(sw_samples *s, int n)
 {
     if (n == 0) {                           /* the board's reset */
         for (int i = 0; i < SW_SAMPLE_VOICES; i++) s->effect[i].id = 0;
+        for (int i = 0; i < SW_CUES; i++) s->cue[i].rec = NULL;
         s->music.id = s->speech.id = 0;
         s->queued = 0;
         return 0;
@@ -288,6 +318,7 @@ int sw_samples_request(sw_samples *s, int n)
     if (n == AUDPBZ) stop_effect(s, AUDPB);
     if (n == AUDTCZ) stop_effect(s, AUDTC);
     if (n == SPKSKP) s->queued = 0;
+    if (n == SPKYAU && s->hold_yahoo && s->enabled && s->sound[n].count) return 1;   /* (it comes with the Falcon) */
     if (n >= FIRST_MUSIC && n <= LAST_MUSIC) s->music.id = 0;
     if (!s->enabled || !s->sound[n].count) return 0;
 
@@ -356,6 +387,7 @@ int sw_samples_next(sw_samples *s)
     int big = 0;
     for (int i = 0; i < SW_SAMPLE_VOICES; i++) big |= is_big(s->effect[i].id);
     int speaking = s->speech.id != 0 || s->board_hold > 0;
+    for (int i = 0; i < SW_CUES; i++) speaking |= s->cue[i].rec && s->cue[i].speech && !s->cue[i].wait;
     if (!s->duck_speech) s->duck_speech = s->duck_big = 1.0f;
     s->duck_speech = ease_duck(s->duck_speech, s->enabled && speaking ? DUCK_SPEECH : 1.0f, s->rate);
     s->duck_big = ease_duck(s->duck_big, s->enabled && big ? DUCK_BIG : 1.0f, s->rate);
@@ -370,6 +402,15 @@ int sw_samples_next(sw_samples *s)
         else under += (float)v;
     }
     if (s->music.id) under += (float)play(&s->music.id, s->music.rec, &s->music.at);
+    /* the cues: speech over everything, the Falcon under speech only */
+    for (int i = 0; i < SW_CUES; i++) {
+        if (!s->cue[i].rec) continue;
+        if (s->cue[i].wait) { s->cue[i].wait--; continue; }
+        int v = s->cue[i].rec->pcm[s->cue[i].at];
+        if (++s->cue[i].at >= s->cue[i].rec->n) s->cue[i].rec = NULL;
+        if (s->cue[i].speech) sum += v;
+        else over += (float)v;
+    }
     if (s->speech.id) {
         sum += play(&s->speech.id, s->speech.rec, &s->speech.at);
         if (!s->speech.id && s->queued) {   /* the next sentence waiting */

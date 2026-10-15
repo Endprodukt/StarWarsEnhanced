@@ -227,6 +227,34 @@ int main(void)
             sw_samples_free(&s);
         }
     }
+    /* cues: the Falcon's fly-by and "Yahoo" begin exactly when asked; while
+     * the Falcon flies the game's own SPKYAU is taken and not played */
+    {
+        char pf[1024], py[1024];
+        snprintf(pf, sizeof pf, "%s/FALCON.wav", dir);
+        snprintf(py, sizeof py, "%s/SPKYAU.wav", dir);
+        if (write_wav(pf, 2205) == 0 && write_wav(py, 2205) == 0) {
+            found = sw_samples_load(&s, dir, 44100);
+            remove(pf); remove(py);
+            s.enabled = 1;
+            s.hold_yahoo = 1;
+            int taken = sw_samples_request(&s, 0x1a);
+            int silent = loud(5000) == 0;
+            sw_samples_cue(&s, SW_CUE_FALCON, 0.1);         /* 4410 samples from now */
+            int first = -1;
+            for (int i = 0; i < 9000 && first < 0; i++) if (sw_samples_next(&s) != 0) first = i;
+            loud(10000);
+            sw_samples_cue(&s, 0x1a, 0.05);                 /* 2205 */
+            int second = -1;
+            for (int i = 0; i < 9000 && second < 0; i++) if (sw_samples_next(&s) != 0) second = i;
+            if (found != 2 || taken != 1 || !silent || first != 4410 || second != 2205) {
+                printf("cues: %d found, taken %d, silent %d, the fly-by at %d (4410), Yahoo at %d (2205)\n",
+                       found, taken, silent, first, second);
+                fail = 1;
+            }
+            sw_samples_free(&s);
+        }
+    }
     printf("test_samples: %s\n", fail ? "FAILED" : "ok");
     return fail;
 }

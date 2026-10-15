@@ -433,6 +433,12 @@ int main(int argc, char **argv)
         clock_t t0 = clock();
         if (views_every > 0.0) pic.enhance.view = (int)(now / views_every) % SW_VIEWS;   /* (--views-every: each view in turn) */
         int count = sw_picture_lines(&pic, now, 3, &lines);
+        replaced_sounds.hold_yahoo = pic.enhance.falcon;
+        if (pic.enhance.falcon_cue) {
+            pic.enhance.falcon_cue = 0;
+            sw_samples_cue(&replaced_sounds, SW_CUE_FALCON, pic.enhance.falcon_pass_in - SW_FALCON_PEAK);
+            sw_samples_cue(&replaced_sounds, 0x1a, pic.enhance.falcon_pass_in);
+        }
         sw_samples_engine(&replaced_sounds, !pic.enhance.plane_seen ? -1 :
                           pic.enhance.view == SW_VIEW_OUTSIDE ? SW_ENGINE_OUTSIDE : SW_ENGINE_COCKPIT,
                           pic.enhance.view == SW_VIEW_OUTSIDE ? 0.6f : 0.48f, 1.0f);

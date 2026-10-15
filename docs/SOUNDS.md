@@ -151,11 +151,20 @@ and to its loudness, and written as IMA ADPCM: 8 KB a second, 1.4 MB in
 all. Loudness: the RMS of the loud part, about as loud as the board's own
 sound for the same thing (its speech -29 dB, its effects -37 dB, its music
 -32 dB); speech -27 dB, lasers -32 dB, explosions -27 dB, R2 -31 dB, the
-Death Star -24 dB. The board's music is not replaced. Darth Vader's four
+Death Star -28.5 dB. The board's music is not replaced. Darth Vader's four
 lines (SPKHAV, SPKIMO, SPKSTA, SPKSTR) have his breath before and after, as
 the arcade game's have (the films' lines have none; the breath is the
 collection's, 9 dB below his voice). The towers' guns (AUDTL) are turbolasers
 and heavy cannons: short, hard shots.
+
+The Millennium Falcon's fly-over in the trench (enhanced, FALCON FLY-OVER)
+has a fly-by of its own (`effects/FALCON.wav` ... `FALCON_5.wav`, cut so
+that each is loudest 0.85 s into it), and "Yahoo, you're all clear, kid"
+(SPKYAU) comes just as it passes over the player. Its run is planned 1.3 s
+before it passes, from how fast the exhaust port really comes nearer; the
+picture and the two sounds (`sw_samples_cue`) keep to that plan. While the
+Falcon flies, the game's own request for SPKYAU (it would come at its own
+time in the trench) is taken and not played.
 
 The engine (enhanced, the arcade game has none; setting ENGINE SOUND,
 `enh_engine`): `effects/XWENG.wav` from inside (the arcade's view and the

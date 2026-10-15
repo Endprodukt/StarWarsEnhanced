@@ -867,10 +867,38 @@ static double port_ahead(const sw_machine *m)
 static void falcon_fly(sw_enhance *e, const sw_machine *m, double now)
 {
     const double RUN = 3.2, BEFORE = 3.4;       /* seconds */
+    const double PASS = 1600.0 / 6500.0;        /* into its run it is over the player (its way below) */
+    const double CUE = 1.3;                     /* its sound is cued so long before it passes over */
     if (e->falcon_at == 0.0 && !e->falcon_done) {
         double fps = SW_IRQ_HZ / (m->frame_irqs ? m->frame_irqs : 12);     /* (13 a second in the trench) */
         double dist = port_ahead(m), speed = (double)mb16(m, SW_M_S1 + M_VX) * fps;
-        if (dist > 0.0 && speed > 0.0 && dist / speed < BEFORE) e->falcon_at = now;
+        /* how fast the port really comes nearer (a second of real time): the
+         * game's frames are not all as long, so its own speed does not say */
+        if (dist > 0.0 && e->falcon_seen_at > 0.0 && now > e->falcon_seen_at && dist < e->falcon_seen_dist) {
+            double v = (e->falcon_seen_dist - dist) / (now - e->falcon_seen_at);
+            e->falcon_rate = e->falcon_rate > 0.0 ? e->falcon_rate + (v - e->falcon_rate) * 0.3 : v;
+        }
+        if (dist > 0.0 && (e->falcon_seen_at <= 0.0 || dist != e->falcon_seen_dist)) {
+            e->falcon_seen_at = now;
+            e->falcon_seen_dist = dist;
+        }
+        if (speed > 0.0) e->falcon_speed = e->falcon_speed > 0.0 ? e->falcon_speed + (speed - e->falcon_speed) * 0.2 : speed;
+        /* Its run is planned a little before (CUE): when the port will be
+         * BEFORE "seconds" of the game's own speed away, at the rate it
+         * really comes nearer. Then it begins at that time exactly, and its
+         * sound (cued now) is with it. (The game's speed as its frames give
+         * it jumps from one to the next.) */
+        if (!e->falcon_cued && dist > 0.0 && e->falcon_speed > 0.0 && e->falcon_rate > 0.0) {
+            double starts_in = (dist - BEFORE * e->falcon_speed) / e->falcon_rate;
+            if (starts_in + PASS < CUE) {
+                if (starts_in < 0.0) starts_in = 0.0;
+                e->falcon_cued = e->falcon_cue = 1;
+                e->falcon_plan = now + starts_in;
+                e->falcon_pass_in = starts_in + PASS;
+            }
+        }
+        if (e->falcon_cued && now >= e->falcon_plan) e->falcon_at = e->falcon_plan;
+        else if (!e->falcon_cued && dist > 0.0 && speed > 0.0 && dist / speed < BEFORE) e->falcon_at = now;   /* (not planned in time) */
     }
     if (e->falcon_at == 0.0) return;
     double t = now - e->falcon_at;
@@ -1558,7 +1586,7 @@ int sw_enhance_run(sw_enhance *e, const sw_machine *m, double now, const sw_line
     int clip = in_trench && e->clip;
     int falcon = in_trench && e->falcon;
     int logo = e->logo && phase >= SW_PHSBNR && phase <= SW_PHSHIS + 1;     /* (the attract mode) */
-    if (!in_trench) e->falcon_at = 0.0, e->falcon_done = 0;
+    if (!in_trench) e->falcon_at = 0.0, e->falcon_done = 0, e->falcon_cued = 0, e->falcon_seen_at = 0.0, e->falcon_rate = 0.0, e->falcon_speed = 0.0;
     /* the cockpit wherever the game shows the X-wing's nose and guns */
     int plane = 0;
     for (int i = 0; i < n && !plane; i++) plane = SW_TAG_SECTION((unsigned)(in[i].id >> 48)) == SW_TAG_PLANE;

@@ -173,7 +173,25 @@ def main():
     total = 0
     for name, db, longest, srcs in entries:
         for k, src in enumerate(srcs):
-            if '@' in longest:
+            if '^' in longest:
+                # (its loudest at PEAK seconds: its beginning cut, or silence before it)
+                m, sr = read_mono(resolve(src, args, name))
+                m = to_rate(m, sr)
+                length, peak = (float(v) for v in longest.split('^'))
+                e, fr = frames_db(m, RATE, 20)
+                top = int(np.argmax(e)) * fr + fr // 2
+                start = top - int(peak * RATE)
+                if start < 0:
+                    m = np.concatenate([np.zeros(-start), m])
+                else:
+                    m = m[start:]
+                    fi = min(len(m), int(0.25 * RATE))
+                    m[:fi] *= np.linspace(0.0, 1.0, fi) ** 2
+                m = m[: int(length * RATE)].copy()
+                fo = min(len(m) // 3, int(0.5 * RATE))
+                m[-fo:] *= np.linspace(1.0, 0.0, fo) ** 2
+                m = level(m, RATE, db)
+            elif '@' in longest:
                 m, sr = read_mono(resolve(src, args, name))
                 length, start = (float(v) for v in longest.split('@'))
                 m = make_loop(to_rate(m, sr), RATE, length, start)
