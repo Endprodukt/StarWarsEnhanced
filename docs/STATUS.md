@@ -337,6 +337,21 @@ wiederholt sich alle 8000h, jedes Gebäude wird auf dieser und der nächsten
 Runde betrachtet. Standbilder: am Start der Oberfläche nichts neben dem
 Spieler, am Horizont die kleinen dunklen Türme.
 
+## Highscores auf dem Marquee (2026-10-16, 0.3.19)
+
+Das VectorPie-Menü zeigt die Bestenliste eines Spiels auf dem Marquee aus
+`save/highscores.txt` (sdk/docs/06-hiscores.md, "NAME SCORE", beste zuerst),
+wenn im Manifest `hiscores = yes` steht. Bei uns stand `no`, und das Spiel
+hält seine Tabelle wie der Automat im RAM und NOVRAM. Jetzt schreibt das
+Programm die Tabelle des Spiels (TCHSCR: zehn Zeilen, Initialen 1..26 =
+A..Z, Punkte als BCD) alle 5 s, wenn sie sich geändert hat, über eine
+`.new`-Datei und Umbenennen; nicht während eines Demo-Flugs. Geprüft: Nach
+dem Start steht dort die Tabelle des Automaten (OBI 1285353, WAN 1110936, HAN
+1024650 ...). Die Bestenliste des Dogfights ist eine eigene und erscheint
+nicht auf dem Marquee. Wie beim Automaten bleiben nur die besten drei über
+das Ausschalten (NOVRAM); die Plätze 4 bis 10 beginnen nach jedem Start
+wieder mit den Vorgaben.
+
 ## Filmmusik im Spiel, Ton in Stereo (2026-10-15, 0.3.18)
 
 * Die fünf Stücke des Besitzers in `sounds/music` (PMTH5, PMTHB, PMDAR, PM4TH,
@@ -873,7 +888,7 @@ sobald das Menü neu startet (nach dem Verlassen des Spiels). Nicht geprüft
 am Gerät, auch nicht, ob der längere Titel des Testmenüs (jetzt Größe 90
 statt 110) in die Breite passt.
 
-Marquee erneuert (zweites Artwork des Besitzers, ohne die Streifen unten; auf die volle Breite 1920 gezogen, 17 % breiter als das Original), Version 0.2.1. **Noch nicht auf dem Automaten**, der war aus: beim nächsten Mal `sh tools/deploy.sh` und die neueste `dist/swenhanced-<version>.vpk` (jetzt 0.3.18, mit Dogfight Etappe 4) nach `/persistent/games/packages/` (dort liegt noch 0.2.0).
+Marquee erneuert (zweites Artwork des Besitzers, ohne die Streifen unten; auf die volle Breite 1920 gezogen, 17 % breiter als das Original), Version 0.2.1. **Noch nicht auf dem Automaten**, der war aus: beim nächsten Mal `sh tools/deploy.sh` und die neueste `dist/swenhanced-<version>.vpk` (jetzt 0.3.19, mit Dogfight Etappe 4) nach `/persistent/games/packages/` (dort liegt noch 0.2.0).
 
 Paketdatei: `sh tools/pack.sh` (in WSL, nach dem Pi-Build) schreibt
 `dist/swenhanced-<version>.vpk` mit dem `vp-pack` des SDK (dessen Skript und

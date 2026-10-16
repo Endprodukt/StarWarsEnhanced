@@ -36,6 +36,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifndef _WIN32
+#include <unistd.h>     /* (fsync) */
+#endif
 
 #define MAX_PATHS 48
 
@@ -382,6 +385,55 @@ static void df_scores_save(const sw_df_scores *s)
     fclose(f);
 }
 
+/* --- the high scores for the menu's marquee ------------------------------------ */
+
+/* The game's own table (TCHSCR.MAC: ten lines, initials 0 blank, 1..26 A..Z,
+ * the scores eight digits of BCD) as save/highscores.txt, the file the
+ * VectorPie menu shows on the marquee (sdk/docs/06-hiscores.md: "NAME
+ * SCORE", best first). Written only when it has changed, by a new file
+ * renamed over the old (a cabinet switched off mid-save keeps the old). */
+static void hiscores_export(const sw_machine *m)
+{
+    static char last[512];
+    char text[512];
+    size_t at = 0;
+    for (int i = 0; i < SW_NHSCRS; i++) {
+        char name[4];
+        int k = 0;
+        for (int c = 0; c < 3; c++) {
+            uint8_t a = m->ram[SW_INITLS + 3 * i + c - 0x4800];
+            if (a > 26) return;                         /* (not a table yet) */
+            name[k++] = a ? (char)('A' + a - 1) : '.';
+        }
+        while (k > 0 && name[k - 1] == '.') k--;       /* (blanks at its end) */
+        name[k] = 0;
+        unsigned long score = 0;
+        for (int b = 0; b < 4; b++) {
+            uint8_t v = m->ram[SW_HSCORS + 4 * i + b - 0x4800];
+            if ((v >> 4) > 9 || (v & 15) > 9) return;   /* (not BCD: not a table yet) */
+            score = score * 100 + (v >> 4) * 10 + (v & 15);
+        }
+        if (!score) continue;
+        at += (size_t)snprintf(text + at, sizeof text - at, "%s %lu\n", k ? name : "---", score);
+    }
+    if (strcmp(text, last) == 0 || at == 0) return;
+    char path[1024], tmp[1100];
+    snprintf(path, sizeof path, "%s/highscores.txt", vp_save_dir());
+    snprintf(tmp, sizeof tmp, "%s.new", path);
+    FILE *f = fopen(tmp, "w");
+    if (!f) return;
+    fputs(text, f);
+    fflush(f);
+#ifndef _WIN32
+    fsync(fileno(f));
+#endif
+    fclose(f);
+#ifdef _WIN32
+    remove(path);
+#endif
+    if (rename(tmp, path) == 0) memcpy(last, text, sizeof last);
+}
+
 /* --- the NOVRAM's file --------------------------------------------------------- */
 
 /* Options, accounting, the three best scores and the yoke's learned range
@@ -721,6 +773,7 @@ int main(int argc, char **argv)
                 memcpy(brd.m.nvstore, brd.m.nvram, sizeof brd.m.nvstore);
                 nvram_save(&brd.m);
             }
+            if (brd.irqs > 2000) hiscores_export(&brd.m);     /* (the marquee's table, when it has changed) */
         }
         /* the demo's view while it flies, the player's own again after it */
         if (brd.demo.active) brd.pic.enhance.view = brd.demo.view;
