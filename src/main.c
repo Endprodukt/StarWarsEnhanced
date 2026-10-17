@@ -583,6 +583,13 @@ int main(int argc, char **argv)
     double dt;
     while (sw_app_poll(&app, &dt)) {
         sw_bind_update(app.in);         /* the digital inputs, the cabinet's or the owner's own */
+        if (brd.snd && brd.snd->samples) {
+            /* where the game is, for the small explosion's recording (samples.h) */
+            uint8_t ph = RAM8(&brd.m, SW_PHASE) & (uint8_t)~1;
+            sw_samples_ground(brd.snd->samples,
+                              ph == SW_PHSGD || ph == SW_PHSG0B || ph == SW_PHSG1B || ph == SW_PHSG0D ||
+                              ph == SW_PHSBS || ph == SW_PHSB0B || ph == SW_PHSB0D);
+        }
         /* (the yoke's rest is learned while nobody plays: in the attract mode) */
         brd.ctl.learn = RAM8(&brd.m, SW_PHASE) >= SW_PHSBNR && RAM8(&brd.m, SW_PHASE) <= SW_PHSHIS + 1;
         /* A game begins (the attract mode left, not by a demo flight): from

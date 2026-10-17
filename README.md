@@ -159,7 +159,8 @@ Jeder digitale Eingang (Joch als Richtungen, beide Feuer, beide Daumen, Start 1/
 Münzen, Aux, Testmenü) lässt sich auf der Menüseite CONTROLS frei belegen (bis zu
 zwei Tasten, Joystick-Knöpfe, -Achsen oder -Hats je Eingang; Feuer wartet auf den
 Eingang, links/rechts stellt die Belegung des Automaten wieder her). Ein digital
-belegtes Joch fährt weich an (0,3 s) und aus. Die Belegung steht als `bind_*`
+belegtes Joch fährt weich an (0,3 s) und aus; ohne eigene Belegung bleibt das Joch
+rein analog (die `p1_left`-Namen des Automaten sind dieselbe Achse). Die Belegung steht als `bind_*`
 in der INI (`bind_fire_l = key:44, joy0:button0`).
 
 ### Testmenü

@@ -77,6 +77,8 @@ typedef struct sw_samples {
     int      enabled;
     sw_sample_set sound[SW_SOUND_REQUESTS];     /* the recordings of each; none: not replaced */
     sw_sample_set falcon;                       /* the Millennium Falcon's fly-by */
+    sw_sample_set ground_blast;                 /* AUDSX over the ground and in the trench (effects/AUDSXG.wav ...) */
+    int      on_ground;                         /* sw_samples_ground: the game is over the ground or in the trench */
     struct {
         const sw_sample *rec;       /* NULL: free */
         uint32_t wait, at;          /* samples to wait yet, where it is */
@@ -134,6 +136,12 @@ int  sw_samples_request(sw_samples *s, int n);
  * `delay` seconds from now, in a voice of its own (a negative delay: that
  * much of its beginning left out). Speech among them counts as speech. */
 void sw_samples_cue(sw_samples *s, int n, double delay);
+
+/* Where the game is: over the ground or in the trench (1), else in space.
+ * The small explosion AUDSX (a TIE fighter, a tower, a bunker) is then taken
+ * from effects/AUDSXG.wav (AUDSXG_2.wav ...) when there is one: a plain
+ * blast, without the TIE fighter's engine (the owner, 2026-10-17). */
+void sw_samples_ground(sw_samples *s, int on);
 
 /* The engine as it is to be heard: `which` SW_ENGINE_COCKPIT or
  * SW_ENGINE_OUTSIDE (-1: none, it fades out), `level` 0..1 (of its full

@@ -75,6 +75,9 @@ AUDPS   -32  1.6 @sfx/Vehicles/TIE Fighter/TIE Flyby 14.wav; @sfx/Vehicles/TIE F
 
 # --- explosions, hits, crashes ------------------------------------------------------------
 AUDSX   -27  2.4 @sfx/Impacts and Explosions/TIE EXPL 1A.wav; @sfx/Impacts and Explosions/TIE EXPL 3.wav; @sfx/Impacts and Explosions/TIE EXPL 4C.wav; @sfx/Impacts and Explosions/TIE EXPL 5A.wav; @sfx/Impacts and Explosions/TIE EXPL 7.wav; @sfx/Impacts and Explosions/Fighter EXPL 1.wav; @sfx/Impacts and Explosions/Fighter EXPL 11.wav; @sfx/Impacts and Explosions/Fighter EXPL 13.wav
+# (AUDSXG: the same request over the ground and in the trench, src/sound/samples.c: towers and
+#  bunkers blow up without a TIE fighter's engine in the recording)
+AUDSXG  -27  2.4 @sfx/Impacts and Explosions/Shield Bunker EXPL 1.wav; @sfx/Impacts and Explosions/Shield Bunker EXPL 2.wav; @sfx/Impacts and Explosions/Shield Bunker EXPL 3.wav; @sfx/Impacts and Explosions/Debris EXPL 4.wav; @sfx/Impacts and Explosions/Debris EXPL 5.wav; @sfx/Impacts and Explosions/Flak EXPL 5.wav; @sfx/Impacts and Explosions/Flak EXPL 6.wav; @sfx/Impacts and Explosions/Bomb EXPL.wav; @sfx/Impacts and Explosions/Large EXPL 9.wav
 AUDDF   -28.5  6.0 @sfx/Impacts and Explosions/DS-I EXPL 1A.wav; @sfx/Impacts and Explosions/DS-I EXPL 1B.wav
 AUDCR   -27  1.8 @sfx/Impacts and Explosions/Ship Crash 1.wav; @sfx/Impacts and Explosions/Ship Crash 2.wav; @sfx/Impacts and Explosions/Ship Crash 3.wav; @sfx/Impacts and Explosions/Ship Crash 4.wav; @sfx/Impacts and Explosions/Ship Crash 5.wav
 AUDSH   -29  1.2 @sfx/Impacts and Explosions/Deflector Hit 1A.wav; @sfx/Impacts and Explosions/Deflector Hit 2.wav; @sfx/Impacts and Explosions/Hull Hit 1.WAV; @sfx/Impacts and Explosions/Hull Hit 2.WAV; @sfx/Impacts and Explosions/Hull Hit 3.WAV

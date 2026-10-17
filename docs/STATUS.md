@@ -337,6 +337,22 @@ wiederholt sich alle 8000h, jedes Gebäude wird auf dieser und der nächsten
 Runde betrachtet. Standbilder: am Start der Oberfläche nichts neben dem
 Spieler, am Horizont die kleinen dunklen Türme.
 
+## Joch wieder ganz analog, Boden-Explosion ohne TIE-Triebwerk (2026-10-17, 0.3.23)
+
+* **Joch sprang an den Rand** (Besitzer, 0.3.21/22): Die vier Richtungen
+  des digitalen Jochs fielen ohne eigene Belegung auf `p1_left` ... des
+  Automaten zurück, und die sind in der `advmame.rc` dieselbe Jochachse ab
+  einer Schwelle. Ab halbem Ausschlag fuhr so der digitale Wert auf 1 und
+  gewann. Jetzt zählt das digitale Joch nur bei eigener Belegung
+  (`sw_bind_is_bound`, `controls.c`); der Automat bleibt rein analog.
+* **Türme und Bunker explodieren ohne TIE-Triebwerk:** AUDSX (kleine
+  Explosion) ist am Automaten ein Request für TIE, Turm und Bunker; die
+  Aufnahmen waren TIE-Explosionen mit Triebwerk. Neu `AUDSXG` (neun reine
+  Explosionen: Shield Bunker, Debris, Flak, Bomb, Large), die `samples.c`
+  für AUDSX nimmt, wenn `main.c` ihm über `sw_samples_ground` eine
+  Bodenphase (GD, G0B, G1B, G0D) oder Grabenphase (BS, B0B, B0D) meldet.
+  Im Weltraum bleibt die TIE-Explosion.
+
 ## Dogfight nicht anwählbar (2026-10-17, 0.3.22)
 
 * Der Dogfight ist noch nicht ausgereift (Besitzer, 2026-10-17) und wird
