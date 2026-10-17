@@ -337,6 +337,13 @@ wiederholt sich alle 8000h, jedes Gebäude wird auf dieser und der nächsten
 Runde betrachtet. Standbilder: am Start der Oberfläche nichts neben dem
 Spieler, am Horizont die kleinen dunklen Türme.
 
+## Boden-Explosion griff nicht (2026-10-17, 0.3.25)
+
+* 0.3.23 verglich die Phase mit `& ~1`; die Phasenkonstanten sind aber
+  ungerade (SW_PHSGD 0x29, laufend 0x2A), so wurde nie eine Bodenphase
+  erkannt und die Turmspitzen explodierten weiter mit TIE-Triebwerk
+  (Besitzer). Jetzt `| 1`.
+
 ## Start-Lampen aus (2026-10-17, 0.3.24)
 
 * Beide START-Lampen leuchteten im Spiel (Besitzer). Das Spiel nutzt die

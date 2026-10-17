@@ -585,7 +585,8 @@ int main(int argc, char **argv)
         sw_bind_update(app.in);         /* the digital inputs, the cabinet's or the owner's own */
         if (brd.snd && brd.snd->samples) {
             /* where the game is, for the small explosion's recording (samples.h) */
-            uint8_t ph = RAM8(&brd.m, SW_PHASE) & (uint8_t)~1;
+            /* (the phases are odd; the even one above each is the same phase running) */
+            uint8_t ph = RAM8(&brd.m, SW_PHASE) | 1;
             sw_samples_ground(brd.snd->samples,
                               ph == SW_PHSGD || ph == SW_PHSG0B || ph == SW_PHSG1B || ph == SW_PHSG0D ||
                               ph == SW_PHSBS || ph == SW_PHSB0B || ph == SW_PHSB0D);
