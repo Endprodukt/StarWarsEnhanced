@@ -1234,3 +1234,9 @@ daraus wurde:
   und `deploy.sh` kopiert dann still das alte Binary (gleiche md5 wie beim
   letzten Mal ist das Warnzeichen; 2026-10-17 passiert). Der Linux-Build
   und `ctest` laufen dagegen in WSL (`cmake --build --preset linux`).
+* `deploy.sh` beendet zuerst das alte `run.sh`, dann das Spiel: sonst
+  startet das alte `run.sh` beim Tod seines Spiels das Menü (getty) neu,
+  während das neue Spiel schon läuft; beide halten Schirm und Board, das
+  Spiel steht (Log: `Could not queue pageflip: -13`, keine Statistik;
+  2026-10-17). Meldet das Skript `MENU-STILL-RUNNING`, auf dem Pi
+  `sudo systemctl stop getty@tty1` und `run.sh` neu starten.
