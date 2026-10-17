@@ -23,6 +23,10 @@
 #include "platform/app.h"
 #include "platform/audio.h"
 #include "dogfight/dogfight.h"
+
+/* The dogfight (the fourth Death Star to choose) is not offered for now: it
+ * is not finished (the owner, 2026-10-17). Its code stays; 1 offers it again. */
+#define SW_DOGFIGHT_OFFERED 0
 #include "platform/demo.h"
 #include "platform/menu.h"
 #include "platform/yoke.h"
@@ -308,7 +312,7 @@ static void draw_game(sw_app *app, const sw_display_cfg *cfg, board *b, double n
     }
     b->pic.enhance.dogfight = 0;
     int n = sw_picture_lines(&b->pic, now, cfg->smooth, &lines);
-    if (b->native && b->m.ram[SW_PHASE - 0x4800] == SW_PHSSDS + 1) {
+    if (SW_DOGFIGHT_OFFERED && b->native && b->m.ram[SW_PHASE - 0x4800] == SW_PHSSDS + 1) {
         /* the dogfight as a fourth Death Star to choose */
         static sw_line more[8192];
         int k = n < 6000 ? n : 6000;
@@ -608,7 +612,7 @@ int main(int argc, char **argv)
         }
         /* The dogfight: chosen as a fourth Death Star, by firing at it; flown
          * with the yoke, the thumb buttons faster and slower. */
-        if (brd.native && !brd.df.active && !menu.open && sw_dogfight_chosen(&brd.m) &&
+        if (SW_DOGFIGHT_OFFERED && brd.native && !brd.df.active && !menu.open && sw_dogfight_chosen(&brd.m) &&
             (sw_act_pressed(ACT_FIRE_L) || sw_act_pressed(ACT_FIRE_R) || sw_act_pressed(ACT_START))) {
             static sw_df_scores df_scores;
             static int df_scores_loaded;

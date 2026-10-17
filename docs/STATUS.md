@@ -337,6 +337,14 @@ wiederholt sich alle 8000h, jedes Gebäude wird auf dieser und der nächsten
 Runde betrachtet. Standbilder: am Start der Oberfläche nichts neben dem
 Spieler, am Horizont die kleinen dunklen Türme.
 
+## Dogfight nicht anwählbar (2026-10-17, 0.3.22)
+
+* Der Dogfight ist noch nicht ausgereift (Besitzer, 2026-10-17) und wird
+  bis auf Weiteres nicht angeboten: `SW_DOGFIGHT_OFFERED 0` in `src/main.c`
+  lässt den vierten Todesstern auf der Auswahlseite weg und startet ihn
+  nicht. Der ganze Code (`src/dogfight`, Ansichten, Bestenliste, Sounds)
+  bleibt und wird weiter gebaut; `1` bietet ihn wieder an.
+
 ## Controls-Seite, freie Belegung, Lautstärken, Sprachpegel (2026-10-17, 0.3.21)
 
 * **Menü neu geordnet:** GAME OPTIONS ganz oben, dann GRAPHICS, SOUND,
