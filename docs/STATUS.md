@@ -337,6 +337,24 @@ wiederholt sich alle 8000h, jedes Gebäude wird auf dieser und der nächsten
 Runde betrachtet. Standbilder: am Start der Oberfläche nichts neben dem
 Spieler, am Horizont die kleinen dunklen Türme.
 
+## Filmmusik vollständig, Pegel angeglichen (2026-10-17, 0.3.20)
+
+* Alle zehn Musikstücke des Spiels liegen jetzt als Aufnahmen des Besitzers in
+  `sounds/music` (dazu PMTH5 und PMTHB in neuen Schnitten): PMTH5, PMTHB,
+  PMDAR, PM4TH, PMCNT wie bisher, neu PMBEN, PMDES, PMEND, PMREB, PMRRP.
+  PMSF2 bleibt der Torpedo-Einschlag der Sammlung (kein Musikstück).
+* **Pegel:** die Quellen streuten von −12 dB (PM4TH, Spitze 0 dB) bis −28 dB
+  (PMCNT); `build.py` bringt den lauten Teil jedes Stücks auf −30 dB
+  (Spitzen 0,15 bis 0,20), wie die fünf ersten. Die fünf neuen stehen in
+  `tools/swsamples/samples.txt`; `package/sounds/music` neu gebaut (2,1 MB).
+* **Ducking** war schon da (0.3.15): unter Sprache alles andere −3 dB, auch
+  die Musik; unter einer großen Explosion oder einem Crash der Rest −1,5 dB.
+  Unverändert.
+* Deployt (`deploy.sh`) und als `dist/swenhanced-0.3.20.vpk` gepackt. Die
+  Musikdateien in `sounds/music` sind aus dem Repository genommen
+  (`git rm --cached`; sie waren trotz `.gitignore` noch verfolgt), wie es
+  seit 0.3.18 gedacht ist.
+
 ## Highscores auf dem Marquee (2026-10-16, 0.3.19)
 
 Das VectorPie-Menü zeigt die Bestenliste eines Spiels auf dem Marquee aus
