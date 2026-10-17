@@ -27,8 +27,8 @@ enum {
     L_SAMPLES, L_ENGINE, L_VOL_MUSIC, L_VOL_EFFECTS, L_VOL_SPEECH, L_VOL_ENGINE, L_SOUND_TEST,
     /* controls: the yoke, then one line per digital input (platform/bind.h) */
     L_YOKE, L_BIND0, L_BIND_END = L_BIND0 + ACT_COUNT, L_BIND_RESET = L_BIND_END,
-    /* screen */
-    L_CALIBRATE,
+    /* screen: the picture's size and place, its brightness, as numbers */
+    L_SIZE_X, L_SIZE_Y, L_POS_X, L_POS_Y, L_BRIGHT, L_GAMMA, L_FLOOR, L_CALIBRATE,
     /* the game's options, in the order of the arcade program's option page */
     L_OPT0, L_OPT_END = L_OPT0 + SW_GAME_OPTIONS,
     /* the rest of the main page */
@@ -53,8 +53,13 @@ static const struct { const char *title; uint8_t lines[PAGE_MAX + 4]; } PAGES[N_
                     L_BIND0 + ACT_FIRE_L, L_BIND0 + ACT_FIRE_R, L_BIND0 + ACT_THUMB_L, L_BIND0 + ACT_THUMB_R,
                     L_BIND0 + ACT_START, L_BIND0 + ACT_START2, L_BIND0 + ACT_COIN1, L_BIND0 + ACT_COIN2,
                     L_BIND0 + ACT_COIN_AUX, L_BIND0 + ACT_TEST, 0, L_BIND_RESET, L_BACK, N_LINES } },
-    { "SCREEN", { L_CALIBRATE, 0, L_BACK, N_LINES } },
+    { "SCREEN", { L_SIZE_X, L_SIZE_Y, L_POS_X, L_POS_Y, 0, L_BRIGHT, L_GAMMA, L_FLOOR, 0, L_CALIBRATE, 0, L_BACK, N_LINES } },
 };
+
+int sw_menu_screen_page(const sw_menu *u)
+{
+    return u->open && u->page == P_SCREEN;
+}
 
 static const char *const OPTION_NAME[SW_GAME_OPTIONS] = {
     "COIN VALUE", "LEFT MECH", "RIGHT MECH", "BONUS ADDER",
@@ -192,6 +197,32 @@ int sw_menu_update(sw_menu *u, sw_display_cfg *cfg, sw_machine *m, vp_input *in,
     case L_YOKE:          if (fire) return toggle(&cfg->yoke_autocenter); break;   /* (not by the yoke itself) */
     case L_BIND_RESET:    if (fire) { sw_bind_clear_all(); return SW_MENU_CHANGED; } break;
     case L_CALIBRATE:     if (fire) return SW_MENU_CALIBRATE; break;
+    /* the picture: its margins (board units, 4096 across), a step 16 a side */
+    case L_SIZE_X:
+        cfg->margin_left = clamp_step(cfg->margin_left, -d * 16, -512, 1536);
+        cfg->margin_right = clamp_step(cfg->margin_right, -d * 16, -512, 1536);
+        return SW_MENU_CHANGED;
+    case L_SIZE_Y:
+        cfg->margin_bottom = clamp_step(cfg->margin_bottom, -d * 16, -512, 1536);
+        cfg->margin_top = clamp_step(cfg->margin_top, -d * 16, -512, 1536);
+        return SW_MENU_CHANGED;
+    case L_POS_X:
+        cfg->margin_left = clamp_step(cfg->margin_left, d * 16, -512, 1536);
+        cfg->margin_right = clamp_step(cfg->margin_right, -d * 16, -512, 1536);
+        return SW_MENU_CHANGED;
+    case L_POS_Y:
+        cfg->margin_bottom = clamp_step(cfg->margin_bottom, d * 16, -512, 1536);
+        cfg->margin_top = clamp_step(cfg->margin_top, -d * 16, -512, 1536);
+        return SW_MENU_CHANGED;
+    case L_BRIGHT:
+        cfg->brightness = (float)clamp_step((int)lrintf(cfg->brightness * 100.0f), d * 5, 10, 200) / 100.0f;
+        return SW_MENU_CHANGED;
+    case L_GAMMA:
+        cfg->gamma = (float)clamp_step((int)lrintf(cfg->gamma * 100.0f), d * 5, 20, 300) / 100.0f;
+        return SW_MENU_CHANGED;
+    case L_FLOOR:
+        cfg->floor = (float)clamp_step((int)lrintf(cfg->floor * 100.0f), d, 0, 60) / 100.0f;
+        return SW_MENU_CHANGED;
     case L_OPERATOR:      if (fire) return SW_MENU_OPERATOR; break;
     case L_EXIT:          if (fire) return SW_MENU_CLOSE; break;
     }
@@ -258,7 +289,14 @@ static void describe(int line, const sw_menu *u, const sw_display_cfg *cfg, cons
     case L_SOUND_TEST:    *label = "SOUND TEST";        snprintf(value, size, "%02X %s", u->sound, sw_menu_sound_name(u->sound)); break;
     case L_YOKE:          *label = "YOKE AUTO CENTER";  snprintf(value, size, "%s", on_off(cfg->yoke_autocenter)); break;
     case L_BIND_RESET:    *label = "ALL INPUTS AS THE CABINET'S"; break;
-    case L_CALIBRATE:     *label = "SCREEN CALIBRATION"; break;
+    case L_CALIBRATE:     *label = "TEST PATTERN"; break;
+    case L_SIZE_X:        *label = "SIZE ACROSS";       snprintf(value, size, "%.1f %%", (4096 - cfg->margin_left - cfg->margin_right) * 100.0 / 4096.0); break;
+    case L_SIZE_Y:        *label = "SIZE UP";           snprintf(value, size, "%.1f %%", (4096 - cfg->margin_bottom - cfg->margin_top) * 100.0 / 4096.0); break;
+    case L_POS_X:         *label = "POSITION ACROSS";   snprintf(value, size, "%+d", (cfg->margin_left - cfg->margin_right) / 2); break;
+    case L_POS_Y:         *label = "POSITION UP";       snprintf(value, size, "%+d", (cfg->margin_bottom - cfg->margin_top) / 2); break;
+    case L_BRIGHT:        *label = "BRIGHTNESS";        snprintf(value, size, "%d %%", (int)lrintf(cfg->brightness * 100.0f)); break;
+    case L_GAMMA:         *label = "GAMMA";             snprintf(value, size, "%.2f", cfg->gamma); break;
+    case L_FLOOR:         *label = "BLACK LEVEL";       snprintf(value, size, "%d %%", (int)lrintf(cfg->floor * 100.0f)); break;
     case L_OPERATOR:      *label = "ARCADE OPERATOR SCREENS"; break;
     case L_EXIT:          *label = "SAVE AND EXIT"; break;
     case L_BACK:          *label = "BACK"; break;

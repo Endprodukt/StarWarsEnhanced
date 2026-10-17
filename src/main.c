@@ -809,12 +809,27 @@ int main(int argc, char **argv)
             }
             build_pattern(&cal, &cfg);
             sw_draw_lines(app.dvg, &cfg, cal.lines, cal.count);
-            static const char *const modes[] = { "SIZE", "POSITION", "GAMMA FLOOR", "BRIGHTNESS" };
-            char line[64];
-            snprintf(line, sizeof line, calibrate ? "%s  B1 MODE  B2 SAVE" : "%s  FIRE MODE  F2 BACK", modes[cal.mode]);
+            /* what is being set, and how it is now */
+            char what[48];
+            switch (cal.mode) {
+            case 0:  snprintf(what, sizeof what, "SIZE %.1f%% x %.1f%%", (4096 - cfg.margin_left - cfg.margin_right) * 100.0 / 4096.0,
+                              (4096 - cfg.margin_bottom - cfg.margin_top) * 100.0 / 4096.0); break;
+            case 1:  snprintf(what, sizeof what, "POSITION %+d %+d", (cfg.margin_left - cfg.margin_right) / 2,
+                              (cfg.margin_bottom - cfg.margin_top) / 2); break;
+            case 2:  snprintf(what, sizeof what, "GAMMA %.2f  BLACK %d%%", cfg.gamma, (int)lrintf(cfg.floor * 100.0f)); break;
+            default: snprintf(what, sizeof what, "BRIGHTNESS %d%%", (int)lrintf(cfg.brightness * 100.0f)); break;
+            }
+            char line[96];
+            snprintf(line, sizeof line, calibrate ? "%s  B1 MODE  B2 SAVE" : "%s  FIRE MODE  F2 BACK", what);
             const char *text[] = { line };
             draw_text_lines(app.dvg, text, 1, 700);
         } else if (menu.open) {
+            if (sw_menu_screen_page(&menu)) {
+                /* the picture's edge and its middle, behind the page of its settings */
+                build_pattern(&cal, &cfg);
+                sw_draw_lines(app.dvg, &cfg, cal.lines, 4);
+                sw_draw_lines(app.dvg, &cfg, cal.lines + 8, 2);
+            }
             sw_menu_draw(&menu, &cfg, &brd.m, app.dvg);
         } else if (brd.controls_test) {
             draw_controls_test(&app, &cfg, &brd, sw_sched_vg_alpha(&sched), mbox_ok);

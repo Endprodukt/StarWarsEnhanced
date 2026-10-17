@@ -2,6 +2,18 @@
 
 Stand: 2026-10-13. Architektur und Hintergründe: [PLAN.md](PLAN.md).
 
+## Bildmenü mit Zahlen (2026-10-17, 0.3.28)
+
+Wunsch des Besitzers: Größe einstellbar und alles mit Zahlen, sonst weiß man
+nicht, was man einstellt. Die Seite SCREEN des Testmenüs hat jetzt SIZE
+ACROSS / SIZE UP (Prozent der Bildfläche, Schritt 16 Board-Einheiten je
+Seite = 0,8 %), POSITION ACROSS / UP (Board-Einheiten, Schritt 16),
+BRIGHTNESS (%, Schritt 5), GAMMA (Schritt 0,05) und BLACK LEVEL (Floor, %);
+links/rechts (oder Feuer) ändert, gespeichert beim Verlassen des Menüs.
+Hinter der Seite stehen der Bildrand und das Mittelkreuz, damit man Größe
+und Lage sieht. Das Testbild (TEST PATTERN, vorher SCREEN CALIBRATION) zeigt
+in seiner Zeile jetzt den Wert des Modus. Am Automaten noch nicht gesehen.
+
 ## Ziel (Wunsch des Besitzers, 2026-10-13)
 
 Hundertprozentig C, auch der Ton; keine Emulation. Eine feste Bildrate ohne
