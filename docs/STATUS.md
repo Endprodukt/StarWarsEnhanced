@@ -1034,6 +1034,12 @@ hoch lagen. Installiert wird über das Menü (INSTALL GAMES), nicht von
 selbst; das Installieren aus der `.vpk` ist am Gerät nicht ausprobiert.
 Offen: Version in `package/game.ini` vor jedem neuen Paket hochzählen.
 
+Zwei Pakete (2026-10-17): `sh tools/pack.sh` macht das zum Weitergeben, ohne
+die Filmmusik des Besitzers (nur der Torpedo PMSF2 der Sammlung bleibt in
+`sounds/music`; die Musik ist die der Platine); `WITH_MUSIC=1 sh
+tools/pack.sh` das private mit allen zehn Stücken nach `dist/private/`.
+`deploy.sh` bringt weiter alles, Musik eingeschlossen, auf den Automaten.
+
 ## Falcon, Kamera, Sterne, Gitter (2026-10-13)
 
 Vier Wünsche des Besitzers, alle umgesetzt (Commit nach a8f006e):
