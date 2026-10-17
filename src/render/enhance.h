@@ -61,8 +61,6 @@ enum { SW_VIEW_ARCADE, SW_VIEW_COCKPIT, SW_VIEW_OUTSIDE, SW_VIEWS };
 
 typedef struct sw_enhance {
     int surface, stars, towers, dogfights;      /* the settings */
-    int deathstar;                              /* 1: the Death Star in the films' colours, lit by a sun, with more on its surface */
-    int xwing;                                  /* 1: the X-wing's nose and guns (the arcade's view) in the model's colours */
     int logo;                                   /* 1: the STAR WARS logo yellow */
     int clip;                                   /* 1: what stands in the trench is cut at the edge of the screen */
     int falcon;                                 /* 1: the Millennium Falcon flies over before the exhaust port */

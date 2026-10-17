@@ -334,8 +334,6 @@ static void apply_enhanced(board *b, const sw_display_cfg *cfg)
     b->pic.enhance.stars = on && cfg->enh_stars;
     b->pic.enhance.towers = on && cfg->enh_towers;
     b->pic.enhance.dogfights = on && cfg->enh_dogfights;
-    b->pic.enhance.deathstar = on && cfg->enh_deathstar;
-    b->pic.enhance.xwing = on && cfg->enh_xwing;
     b->pic.enhance.logo = on && cfg->logo_yellow;
     b->pic.enhance.clip = on && cfg->enh_clip;
     b->pic.enhance.falcon = on && cfg->enh_falcon;
