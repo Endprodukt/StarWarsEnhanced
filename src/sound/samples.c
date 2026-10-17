@@ -1,6 +1,7 @@
 /* samples.c - see samples.h. */
 #include "sound/samples.h"
 
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -34,6 +35,7 @@ enum {
 #define DUCK_ATTACK  0.020f         /* seconds */
 #define DUCK_RELEASE 0.300f
 #define BOARD_HOLD   0.15f          /* the speech chip's pauses between words still count */
+#define MUSIC_TAIL   0.7f           /* seconds a replaced or stopped piece takes to die away (to -40 dB) */
 
 static int is_big(int id) { return id == AUDSX || id == AUDDF || id == AUDCR; }
 
@@ -311,6 +313,18 @@ static const sw_sample *pick_of(sw_samples *s, sw_sample_set *set)
 
 static const sw_sample *pick(sw_samples *s, int n) { return pick_of(s, &s->sound[n]); }
 
+/* The music playing is let go: it dies away (sw_samples_next2) rather than
+ * stopping dead. */
+static void music_release(sw_samples *s)
+{
+    if (s->music.id) {
+        s->tail.rec = s->music.rec;
+        s->tail.at = s->music.at;
+        s->tail.gain = 1.0f;
+    }
+    s->music.id = 0;
+}
+
 void sw_samples_cue(sw_samples *s, int n, double delay)
 {
     sw_sample_set *set = n == SW_CUE_FALCON ? &s->falcon : n > 0 && n < SW_SOUND_REQUESTS ? &s->sound[n] : NULL;
@@ -331,6 +345,7 @@ int sw_samples_request(sw_samples *s, int n)
 {
     if (n == 0) {                           /* the board's reset */
         for (int i = 0; i < SW_SAMPLE_VOICES; i++) s->effect[i].id = 0;
+        music_release(s);
         for (int i = 0; i < SW_CUES; i++) s->cue[i].rec = NULL;
         s->music.id = s->speech.id = 0;
         s->queued = 0;
@@ -342,7 +357,7 @@ int sw_samples_request(sw_samples *s, int n)
     if (n == AUDTCZ) stop_effect(s, AUDTC);
     if (n == SPKSKP) s->queued = 0;
     if (n == SPKYAU && s->hold_yahoo && s->enabled && s->sound[n].count) return 1;   /* (it comes with the Falcon) */
-    if (n >= FIRST_MUSIC && n <= LAST_MUSIC) s->music.id = 0;
+    if (n >= FIRST_MUSIC && n <= LAST_MUSIC) music_release(s);
     /* the small explosion over the ground: the plain blast when there is one */
     sw_sample_set *set = n == AUDSX && s->on_ground && s->ground_blast.count ? &s->ground_blast : &s->sound[n];
     if (!s->enabled || !set->count) return 0;
@@ -460,6 +475,15 @@ void sw_samples_next2(sw_samples *s, int *left, int *right)
         play(&s->music.id, s->music.rec, &s->music.at, &l, &r);
         under[0] += l * vm;
         under[1] += r * vm;
+    }
+    if (s->tail.rec) {                      /* the piece let go, dying away */
+        if (s->tail_k <= 0.0f) s->tail_k = expf(-4.6f / (MUSIC_TAIL * (float)(s->rate > 0 ? s->rate : 44100)));
+        int live = 1;
+        play(&live, s->tail.rec, &s->tail.at, &l, &r);
+        under[0] += l * vm * s->tail.gain;
+        under[1] += r * vm * s->tail.gain;
+        s->tail.gain *= s->tail_k;
+        if (!live || s->tail.gain < 0.01f) s->tail.rec = NULL;
     }
     /* the cues: speech over everything, the Falcon under speech only */
     for (int i = 0; i < SW_CUES; i++) {

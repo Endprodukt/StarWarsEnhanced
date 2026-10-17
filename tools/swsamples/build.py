@@ -93,11 +93,38 @@ def music_stereo(path, db, longest):
     st = st[a0:a1][: int(longest * RATE)].copy()
     fo = min(len(st) // 4, int(0.06 * RATE))
     st[-fo:] *= (np.linspace(1.0, 0.0, fo) ** 2)[:, None]
+    st = reverb_tail(st)
     g = 10 ** ((db - loudness(st.mean(1), RATE)) / 20)
     pk = np.abs(st).max() * g
     if pk > 10 ** (-1 / 20):
         g *= 10 ** (-1 / 20) / pk
     return st * g
+
+
+def reverb_tail(st, rate=RATE, win=0.6, rt60=1.8, length=2.2, wet_db=-4.0):
+    """the owner's music ends on a cut: its last `win` seconds through a plain reverb
+    (decaying noise, low-passed, RT60 `rt60` s), the tail appended, so that the last notes
+    ring out (2026-10-17). Stereo in, stereo out, longer by `length` seconds."""
+    from scipy.signal import fftconvolve, lfilter
+    n = len(st)
+    w = min(n, int(win * rate))
+    seg = st[n - w:].copy()
+    seg *= (np.sin(np.linspace(0.0, np.pi / 2.0, w)) ** 2)[:, None]     # the reverb builds up towards the end
+    ir_n = int(length * rate)
+    t = np.arange(ir_n) / rate
+    env = 10 ** (-3.0 * t / rt60)                                      # -60 dB at rt60
+    rng = np.random.default_rng(20261017)
+    a = np.exp(-2.0 * np.pi * 3200.0 / rate)                           # one pole, about 3 kHz
+    out = np.zeros((n + ir_n, 2))
+    out[:n] = st
+    for c in range(2):
+        ir = lfilter([1.0 - a], [1.0, -a], rng.standard_normal(ir_n) * env)
+        pre = int(0.015 * rate)
+        ir[:pre] *= np.linspace(0.0, 1.0, pre)
+        ir /= np.sqrt(np.sum(ir ** 2))                                 # unit energy
+        wet = fftconvolve(seg[:, c], ir) * 10 ** (wet_db / 20.0)
+        out[n - w:n - w + len(wet), c] += wet
+    return out
 
 
 def to_rate(m, sr):

@@ -91,6 +91,10 @@ typedef struct sw_samples {
         uint32_t at;
         uint32_t started;           /* (the oldest gives way when all are busy) */
     } effect[SW_SAMPLE_VOICES], music, speech;
+    /* the music piece just replaced or stopped: it dies away over MUSIC_TAIL
+     * seconds (a release) in place of being cut off (the owner, 2026-10-17) */
+    struct { const sw_sample *rec; uint32_t at; float gain; } tail;
+    float    tail_k;                /* its gain's factor a sample (0: not computed yet) */
     uint8_t  queue[SW_SAMPLE_QUEUE];    /* sentences waiting */
     int      queued;
     uint32_t clock;
