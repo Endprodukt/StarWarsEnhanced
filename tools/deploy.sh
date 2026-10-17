@@ -15,6 +15,8 @@ ssh $K $H "rm -rf $D/sounds" && scp -q -r $K package/sounds $H:$D/sounds || exit
 # as soon as its game dies, while the new game is starting - both then hold
 # the screen and the board, the game stalls (seen 2026-10-17). The new run.sh
 # stops the menu itself; we wait for the game up to 20 s (the menu takes a
-# while to leave).
-ssh $K $H "cd $D && pkill -f 'sh \./run\.sh'; pkill -INT -x swenhanced; for i in 1 2 3 4 5 6; do pgrep -x swenhanced > /dev/null || break; sleep 0.5; done; pkill -KILL -x swenhanced; chmod 755 swenhanced.new avgreplay run.sh && mv -f swenhanced.new swenhanced && md5sum swenhanced && grep '^version' game.ini && (setsid nohup ./run.sh $* > /dev/null 2>&1 &) ; for i in \$(seq 1 40); do sleep 0.5; pgrep -x swenhanced > /dev/null && break; done; sleep 3; pgrep -x swenhanced > /dev/null && echo game-running || echo GAME-NOT-RUNNING; pgrep -x vector_pie_menu > /dev/null && echo MENU-STILL-RUNNING; tail -n 3 run.log"
+# while to leave). After the kill we wait until the old game is really gone
+# and two seconds more: started at once, the new one found the screen still
+# held (SDL: kmsdrm not available; 2026-10-17).
+ssh $K $H "cd $D && pkill -f 'sh \./run\.sh'; pkill -INT -x swenhanced; for i in 1 2 3 4 5 6; do pgrep -x swenhanced > /dev/null || break; sleep 0.5; done; pkill -KILL -x swenhanced; while pgrep -x swenhanced > /dev/null; do sleep 0.3; done; sleep 2; chmod 755 swenhanced.new avgreplay run.sh && mv -f swenhanced.new swenhanced && md5sum swenhanced && grep '^version' game.ini && (setsid nohup ./run.sh $* > /dev/null 2>&1 &) ; for i in \$(seq 1 40); do sleep 0.5; pgrep -x swenhanced > /dev/null && break; done; sleep 3; pgrep -x swenhanced > /dev/null && echo game-running || echo GAME-NOT-RUNNING; pgrep -x vector_pie_menu > /dev/null && echo MENU-STILL-RUNNING; tail -n 3 run.log"
 md5sum build-pi/swenhanced
