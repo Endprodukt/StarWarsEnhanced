@@ -60,6 +60,13 @@ PMTHB   -30  30  @music/PMTHB.wav
 PMDAR   -30  30  @music/PMDAR.wav
 PM4TH   -30  30  @music/PM4TH.wav
 PMCNT   -30  40  @music/PMCNT.wav
+# (2026-10-17: the owner's remaining five; all ten leveled alike to -30 dB, their sources
+# ranged from -12 to -28 dB)
+PMBEN   -30  30  @music/PMBEN.wav
+PMDES   -30  30  @music/PMDES.wav
+PMEND   -30  30  @music/PMEND.wav
+PMREB   -30  30  @music/PMREB.wav
+PMRRP   -30  30  @music/PMRRP.wav
 
 # --- TIE fighters flying past -----------------------------------------------------------
 AUDPB   -31  2.6 @sfx/Vehicles/TIE Fighter/TIE Flyby 2.wav; @sfx/Vehicles/TIE Fighter/TIE Flyby 4.wav; @sfx/Vehicles/TIE Fighter/TIE Flyby 10.wav; @sfx/Vehicles/TIE Fighter/TIE Flyby 12.wav; @sfx/Vehicles/TIE Fighter/TIE Flyby 13.wav; @sfx/Vehicles/TIE Fighter/TIE Flyby 16B.wav; @sfx/Vehicles/TIE Fighter/TIE Flyby 21.wav; @sfx/Vehicles/TIE Fighter/TIE Flyby 27A.wav
