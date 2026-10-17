@@ -131,7 +131,10 @@ int main(void)
     if (sw_samples_request(&s, 0x24) != 2) { printf("PMTH5 not taken as music\n"); fail = 1; }
     loud(100);
     if (sw_samples_request(&s, 0x1d) != 0) { printf("PMDAR taken\n"); fail = 1; }
-    if (loud(1000) != 0) { printf("PMTH5 goes on under the next piece\n"); fail = 1; }
+    /* (it dies away over MUSIC_TAIL seconds, a release, in place of stopping dead) */
+    if (loud(1000) == 0) { printf("PMTH5 cut dead under the next piece, no release\n"); fail = 1; }
+    loud(22050);
+    if (loud(1000) != 0) { printf("PMTH5 still sounds a second after the next piece\n"); fail = 1; }
 
     /* speech: one sentence after the other */
     sw_samples_request(&s, 0x10);

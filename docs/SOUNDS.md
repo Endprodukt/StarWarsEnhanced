@@ -130,6 +130,10 @@ sounds as before, so sounds can be replaced one at a time.
   playing; a replaced piece also ends the board's own music.
 * Speech: sentences play one after the other; `SPKSKP` drops those waiting.
 * Request 00 (the board's reset) silences everything.
+* Music: each piece of the owner's recordings ends with a reverb tail (build.py,
+  `reverb_tail`: its last 0.6 s through a plain reverb, RT60 1.8 s), and a
+  piece replaced by the next one, or stopped by the board's reset, dies away
+  over 0.7 s in the player (`tail` in samples.c) in place of being cut.
 * The setting `sound_replace = 0` (test menu: REPLACED SOUNDS) switches all
   of them off. The test menu's SOUND TEST plays any request, replaced or
   not. `swvideo --sounds DIR` films with a folder of replacements.

@@ -69,6 +69,14 @@ typedef struct sw_display_cfg {
      * in true perspective, with more to them, seen from farther and fading
      * in; far off, TIE fighters chasing an X-wing. */
     int enh_surface, enh_stars, enh_towers, enh_dogfights;
+    /* Enhanced: 1: the Death Star in the films' colours (grey, its trench
+     * bright, the superlaser's spokes green), lit by a sun, with more on
+     * its surface as it comes near. 0: as the arcade machine draws it. */
+    int enh_deathstar;
+    /* Enhanced: 1: the X-wing's nose and guns of the arcade's view in the
+     * model's colours (grey hull, red markings). 0: blue and red, as the
+     * arcade machine. */
+    int enh_xwing;
     /* Enhanced, in the trench: 1: what stands in it keeps its shape as it
      * comes near, its lines cut at the edge of the screen. 0: as the arcade
      * machine, which pushes the points of a near object to the edge. */

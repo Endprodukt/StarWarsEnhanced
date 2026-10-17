@@ -337,6 +337,40 @@ wiederholt sich alle 8000h, jedes Gebäude wird auf dieser und der nächsten
 Runde betrachtet. Standbilder: am Start der Oberfläche nichts neben dem
 Spieler, am Horizont die kleinen dunklen Türme.
 
+## Kamera aus, Musik klingt aus, Todesstern und X-Wing in Filmfarben (2026-10-17, 0.3.26)
+
+* **Gegnerverhalten geprüft** (Besitzer: "Gegner kommen auf einmal von
+  hinten", "Schwenk zum Todesstern nicht rechtzeitig"). Der Spielkern ist
+  unverändert: eine neue MAME-Aufnahme (4000 Frames, gespieltes Skript mit
+  Weltraum, Anflug, Oberfläche, Graben) läuft mit `swcompare` in jeder
+  Phase mit 0 abweichenden Frames. Der einzige Eingriff ins Spiel war die
+  **Smooth Camera** (`camera_ease`, bisher Standard an): sie begrenzt die
+  Drehrate des Schiffs (AIMA zum Gegner, AIMDTH zum Todesstern) auf 12 von
+  127 je Bild. Dadurch dreht das Schiff später und langsamer zum Ziel: Der
+  Gegner, den das Original schon vor sich hat, steht noch seitlich oder
+  hinten, und der Schwenk zum Todesstern kommt zu spät (die TIE Fighter
+  sind schon weg). Jetzt **Standard aus**; der alte Schlüssel `enh_camera`
+  wird ignoriert (damit gespeicherte Einstellungen zurück auf das Original
+  gehen), der neue heißt `camera_ease`. Die Option bleibt im Menü.
+* **Musik klingt aus:** (1) `build.py` legt auf die letzten 0,6 s jedes
+  Stücks einen Hall (abklingendes, tiefpassgefiltertes Rauschen, RT60
+  1,8 s, −4 dB) und hängt den Nachhall an (2,2 s), damit der Schnitt am
+  Ende nicht hart ist. (2) Wird ein Stück vom nächsten abgelöst oder vom
+  Reset der Platine beendet, klingt es im Player 0,7 s exponentiell aus
+  (`tail` in `samples.c`) statt abzureißen. `test_samples` angepasst.
+* **Todesstern in Filmfarben** (FILM DEATH STAR, `enh_deathstar`, an): die
+  Umfärbung und die Details des Dogfights (0.3.1x, `death_star_colors`)
+  jetzt auch im Spiel, für alle Todessterne der Liste (Auswahlseite, Anflug,
+  Explosion): Kreis aus den äußersten Punkten (kleinste Quadrate), Sonne
+  fest im Bild von links oben, Umriss und Platten grau, Graben hell, Schüssel
+  grau mit grünen Speichen; ab Radius 45 Breiten- und Längenlinien, ab 80
+  auch Platten (bis rund 250 Linien zusätzlich, wie im Dogfight).
+* **X-Wing-Farben** (X-WING COLORS, `enh_xwing`, MODEL): Nase und Kanonen
+  der Arcade-Ansicht (SW_TAG_PLANE, vom Spiel rot und blau gezeichnet)
+  bekommen die Farben des Modells: die roten Umrisse grau (Rumpf, 85 %),
+  die blauen Details rot (Markierungen, 70 %). ARCADE: wie der Automat.
+* Geprüft mit `swvideo` (Standbilder aus dem Film): Auswahlseite und Anflug.
+
 ## Boden-Explosion griff nicht (2026-10-17, 0.3.25)
 
 * 0.3.23 verglich die Phase mit `& ~1`; die Phasenkonstanten sind aber

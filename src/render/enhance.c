@@ -1569,6 +1569,217 @@ void sw_enhance_free(sw_enhance *e)
     memset(e, 0, sizeof *e);
 }
 
+
+/* --- the Death Star in the films' colours ----------------------------------------------------
+
+ * The game's Death Star (the three to choose from, the one flown at, the one
+ * blowing up: SW_TAG_DSTAR) as the dogfight has it: its outline and plates
+ * grey, its trench bright, its dish grey with green spokes (the superlaser,
+ * glowing a little always), lit by a sun fixed on the screen (from the left
+ * and above); and, when it is big enough, more on its surface: latitudes
+ * along the trench, meridians across, plates here and there. The stamps are
+ * taller than wide on the screen (DS_K): the disc is found as a circle in
+ * their units. */
+#define DS_K (303.0 / 255.0 * 4.0 / 3.0)
+static const double DS_SUN[3] = { -0.42, 0.62, 0.66 };     /* to the right, up, towards the player */
+
+static double ds_lit(double rx, double ry)
+{
+    double rr = rx * rx + ry * ry, n[3] = { rx, ry, rr < 1.0 ? sqrt(1.0 - rr) : 0.0 };
+    double lit = n[0] * DS_SUN[0] + n[1] * DS_SUN[1] + n[2] * DS_SUN[2];
+    return lit < -0.25 ? 0.18 : lit > 0.35 ? 1.0 : 0.18 + 0.82 * (lit + 0.25) / 0.6;
+}
+
+static void ds_line(sw_enhance *e, unsigned key, double cx, double cy, double r, double x0, double y0, double x1, double y1, double base)
+{
+    if (e->n == e->cap) {
+        int cap = e->cap ? e->cap * 2 : 2048;
+        sw_line *o = (sw_line *)realloc(e->out, (size_t)cap * sizeof *o);
+        if (!o) return;
+        e->out = o;
+        e->cap = cap;
+    }
+    sw_line *l = &e->out[e->n++];
+    memset(l, 0, sizeof *l);
+    double k = ds_lit(((x0 + x1) * 0.5 - cx) / r, ((y0 + y1) * 0.5 - cy) / r);
+    l->x0 = (float)x0; l->y0 = (float)(y0 * DS_K);
+    l->x1 = (float)x1; l->y1 = (float)(y1 * DS_K);
+    l->color = WHT;
+    l->zz = 7;
+    l->intensity = (uint8_t)(base * k > 255.0 ? 255.0 : base * k);
+    l->id = ((uint64_t)SW_TAG(SW_TAG_DSTAR, key) << 48) | (0x40000000u + e->line_id++);
+    l->w0 = l->w1 = 1;
+    l->inst = e->inst;
+}
+
+/* More of its surface, laid on the sphere as the stamps have it (its
+ * trench, a great circle seen edge on, gives its equator). */
+static void ds_details(sw_enhance *e, unsigned key, double cx, double cy, double r, double tx, double ty, double dx, double dy, double dish_r)
+{
+    double ax = -ty, ay = tx;                           /* the axis: across the trench */
+    if (ax * (dx - cx) + ay * (dy - cy) < 0.0) { ax = -ax; ay = -ay; }  /* (the dish in the north) */
+    /* a point of the sphere: latitude, longitude (0 towards the player), on the screen */
+#define DS_AT(lat, lon, X, Y) do { double cl = cos(lat); (X) = cx + r * (cl * sin(lon) * tx + sin(lat) * ax); \
+                                   (Y) = cy + r * (cl * sin(lon) * ty + sin(lat) * ay); } while (0)
+    const double PI = 3.14159265358979;
+    static const double LATS[6] = { -55.0, -35.0, -16.0, 16.0, 35.0, 55.0 };
+    for (int i = 0; i < 6; i++) {
+        double lat = LATS[i] * PI / 180.0;
+        for (int k = 0; k < 8; k++) {
+            double a0 = (-90.0 + k * 22.5) * PI / 180.0, a1 = a0 + 22.5 * PI / 180.0, x0, y0, x1, y1;
+            DS_AT(lat, a0, x0, y0);
+            DS_AT(lat, a1, x1, y1);
+            if (dish_r > 0.0 && (hypot(x0 - dx, y0 - dy) < dish_r * 1.05 || hypot(x1 - dx, y1 - dy) < dish_r * 1.05)) continue;
+            ds_line(e, key, cx, cy, r, x0, y0, x1, y1, fabs(LATS[i]) < 20.0 ? 110.0 : 80.0);
+        }
+    }
+    static const double LONS[4] = { -62.0, -30.0, 30.0, 62.0 };
+    for (int i = 0; i < 4; i++) {
+        double lon = LONS[i] * PI / 180.0;
+        for (int k = 0; k < 10; k++) {
+            double a0 = (-80.0 + k * 16.0) * PI / 180.0, a1 = a0 + 16.0 * PI / 180.0, x0, y0, x1, y1;
+            if (fabs(a0) < 0.06 || fabs(a1) < 0.06) continue;     /* (not across the trench) */
+            DS_AT(a0, lon, x0, y0);
+            DS_AT(a1, lon, x1, y1);
+            if (dish_r > 0.0 && (hypot(x0 - dx, y0 - dy) < dish_r * 1.05 || hypot(x1 - dx, y1 - dy) < dish_r * 1.05)) continue;
+            ds_line(e, key, cx, cy, r, x0, y0, x1, y1, 70.0);
+        }
+    }
+    if (r < 80.0) return;                               /* (the plates only on a big one: four lines each) */
+    for (int i = 0; i < 40; i++) {
+        uint32_t h = hash((uint32_t)i * 2246822519u + 7u);
+        double lat = ((double)(h & 0xff) / 255.0 * 150.0 - 75.0) * PI / 180.0;
+        double lon = ((double)((h >> 8) & 0xff) / 255.0 * 160.0 - 80.0) * PI / 180.0;
+        double wl = (3.0 + (double)((h >> 16) & 7)) * PI / 180.0, hl = (2.0 + (double)((h >> 19) & 3)) * PI / 180.0;
+        if (fabs(lat) < 0.07 || fabs(lat) - hl < 0.07) continue;      /* (the trench is there) */
+        double c[4][2];
+        DS_AT(lat - hl, lon - wl, c[0][0], c[0][1]);
+        DS_AT(lat - hl, lon + wl, c[1][0], c[1][1]);
+        DS_AT(lat + hl, lon + wl, c[2][0], c[2][1]);
+        DS_AT(lat + hl, lon - wl, c[3][0], c[3][1]);
+        int on_dish = 0;
+        for (int k = 0; k < 4; k++) on_dish |= dish_r > 0.0 && hypot(c[k][0] - dx, c[k][1] - dy) < dish_r * 1.1;
+        if (on_dish) continue;
+        double base = 60.0 + (double)((h >> 22) & 31);
+        for (int k = 0; k < 4; k++)
+            ds_line(e, key, cx, cy, r, c[k][0], c[k][1], c[(k + 1) % 4][0], c[(k + 1) % 4][1], base);
+    }
+#undef DS_AT
+}
+
+/* One Death Star of the picture (the lines of SW_TAG_DSTAR with this key,
+ * from `first` to the end of e->out so far): coloured, lit, and detailed. */
+static void death_star_one(sw_enhance *e, unsigned key, int first)
+{
+    int last = e->n;
+    /* its disc: the middle of all its points, then a circle through the
+     * points farthest out (least squares; the plates lie inside) */
+    double sx = 0.0, sy = 0.0, sn = 0.0;
+    for (int i = first; i < last; i++) {
+        const sw_line *l = &e->out[i];
+        if ((unsigned)(l->id >> 48) != SW_TAG(SW_TAG_DSTAR, key)) continue;
+        sx += l->x0 + l->x1; sy += (l->y0 + l->y1) / DS_K; sn += 2.0;
+    }
+    if (sn < 8.0) return;
+    double mx = sx / sn, my = sy / sn, rmax = 0.0;
+    for (int i = first; i < last; i++) {
+        const sw_line *l = &e->out[i];
+        if ((unsigned)(l->id >> 48) != SW_TAG(SW_TAG_DSTAR, key)) continue;
+        double d0 = hypot(l->x0 - mx, l->y0 / DS_K - my), d1 = hypot(l->x1 - mx, l->y1 / DS_K - my);
+        if (d0 > rmax) rmax = d0;
+        if (d1 > rmax) rmax = d1;
+    }
+    if (rmax < 4.0) return;
+    double sxx = 0.0, sxy = 0.0, syy = 0.0, sxz = 0.0, syz = 0.0, sz = 0.0;
+    sx = sy = sn = 0.0;
+    for (int i = first; i < last; i++) {
+        const sw_line *l = &e->out[i];
+        if ((unsigned)(l->id >> 48) != SW_TAG(SW_TAG_DSTAR, key)) continue;
+        double xs[2] = { l->x0, l->x1 }, ys[2] = { l->y0 / DS_K, l->y1 / DS_K };
+        for (int k = 0; k < 2; k++) {
+            if (hypot(xs[k] - mx, ys[k] - my) < rmax * 0.85) continue;
+            double x = xs[k], y = ys[k], z = x * x + y * y;
+            sxx += x * x; sxy += x * y; syy += y * y; sx += x; sy += y; sn += 1.0;
+            sxz += x * z; syz += y * z; sz += z;
+        }
+    }
+    double cx = mx, cy = my, r = rmax;
+    {
+        double a[3][3] = { { sxx, sxy, sx }, { sxy, syy, sy }, { sx, sy, sn } }, b[3] = { -sxz, -syz, -sz };
+        double det = a[0][0] * (a[1][1] * a[2][2] - a[1][2] * a[2][1]) - a[0][1] * (a[1][0] * a[2][2] - a[1][2] * a[2][0]) +
+                     a[0][2] * (a[1][0] * a[2][1] - a[1][1] * a[2][0]);
+        if (sn >= 6.0 && fabs(det) > 1e-9) {
+            double v[3];
+            for (int c = 0; c < 3; c++) {
+                double m3[3][3];
+                for (int rr = 0; rr < 3; rr++)
+                    for (int cc = 0; cc < 3; cc++) m3[rr][cc] = cc == c ? b[rr] : a[rr][cc];
+                v[c] = (m3[0][0] * (m3[1][1] * m3[2][2] - m3[1][2] * m3[2][1]) - m3[0][1] * (m3[1][0] * m3[2][2] - m3[1][2] * m3[2][0]) +
+                        m3[0][2] * (m3[1][0] * m3[2][1] - m3[1][1] * m3[2][0])) / det;
+            }
+            double fx = -v[0] / 2.0, fy = -v[1] / 2.0, rr2 = fx * fx + fy * fy - v[2];
+            if (rr2 > 0.0 && sqrt(rr2) > rmax * 0.7 && sqrt(rr2) < rmax * 1.3) { cx = fx; cy = fy; r = sqrt(rr2); }
+        }
+    }
+    /* the dish: where its red spokes meet, and how far they reach; the
+     * trench: its longest bright line gives the way along the equator */
+    double dx = 0.0, dy = 0.0, dish_r = 0.0, tx = 1.0, ty = 0.0, best = 0.0;
+    int nd = 0;
+    for (int i = first; i < last; i++) {
+        const sw_line *l = &e->out[i];
+        if ((unsigned)(l->id >> 48) != SW_TAG(SW_TAG_DSTAR, key)) continue;
+        if (l->color == RED) { dx += l->x0 + l->x1; dy += (l->y0 + l->y1) / DS_K; nd += 2; }
+        if (l->color == WHT && l->intensity >= 60) {
+            double ex = l->x1 - l->x0, ey = (l->y1 - l->y0) / DS_K, len = hypot(ex, ey);
+            if (len > best && len > r) { best = len; tx = ex / len; ty = ey / len; }
+        }
+    }
+    if (nd) { dx /= nd; dy /= nd; }
+    for (int i = first; i < last && nd; i++) {
+        const sw_line *l = &e->out[i];
+        if ((unsigned)(l->id >> 48) != SW_TAG(SW_TAG_DSTAR, key) || l->color != RED) continue;
+        double e0 = hypot(l->x0 - dx, l->y0 / DS_K - dy), e1 = hypot(l->x1 - dx, l->y1 / DS_K - dy);
+        if (e0 > dish_r) dish_r = e0;
+        if (e1 > dish_r) dish_r = e1;
+    }
+    for (int i = first; i < last; i++) {
+        sw_line *l = &e->out[i];
+        if ((unsigned)(l->id >> 48) != SW_TAG(SW_TAG_DSTAR, key)) continue;
+        double lx = (l->x0 + l->x1) * 0.5 - cx, ly = (l->y0 + l->y1) * 0.5 / DS_K - cy;
+        double k = ds_lit(lx / r, ly / r), base;
+        unsigned c = WHT;
+        if (l->color == RED) {
+            /* the dish: its spokes green where they meet, its rim grey and bright */
+            int spoke = dish_r > 0.0 && hypot(l->x1 - l->x0, (l->y1 - l->y0) / DS_K) > dish_r * 0.55;
+            c = spoke ? GRN : WHT;
+            base = spoke ? 170.0 : 150.0;
+            if (spoke && k < 0.55) k = 0.55;    /* (the superlaser glows, lit or not) */
+        } else if (l->color == WHT) {
+            base = 210.0;                       /* the trench */
+            if (k < 0.4) k = 0.4;
+        } else {
+            base = 135.0;                       /* the plates and the outline */
+        }
+        l->color = (uint8_t)c;
+        l->intensity = (uint8_t)(base * k > 255.0 ? 255.0 : base * k);
+    }
+    if (r >= 45.0 && best > 0.0) ds_details(e, key, cx, cy, r, tx, ty, dx, dy, dish_r);
+}
+
+static void death_star(sw_enhance *e, int first)
+{
+    /* each Death Star of the picture, by its key (the three to choose from, the one flown at, the one blowing up) */
+    unsigned done = 0;
+    for (int i = first; i < e->n; i++) {
+        unsigned tag = (unsigned)(e->out[i].id >> 48);
+        if (SW_TAG_SECTION(tag) != SW_TAG_DSTAR) continue;
+        unsigned key = tag & 0x3ff;
+        if (key > 31 || (done & (1u << key))) continue;
+        done |= 1u << key;
+        death_star_one(e, key, first);
+    }
+}
+
 int sw_enhance_run(sw_enhance *e, const sw_machine *m, double now, const sw_line *in, int n, const sw_line **out)
 {
     e->n = e->n_faces = 0;
@@ -1588,8 +1799,14 @@ int sw_enhance_run(sw_enhance *e, const sw_machine *m, double now, const sw_line
     int logo = e->logo && phase >= SW_PHSBNR && phase <= SW_PHSHIS + 1;     /* (the attract mode) */
     if (!in_trench) e->falcon_at = 0.0, e->falcon_done = 0, e->falcon_cued = 0, e->falcon_seen_at = 0.0, e->falcon_rate = 0.0, e->falcon_speed = 0.0;
     /* the cockpit wherever the game shows the X-wing's nose and guns */
-    int plane = 0;
-    for (int i = 0; i < n && !plane; i++) plane = SW_TAG_SECTION((unsigned)(in[i].id >> 48)) == SW_TAG_PLANE;
+    int plane = 0, dstar = 0;
+    for (int i = 0; i < n && !(plane && dstar); i++) {
+        unsigned sec = SW_TAG_SECTION((unsigned)(in[i].id >> 48));
+        plane |= sec == SW_TAG_PLANE;
+        dstar |= sec == SW_TAG_DSTAR;
+    }
+    dstar = dstar && e->deathstar;
+    int xwing = plane && e->xwing && e->view == SW_VIEW_ARCADE;     /* (the nose and guns recoloured) */
     /* (choosing the Death Star shows the nose and guns too, but is no flight:
      * seen as on the arcade machine) */
     if (!e->dogfight && (phase == SW_PHSSDS || phase == SW_PHSSDS + 1)) plane = 0;
@@ -1605,7 +1822,7 @@ int sw_enhance_run(sw_enhance *e, const sw_machine *m, double now, const sw_line
     int boom = e->blast && dead && now - e->blast_at >= 0.0 && now - e->blast_at < BLAST_LONG;
     if (boom) plane = 1;                    /* (its views go on while it blows up) */
     int cock = plane && e->view == SW_VIEW_COCKPIT, outs = plane && e->view == SW_VIEW_OUTSIDE;
-    if (!ground && !logo && !trench && !clip && !falcon && !cock && !outs && !boom) {
+    if (!ground && !logo && !trench && !clip && !falcon && !cock && !outs && !boom && !dstar && !xwing) {
         *out = in;
         return n;
     }
@@ -1624,6 +1841,13 @@ int sw_enhance_run(sw_enhance *e, const sw_machine *m, double now, const sw_line
         if ((cock || outs) && SW_TAG_SECTION(tag) == SW_TAG_PLANE) continue;
         e->out[e->n] = in[i];
         if (logo && SW_TAG_SECTION(tag) == SW_TAG_BANNER) e->out[e->n].color = YLW;
+        if (xwing && SW_TAG_SECTION(tag) == SW_TAG_PLANE) {
+            /* the model's colours in place of the arcade's: its red outlines
+             * the grey of the hull, its blue details the red of the markings */
+            sw_line *l = &e->out[e->n];
+            if (l->color == RED) { l->color = WHT; l->intensity = (uint8_t)(l->intensity * 0.85f); }
+            else if (l->color == BLU) { l->color = RED; l->intensity = (uint8_t)(l->intensity * 0.7f); }
+        }
         if (clip && in[i].d3) {
             /* from its ends in space, cut where it leaves the player's sight */
             sw_line *l = &e->out[e->n];
@@ -1635,6 +1859,7 @@ int sw_enhance_run(sw_enhance *e, const sw_machine *m, double now, const sw_line
         }
         e->n++;
     }
+    if (dstar) death_star(e, 0);
     if (trench) stars(e, 1, now);
     if (falcon) falcon_fly(e, m, now);
     if (ground && e->stars) stars(e, 0, now);

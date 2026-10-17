@@ -23,6 +23,7 @@ enum {
     L_PAGE_OPTIONS, L_PAGE_GRAPHICS, L_PAGE_SOUND, L_PAGE_CONTROLS, L_PAGE_SCREEN,
     /* graphics */
     L_SMOOTH, L_CAMERA, L_STEADY, L_OCCLUSION, L_LOGO, L_SURFACE, L_TOWERS, L_DOGFIGHTS, L_STARS, L_CLIP, L_FALCON, L_COCKPIT, L_DEMO, L_BLAST,
+    L_DEATHSTAR, L_XWING,
     /* sound */
     L_SAMPLES, L_ENGINE, L_VOL_MUSIC, L_VOL_EFFECTS, L_VOL_SPEECH, L_VOL_ENGINE, L_SOUND_TEST,
     /* controls: the yoke, then one line per digital input (platform/bind.h) */
@@ -46,7 +47,7 @@ enum { P_MAIN, P_OPTIONS, P_GRAPHICS, P_SOUND, P_CONTROLS, P_SCREEN, N_PAGES };
 static const struct { const char *title; uint8_t lines[PAGE_MAX + 4]; } PAGES[N_PAGES] = {
     { "TEST MENU", { L_PAGE_OPTIONS, L_PAGE_GRAPHICS, L_PAGE_SOUND, L_PAGE_CONTROLS, L_PAGE_SCREEN, 0, L_OPERATOR, L_EXIT, N_LINES } },
     { "GAME OPTIONS", { L_OPT0, L_OPT0 + 1, L_OPT0 + 2, L_OPT0 + 3, 0, L_OPT0 + 4, L_OPT0 + 5, L_OPT0 + 6, L_OPT0 + 7, 0, L_BACK, N_LINES } },
-    { "GRAPHICS", { L_SMOOTH, L_CAMERA, L_STEADY, L_OCCLUSION, L_LOGO, L_COCKPIT, L_DEMO, L_BLAST, L_SURFACE, L_TOWERS, L_DOGFIGHTS, 0, L_STARS, L_CLIP, L_FALCON, 0, L_BACK, N_LINES } },
+    { "GRAPHICS", { L_SMOOTH, L_CAMERA, L_STEADY, L_OCCLUSION, L_LOGO, L_COCKPIT, L_DEMO, L_BLAST, L_DEATHSTAR, L_XWING, L_SURFACE, L_TOWERS, L_DOGFIGHTS, 0, L_STARS, L_CLIP, L_FALCON, 0, L_BACK, N_LINES } },
     { "SOUND", { L_SAMPLES, L_ENGINE, 0, L_VOL_MUSIC, L_VOL_EFFECTS, L_VOL_SPEECH, L_VOL_ENGINE, 0, L_SOUND_TEST, 0, L_BACK, N_LINES } },
     { "CONTROLS", { L_YOKE, 0,
                     L_BIND0 + ACT_LEFT, L_BIND0 + ACT_RIGHT, L_BIND0 + ACT_UP, L_BIND0 + ACT_DOWN,
@@ -179,6 +180,8 @@ int sw_menu_update(sw_menu *u, sw_display_cfg *cfg, sw_machine *m, vp_input *in,
     case L_DEMO:          return toggle(&cfg->enh_demo);
     case L_COCKPIT:       cfg->enh_view = step(cfg->enh_view % SW_VIEWS, d, 0, SW_VIEWS - 1); return SW_MENU_CHANGED;
     case L_CAMERA:        return toggle(&cfg->enh_camera);
+    case L_DEATHSTAR:     return toggle(&cfg->enh_deathstar);
+    case L_XWING:         return toggle(&cfg->enh_xwing);
     case L_SAMPLES:       return toggle(&cfg->sound_replace);
     case L_ENGINE:        return toggle(&cfg->enh_engine);
     case L_VOL_MUSIC:     cfg->vol_music = clamp_step(cfg->vol_music, d * 10, 0, 200); return SW_MENU_CHANGED;
@@ -249,6 +252,8 @@ static void describe(int line, const sw_menu *u, const sw_display_cfg *cfg, cons
     case L_FALCON:        *label = "FALCON FLY-OVER";   snprintf(value, size, "%s", on_off(cfg->enh_falcon)); break;
     case L_BLAST:         *label = "SHIP EXPLOSION";    snprintf(value, size, "%s", on_off(cfg->enh_blast)); break;
     case L_CAMERA:        *label = "SMOOTH CAMERA";     snprintf(value, size, "%s", on_off(cfg->enh_camera)); break;
+    case L_DEATHSTAR:     *label = "FILM DEATH STAR";   snprintf(value, size, "%s", on_off(cfg->enh_deathstar)); break;
+    case L_XWING:         *label = "X-WING COLORS";     snprintf(value, size, "%s", cfg->enh_xwing ? "MODEL" : "ARCADE"); break;
     case L_SAMPLES:       *label = "REPLACED SOUNDS";   snprintf(value, size, "%s", on_off(cfg->sound_replace)); break;
     case L_ENGINE:        *label = "ENGINE SOUND";      snprintf(value, size, "%s", on_off(cfg->enh_engine)); break;
     case L_VOL_MUSIC:     *label = "MUSIC VOLUME";      snprintf(value, size, "%d", cfg->vol_music); break;

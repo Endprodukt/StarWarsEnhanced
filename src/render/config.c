@@ -34,11 +34,12 @@ void sw_display_cfg_defaults(sw_display_cfg *c)
     c->steady_frames = 1;
     c->occlusion = 1;
     c->enh_surface = c->enh_stars = c->enh_towers = c->enh_dogfights = 1;
+    c->enh_deathstar = c->enh_xwing = 1;
     c->logo_yellow = 1;
     c->enh_clip = 1;
     c->enh_falcon = 1;
     c->enh_blast = 1;
-    c->enh_camera = 1;
+    c->enh_camera = 0;      /* (the arcade's turns: with it the owner found the enemies came from elsewhere, 2026-10-17) */
     c->enh_demo = 1;
     c->sound_replace = 1;
     c->enh_engine = 1;
@@ -71,13 +72,15 @@ static int set(sw_display_cfg *c, const char *key, const char *val)
         { "occlusion", &c->occlusion },
         { "enh_surface", &c->enh_surface }, { "enh_stars", &c->enh_stars },
         { "enh_towers", &c->enh_towers }, { "enh_dogfights", &c->enh_dogfights },
-        { "enh_clip", &c->enh_clip }, { "enh_falcon", &c->enh_falcon }, { "enh_blast", &c->enh_blast }, { "enh_camera", &c->enh_camera },
+        { "enh_deathstar", &c->enh_deathstar }, { "enh_xwing", &c->enh_xwing },
+        { "enh_clip", &c->enh_clip }, { "enh_falcon", &c->enh_falcon }, { "enh_blast", &c->enh_blast }, { "camera_ease", &c->enh_camera },
         { "enh_view", &c->enh_view }, { "enh_demo", &c->enh_demo },
         { "logo_yellow", &c->logo_yellow }, { "sound_replace", &c->sound_replace }, { "enh_engine", &c->enh_engine },
         { "vol_music", &c->vol_music }, { "vol_effects", &c->vol_effects }, { "vol_speech", &c->vol_speech }, { "vol_engine", &c->vol_engine },
     };
     if (sw_bind_parse(key, val)) return 0;      /* the owner's bindings of the digital inputs (platform/bind.h) */
     if (strcmp(key, "sort_strokes") == 0) return 0;     /* (gone: settings files from before may still have it) */
+    if (strcmp(key, "enh_camera") == 0) return 0;       /* (retired 2026-10-17: on by default, it changed the game; now camera_ease, off) */
     for (size_t i = 0; i < sizeof floats / sizeof floats[0]; i++)
         if (strcmp(key, floats[i].k) == 0) { *floats[i].f = (float)atof(val); return 0; }
     for (size_t i = 0; i < sizeof ints / sizeof ints[0]; i++)
@@ -157,6 +160,10 @@ int sw_display_cfg_save(const sw_display_cfg *c, const char *path)
                "; towers in true perspective with more detail and from farther, chases far off\n"
                "enh_surface = %d\nenh_stars = %d\nenh_towers = %d\nenh_dogfights = %d\n",
             c->enh_surface, c->enh_stars, c->enh_towers, c->enh_dogfights);
+    fprintf(f, "\n; enhanced: the Death Star in the films' colours, lit by a sun, with more on its surface\n"
+               "enh_deathstar = %d\n", c->enh_deathstar);
+    fprintf(f, "\n; enhanced: the X-wing's nose and guns (the arcade's view) in the model's colours\n"
+               "enh_xwing = %d\n", c->enh_xwing);
     fprintf(f, "\n; enhanced, in the trench: near objects keep their shape, cut at the edge of the screen\n"
                "enh_clip = %d\n", c->enh_clip);
     fprintf(f, "\n; enhanced, in the trench: shortly before the exhaust port the Millennium Falcon\n"
@@ -165,8 +172,9 @@ int sw_display_cfg_save(const sw_display_cfg *c, const char *path)
     fprintf(f, "\n; enhanced: the player's X-wing blows up when it is lost\n"
                "enh_blast = %d\n", c->enh_blast);
     fprintf(f, "\n; enhanced: the camera's turns towards the enemy it tracks gather speed and slow\n"
-               "; down (0: at full rate from the first frame, as the arcade machine)\n"
-               "enh_camera = %d\n", c->enh_camera);
+               "; down (0, the default: at full rate from the first frame, as the arcade machine;\n"
+               "; 1 reaches into the game: the ship turns later, the enemies come from elsewhere)\n"
+               "camera_ease = %d\n", c->enh_camera);
     fprintf(f, "\n; enhanced: from where the player sees in flight: 0 as the arcade machine (the\n"
                "; X-wing's nose and guns), 1 from inside the cockpit, 2 from behind the X-wing\n"
                "; (the start button steps through them in play)\n"
