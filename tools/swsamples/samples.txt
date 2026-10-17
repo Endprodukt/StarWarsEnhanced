@@ -4,7 +4,8 @@
 # A line: NAME  LOUDNESS  LONGEST  source; source; ...
 #   NAME      the request it replaces (docs/SOUNDS.md), or XWENG / XWEXT (the
 #             X-wing's engine, from inside the cockpit / from outside: loops)
-#   LOUDNESS  dB (full scale) of its loud part, so that all fit together:
+#   LOUDNESS  dB (full scale) of its loud part (speech: of its loudest 400 ms, so that
+#             a line's reverb does not count), so that all fit together:
 #             as loud as the board's own sound for the same thing, about
 #             (its speech -29, its effects -37, its music -32), a little
 #             louder where a recording has more to it
@@ -19,29 +20,29 @@
 # --- speech: the films' lines (sounds/voice), one each ---------------------------------
 # (Darth Vader's, as in the arcade game: his breath before and after the line,
 # from the collection; the films' lines have none)
-SPKALW  -27  3   @voice/SPKALW.wav
-SPKELE  -29  3   @voice/SPKELE.wav
-SPKFOA  -27  4   @voice/SPKFOA.wav
-SPKFOR  -27  3   @voice/SPKFOR.wav
-SPKGRE  -27  3   @voice/SPKGRE.wav
-SPKHAV  -27  6   @sfx/Characters/Darth Vader/Vader Inhale 1A.wav (-9 dB) + @voice/SPKHAV.wav + @sfx/Characters/Darth Vader/Vader Exhale 1A.wav (-9 dB)
-SPKHIT  -27  4   @voice/SPKHIT.wav
-SPKIMO  -27  6   @sfx/Characters/Darth Vader/Vader Inhale 1B.wav (-9 dB) + @voice/SPKIMO.wav + @sfx/Characters/Darth Vader/Vader Exhale 1B.wav (-9 dB)
-SPKLET  -27  3   @voice/SPKLET.wav
-SPKLOS  -27  4   @voice/SPKLOS.wav
-SPKR2T  -27  3   @voice/SPKR2T.wav
-SPKRED  -27  3   @voice/SPKRED.wav
-SPKREM  -27  3   @voice/SPKREM.wav
-SPKSHK  -27  3   @voice/SPKSHK.wav
-SPKSIZ  -27  3   @voice/SPKSIZ.wav
-SPKSTA  -27  7   @sfx/Characters/Darth Vader/Vader Inhale 2.wav (-9 dB) + @voice/SPKSTA.wav + @sfx/Characters/Darth Vader/Vader Exhale 2.wav (-9 dB)
-SPKSTR  -27  6   @sfx/Characters/Darth Vader/Vader Inhale 1C.wav (-9 dB) + @voice/SPKSTR.wav + @sfx/Characters/Darth Vader/Vader Exhale 1C.wav (-9 dB)
-SPKTHI  -27  3   @voice/SPKTHI.wav
-SPKTRU  -27  3   @voice/SPKTRU.wav
-SPKUSE  -27  3   @voice/SPKUSE.wav
-SPKYAU  -27  5   @voice/SPKYAU.wav
+SPKALW  -26  3   @voice/SPKALW.wav
+SPKELE  -28  3   @voice/SPKELE.wav
+SPKFOA  -26  4   @voice/SPKFOA.wav
+SPKFOR  -26  3   @voice/SPKFOR.wav
+SPKGRE  -26  3   @voice/SPKGRE.wav
+SPKHAV  -26  6   @sfx/Characters/Darth Vader/Vader Inhale 1A.wav (-9 dB) + @voice/SPKHAV.wav + @sfx/Characters/Darth Vader/Vader Exhale 1A.wav (-9 dB)
+SPKHIT  -26  4   @voice/SPKHIT.wav
+SPKIMO  -26  6   @sfx/Characters/Darth Vader/Vader Inhale 1B.wav (-9 dB) + @voice/SPKIMO.wav + @sfx/Characters/Darth Vader/Vader Exhale 1B.wav (-9 dB)
+SPKLET  -26  3   @voice/SPKLET.wav
+SPKLOS  -26  4   @voice/SPKLOS.wav
+SPKR2T  -26  3   @voice/SPKR2T.wav
+SPKRED  -26  3   @voice/SPKRED.wav
+SPKREM  -26  3   @voice/SPKREM.wav
+SPKSHK  -26  3   @voice/SPKSHK.wav
+SPKSIZ  -26  3   @voice/SPKSIZ.wav
+SPKSTA  -26  7   @sfx/Characters/Darth Vader/Vader Inhale 2.wav (-9 dB) + @voice/SPKSTA.wav + @sfx/Characters/Darth Vader/Vader Exhale 2.wav (-9 dB)
+SPKSTR  -26  6   @sfx/Characters/Darth Vader/Vader Inhale 1C.wav (-9 dB) + @voice/SPKSTR.wav + @sfx/Characters/Darth Vader/Vader Exhale 1C.wav (-9 dB)
+SPKTHI  -26  3   @voice/SPKTHI.wav
+SPKTRU  -26  3   @voice/SPKTRU.wav
+SPKUSE  -26  3   @voice/SPKUSE.wav
+SPKYAU  -26  5   @voice/SPKYAU.wav
 # R2 swears (the exhaust port missed): not a line of the films, R2 himself
-SPKR2N  -30  2   @sfx/Droids/R2-D2/Damaged/R2 Freakout 1A.wav
+SPKR2N  -29  2   @sfx/Droids/R2-D2/Damaged/R2 Freakout 1A.wav
 
 # --- the X-wing's and the TIE fighters' guns -------------------------------------------
 AUDXL   -32  0.6 @sfx/Weapons/Blasters and Cannons/XW Laser 1B.wav; @sfx/Weapons/Blasters and Cannons/XW Laser 2C.wav; @sfx/Weapons/Blasters and Cannons/XW Laser 4A.wav; @sfx/Weapons/Blasters and Cannons/XW Laser 4B.wav; @sfx/Weapons/Blasters and Cannons/XW Laser 5B.wav; @sfx/Weapons/Blasters and Cannons/XW Laser 7.wav

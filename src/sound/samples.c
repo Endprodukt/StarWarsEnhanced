@@ -263,6 +263,7 @@ int sw_samples_load(sw_samples *s, const char *dir, int rate)
     }
     if (!s->engine_rate) s->engine_rate = 1.0f;
     if (!s->duck_speech) s->duck_speech = s->duck_big = 1.0f;
+    if (s->vol[0] == 0.0f && s->vol[1] == 0.0f) s->vol[0] = s->vol[1] = s->vol[2] = s->vol[3] = 1.0f;
     s->rate = rate;
     if (!s->rng) s->rng = 0x9e3779b9u;
     return found;
@@ -390,11 +391,24 @@ static float ease_duck(float g, float to, int rate)
     return g + (to - g) * (k > 1.0f ? 1.0f : k);
 }
 
+void sw_samples_volumes(sw_samples *s, float music, float effects, float speech, float engine)
+{
+    s->vol[0] = music;
+    s->vol[1] = effects;
+    s->vol[2] = speech;
+    s->vol[3] = engine;
+}
+
+static float vol_of(const sw_samples *s, int k) { return s->vol[0] == 0.0f && s->vol[1] == 0.0f ? 1.0f : s->vol[k]; }
+
 float sw_samples_board_gain(const sw_samples *s)
 {
-    if (!s->enabled || !s->duck_speech) return 1.0f;
-    return s->duck_speech * s->duck_big;
+    const float v = vol_of(s, 1);
+    if (!s->enabled || !s->duck_speech) return v;
+    return s->duck_speech * s->duck_big * v;
 }
+
+float sw_samples_board_speech_gain(const sw_samples *s) { return vol_of(s, 2); }
 
 int sw_samples_next(sw_samples *s)
 {
@@ -418,19 +432,20 @@ void sw_samples_next2(sw_samples *s, int *left, int *right)
     float rest = s->duck_speech * s->duck_big, bigs = s->duck_speech;
 
     /* each side: as it is (speech), ducked by both (under), by speech only (over) */
+    const float vm = vol_of(s, 0), ve = vol_of(s, 1), vs = vol_of(s, 2), vg = vol_of(s, 3);   /* the volumes */
     float sum[2] = { 0.0f, 0.0f }, under[2] = { 0.0f, 0.0f }, over[2] = { 0.0f, 0.0f }, l, r;
     for (int i = 0; i < SW_SAMPLE_VOICES; i++) {
         if (!s->effect[i].id) continue;
         int b = is_big(s->effect[i].id);
         play(&s->effect[i].id, s->effect[i].rec, &s->effect[i].at, &l, &r);
         float *to = b ? over : under;
-        to[0] += l;
-        to[1] += r;
+        to[0] += l * ve;
+        to[1] += r * ve;
     }
     if (s->music.id) {
         play(&s->music.id, s->music.rec, &s->music.at, &l, &r);
-        under[0] += l;
-        under[1] += r;
+        under[0] += l * vm;
+        under[1] += r * vm;
     }
     /* the cues: speech over everything, the Falcon under speech only */
     for (int i = 0; i < SW_CUES; i++) {
@@ -440,13 +455,14 @@ void sw_samples_next2(sw_samples *s, int *left, int *right)
         play(&live, s->cue[i].rec, &s->cue[i].at, &l, &r);
         if (!live) s->cue[i].rec = NULL;
         float *to = s->cue[i].speech ? sum : over;
-        to[0] += l;
-        to[1] += r;
+        const float v = s->cue[i].speech ? vs : ve;
+        to[0] += l * v;
+        to[1] += r * v;
     }
     if (s->speech.id) {
         play(&s->speech.id, s->speech.rec, &s->speech.at, &l, &r);
-        sum[0] += l;
-        sum[1] += r;
+        sum[0] += l * vs;
+        sum[1] += r * vs;
         if (!s->speech.id && s->queued) {   /* the next sentence waiting */
             s->speech.id = s->queue[0];
             s->speech.rec = pick(s, s->speech.id);
@@ -467,7 +483,7 @@ void sw_samples_next2(sw_samples *s, int *left, int *right)
         if (g <= 0.0f || !r->pcm || r->n < 2) continue;
         uint32_t i0 = (uint32_t)s->engine[i].at, i1 = i0 + 1 < r->n ? i0 + 1 : 0;
         float k = (float)(s->engine[i].at - i0);
-        float v = (r->pcm[i0] + (r->pcm[i1] - r->pcm[i0]) * k) * g;
+        float v = (r->pcm[i0] + (r->pcm[i1] - r->pcm[i0]) * k) * g * vg;   /* (vg: the engine's volume) */
         under[0] += v;
         under[1] += v;
         s->engine[i].at += s->engine_rate;

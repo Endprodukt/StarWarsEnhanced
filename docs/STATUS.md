@@ -337,6 +337,39 @@ wiederholt sich alle 8000h, jedes Gebäude wird auf dieser und der nächsten
 Runde betrachtet. Standbilder: am Start der Oberfläche nichts neben dem
 Spieler, am Horizont die kleinen dunklen Türme.
 
+## Controls-Seite, freie Belegung, Lautstärken, Sprachpegel (2026-10-17, 0.3.21)
+
+* **Menü neu geordnet:** GAME OPTIONS ganz oben, dann GRAPHICS, SOUND,
+  CONTROLS, SCREEN; darunter ARCADE OPERATOR SCREENS, SAVE AND EXIT.
+  Bedienung auch mit Pfeiltasten, Return, Backspace und dem ersten Joystick
+  (`sw_bind_menu_held`), nicht nur mit dem Joch des Automaten.
+* **Freie Belegung** (`src/platform/bind.c`, nach dem Muster von Vectorton):
+  14 digitale Eingänge (Joch als vier Richtungen, Feuer L/R, Daumen L/R,
+  Start 1/2, Münze 1/2, Aux, Testmenü), je bis zu zwei SDL-Eingaben (Taste,
+  Joystick-Knopf, -Achse, -Hat). Ohne eigene Belegung gelten die Namen der
+  `advmame.rc` wie bisher. CONTROLS-Seite: Feuer auf einer Zeile wartet auf
+  den Eingang (blinkend PRESS AN INPUT; ESC und F2 werden nie gebunden),
+  links/rechts löscht sie, ALL INPUTS AS THE CABINET'S alles. Eine
+  gehaltene Belegung leuchtet grün (Probe). Gespeichert als `bind_*`.
+  `main.c` fragt überall `sw_act_*` statt `vp_input_*` mit Namen; F2 bleibt
+  fest (`sw_bind_test_pressed`).
+* **Digitales Joch:** `controls.c` fährt ein digital gedrücktes Joch in 15
+  Frames (0,3 s) auf Vollausschlag und in 6 zurück; Analog und Digital
+  gelten nebeneinander, der weiter ausgelenkte gewinnt.
+* **Lautstärkeverhältnisse** (SOUND-Seite): MUSIC / EFFECTS / SPEECH / ENGINE
+  VOLUME, 0 bis 200 in Zehnern, `vol_*` in der INI (`sw_samples_volumes`).
+  Die Sprache gilt auch für den Sprachchip, die Effekte auch für die POKEYs
+  (`sndboard.c`: Platinenpegel mal Effektlautstärke, Sprache getrennt).
+* **Sprachpegel:** Das bisherige Maß (RMS des lauten Teils) zählte bei Hall
+  den Nachhall als laut; so kamen Obi-Wans Zeilen nach dem Maß leiser heraus,
+  wurden angehoben und waren hörbar 2 bis 3 dB lauter als der Rest.
+  `build.py` misst Sprache jetzt an ihren lautesten 400 ms
+  (`loudness_speech`); alle SPK-Ziele um 1 dB auf −26 angehoben (SPKELE −28,
+  SPKR2N −29), damit der Mittelwert bleibt. Alle 22 Sprachaufnahmen liegen
+  nun bei −26,0 dB in diesem Maß (vorher Streuung −23 bis −29).
+* Linux-Build und 13 Tests laufen; Pi-Build (`pi-clang`), `deploy.sh`,
+  `dist/swenhanced-0.3.21.vpk`.
+
 ## Filmmusik vollständig, Pegel angeglichen (2026-10-17, 0.3.20)
 
 * Alle zehn Musikstücke des Spiels liegen jetzt als Aufnahmen des Besitzers in

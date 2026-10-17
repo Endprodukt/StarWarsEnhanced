@@ -104,6 +104,7 @@ add_library(swout STATIC
     src/render/config.c
     src/platform/app.c
     src/platform/controls.c
+    src/platform/bind.c
     src/platform/menu.c
     src/platform/yoke.c
     src/platform/audio.c

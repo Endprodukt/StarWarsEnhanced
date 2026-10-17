@@ -155,20 +155,29 @@ Belegung über die `advmame.rc` des Automaten, wie bei MAMEs Star Wars:
 | Aux-Münze (Betreiber: nächste Seite im Selbsttest) | `p1_button5` |
 | Selbsttest-Knopf: öffnet und schließt das Testmenü (siehe unten) | `p1_button6` |
 
+Jeder digitale Eingang (Joch als Richtungen, beide Feuer, beide Daumen, Start 1/2,
+Münzen, Aux, Testmenü) lässt sich auf der Menüseite CONTROLS frei belegen (bis zu
+zwei Tasten, Joystick-Knöpfe, -Achsen oder -Hats je Eingang; Feuer wartet auf den
+Eingang, links/rechts stellt die Belegung des Automaten wieder her). Ein digital
+belegtes Joch fährt weich an (0,3 s) und aus. Die Belegung steht als `bind_*`
+in der INI (`bind_fire_l = key:44, joy0:button0`).
+
 ### Testmenü
 
 Die Taste F2 (die Service-Taste von MAME) oder der Selbsttest-Knopf hält das Spiel an
 und öffnet das Menü; dieselbe Taste führt auch wieder hinaus und aus der
-Kalibrierung und den Operator-Seiten zurück. Joch auf/ab
-wählt eine Zeile, links/rechts oder Feuer ändert sie, Feuer öffnet eine
-Seite; BACK führt zur Hauptseite, F2 speichert und kehrt ins Spiel zurück.
+Kalibrierung und den Operator-Seiten zurück. Joch auf/ab (auch Pfeiltasten
+und erster Joystick) wählt eine Zeile, links/rechts oder Feuer (Return) ändert
+sie, Feuer öffnet eine Seite; BACK, Daumen links oder Backspace führt zur
+Hauptseite, F2 speichert und kehrt ins Spiel zurück.
 
 | Seite | Zeilen |
 |---|---|
-| Graphics | Smooth Motion, Smooth Camera, Frame Pace, Occlusion, Yellow Logo, View, Attract Demo, Ship Explosion; Surface Plating, Detailed Towers, Distant Dogfights; Stars, Trench Clipping, Falcon Fly-Over (wie `smooth`, `enh_camera`, `steady_frames`, `occlusion`, `logo_yellow`, `enh_*` unten) |
-| Sound | Replaced Sounds; Sound Test (Joch links/rechts wählt eine der 59 Anforderungen aus [docs/SOUNDS.md](docs/SOUNDS.md), Feuer spielt sie) |
-| Controls and Screen | Yoke Auto Center; Screen Calibration (das Testbild von `--calibrate`; Feuer wechselt Größe, Lage, Gamma, Helligkeit, das Joch stellt ein) |
 | Game Options | Coin Value, Left Mech, Right Mech, Bonus Adder; Starting Shields, Difficulty, Bonus Shields, Music in Attract: die Optionen des Spiels, dieselben wie auf der Optionsseite des Automaten; sie liegen in dessen NOVRAM (`save/nvram.bin`) und gelten sofort. Coin Value = FREE PLAY: kein Münzeinwurf, Feuer startet das Spiel, und im Attract steht nur "PRESS FIRE TO START" ohne Credit-Zeile |
+| Graphics | Smooth Motion, Smooth Camera, Frame Pace, Occlusion, Yellow Logo, View, Attract Demo, Ship Explosion; Surface Plating, Detailed Towers, Distant Dogfights; Stars, Trench Clipping, Falcon Fly-Over (wie `smooth`, `enh_camera`, `steady_frames`, `occlusion`, `logo_yellow`, `enh_*` unten) |
+| Sound | Replaced Sounds, Engine Sound; Music / Effects / Speech / Engine Volume (0 bis 200 %, Schritt 10, `vol_*`); Sound Test (Joch links/rechts wählt eine der 59 Anforderungen aus [docs/SOUNDS.md](docs/SOUNDS.md), Feuer spielt sie) |
+| Controls | Yoke Auto Center; eine Zeile je digitalem Eingang (Belegung, siehe oben; eine gehaltene Belegung leuchtet grün); All Inputs as the Cabinet's |
+| Screen | Screen Calibration (das Testbild von `--calibrate`; Feuer wechselt Größe, Lage, Gamma, Helligkeit, das Joch stellt ein) |
 | Arcade Operator Screens | Statistik, Optionen, Resets und NOVRAM-Test des Automatenprogramms (Aux-Münze blättert); F2 führt zurück ins Spiel |
 | Save and Exit | wie F2 |
 
@@ -188,6 +197,8 @@ ersetzen (PNG; Größe nach `advmame.rc`, `vector_aux_marquee_display_mode`).
 | `steady_frames` | `1` (Standard): die Frames einer Phase kommen in festem Abstand, dem Durchschnitt des Automaten in dieser Phase; gleiches Tempo wie das Original, ohne Schwanken. `2`: überall 20,5 pro Sekunde (im Spiel rund 50 % schneller als der Automat). `0`: jedes Frame so lang, wie der 6809 des Automaten daran rechnete |
 | `smooth` | Bewegung zwischen den Spielframes: `3` (Standard, im Menü ON) aus dem Spielzustand neu gerechnet, ohne Verzögerung und mit richtiger Perspektive; auf den Attract-Seiten wandern die Linien zum voraus gerechneten Bild des nächsten Frames. `0` (OFF): jedes Spielbild wie im Original. (`1` und `2`, Linien zwischen bzw. vor den letzten Frames verschoben, werden noch gelesen, aber nicht mehr angeboten: das eine zeigt die Welt einen Frame zu spät, das andere schießt über.) |
 | `yoke_autocenter` | `1` (Standard): Fadenkreuz ab dem ersten Bild zentriert. Das Joch geht exakt durch, und seine Ruhelage gilt als Mitte: Sie wird beim Start gelernt und nachgeführt, wenn das Joch im Attract-Modus still liegt. `0`: wie der Automat von 1983, der den Bereich des Jochs nach jedem Einschalten neu lernt |
+| `vol_music`, `vol_effects`, `vol_speech`, `vol_engine` | Lautstärken der vier Gruppen der ersetzten Sounds in Prozent (Standard `100`; 0 bis 200). Die Sprache gilt auch für den Sprachchip; die Effekte auch für die POKEYs |
+| `bind_left`, `bind_right`, `bind_up`, `bind_down`, `bind_fire_l`, `bind_fire_r`, `bind_thumb_l`, `bind_thumb_r`, `bind_start`, `bind_start2`, `bind_coin1`, `bind_coin2`, `bind_coin_aux`, `bind_test` | eigene Belegung eines digitalen Eingangs, bis zu zwei durch Komma: `key:N` (SDL-Scancode), `joyN:buttonN`, `joyN:axisN+`/`-`, `joyN:hatN:up` (`down`, `left`, `right`). Fehlt der Schlüssel, gilt die `advmame.rc` des Automaten |
 | `sound_replace` | Enhanced. `1` (Standard): Sounds, für die in `sounds/` (in `voice/`, `music/`, `effects/` oder `test/`) eine WAV-Datei mit ihrem Namen liegt, kommen aus der Datei ([docs/SOUNDS.md](docs/SOUNDS.md)). `0`: alle Sounds aus den Chips wie am Automaten |
 | `yoke_center_x`, `yoke_center_y`, `yoke_center_known` | die gelernte Ruhelage des Jochs; schreibt das Programm selbst |
 | `logo_yellow` | Enhanced. `1` (Standard): der STAR-WARS-Schriftzug im Attract-Modus ist gelb. `0`: blau wie am Automaten |

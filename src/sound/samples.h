@@ -101,6 +101,8 @@ typedef struct sw_samples {
         float     want;
     } engine[SW_ENGINE_LOOPS];
     float    engine_rate;           /* how fast it is played (1: as recorded) */
+    /* the volumes (test menu, SOUND): music, effects, speech, engine, 1 = as made */
+    float    vol[4];
     /* ducking: the gains as they are now (1: none), and the board's speech */
     float    duck_speech, duck_big;
     int      board_speaks;          /* set by the board: its speech chip makes sound now */
@@ -146,8 +148,14 @@ void sw_samples_next2(sw_samples *s, int *left, int *right);
 /* The same as one sample, the two sides together. */
 int  sw_samples_next(sw_samples *s);
 
+/* The volumes of the four kinds of sound (1 = as the recordings were made;
+ * the board's own POKEYs take the effects', its speech chip the speech's). */
+void sw_samples_volumes(sw_samples *s, float music, float effects, float speech, float engine);
+
 /* How loud the board's own POKEYs (its music and effects) are to be now,
- * after the ducking (1 when nothing ducks, or the recordings are off). */
+ * after the ducking (1 when nothing ducks, or the recordings are off) and
+ * the effects' volume; and its speech chip, by the speech's volume. */
 float sw_samples_board_gain(const sw_samples *s);
+float sw_samples_board_speech_gain(const sw_samples *s);
 
 #endif

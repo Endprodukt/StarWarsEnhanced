@@ -57,6 +57,20 @@ def loudness(m, sr):
     return 20 * np.log10(np.sqrt(np.mean(loud ** 2)) + 1e-12)
 
 
+def loudness_speech(m, sr):
+    """speech: the RMS of its loudest 400 ms (2026-10-17: by the loud part, a line with
+    reverb counted its tail as loud and came out quieter by that measure, so it was raised
+    and heard louder than the rest; Obi-Wan's lines by 2 to 3 dB)"""
+    e, fr = frames_db(m, sr, 10)                 # 100 ms frames
+    if len(e) < 4:
+        return loudness(m, sr)
+    w = np.sqrt(np.convolve(e ** 2, np.ones(4) / 4, mode='valid'))
+    return 20 * np.log10(w.max() + 1e-12)
+
+
+SPEECH = False                                   # the entry being built is speech (SPK...)
+
+
 def read_mono(path):
     a, sr = sf.read(path, dtype='float64', always_2d=True)
     return a.mean(1), sr
@@ -126,7 +140,7 @@ def make_loop(m, sr, length, start):
 
 
 def level(m, sr, db):
-    g = 10 ** ((db - loudness(m, sr)) / 20)
+    g = 10 ** ((db - (loudness_speech(m, sr) if SPEECH else loudness(m, sr))) / 20)
     peak = np.abs(m).max() * g
     if peak > 10 ** (-1 / 20):                  # (its peaks no higher than -1 dB)
         g *= 10 ** (-1 / 20) / peak
@@ -206,7 +220,9 @@ def main():
         os.makedirs(p)
 
     total = 0
+    global SPEECH
     for name, db, longest, srcs in entries:
+        SPEECH = name.startswith('SPK')
         for k, src in enumerate(srcs):
             try:
                 if src.startswith('@music/') and ' + ' not in src:
