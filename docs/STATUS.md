@@ -2,6 +2,12 @@
 
 Stand: 2026-10-13. Architektur und Hintergründe: [PLAN.md](PLAN.md).
 
+## PMEND neu geschnitten (2026-10-17, 0.3.30)
+
+* `sounds/music/PMEND.wav` vom Besitzer neu bearbeitet; `build.py` neu
+  gelaufen: 17,35 s mit Nachhall, lauter Teil −30 dB, Spitze 0,19, wie die
+  anderen Stücke. Sonst keine Änderung.
+
 ## Bildmenü mit Zahlen (2026-10-17, 0.3.28)
 
 Wunsch des Besitzers: Größe einstellbar und alles mit Zahlen, sonst weiß man
