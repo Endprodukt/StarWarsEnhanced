@@ -91,9 +91,15 @@ void sw_controls_read(sw_controls *c, vp_input *in)
             y = recenter(y, c->center_y);
         }
     }
-    /* the digital yoke besides the analog one: whichever is pushed further */
-    c->digital_x = digital(c->digital_x, sw_act_held(ACT_LEFT), sw_act_held(ACT_RIGHT));
-    c->digital_y = digital(c->digital_y, sw_act_held(ACT_UP), sw_act_held(ACT_DOWN));    /* up is the low end */
+    /* The digital yoke besides the analog one: whichever is pushed further.
+     * Only the owner's own bindings count here (bind.h): the cabinet's
+     * p1_left ... are its yoke's own axis past a threshold (advmame.rc), and
+     * drove the digital one to its end once the yoke was half way, a jump to
+     * the edge (seen 2026-10-17). */
+    int dl = sw_bind_is_bound(ACT_LEFT) && sw_act_held(ACT_LEFT), dr = sw_bind_is_bound(ACT_RIGHT) && sw_act_held(ACT_RIGHT);
+    int du = sw_bind_is_bound(ACT_UP) && sw_act_held(ACT_UP), dd = sw_bind_is_bound(ACT_DOWN) && sw_act_held(ACT_DOWN);
+    c->digital_x = digital(c->digital_x, dl, dr);
+    c->digital_y = digital(c->digital_y, du, dd);    /* up is the low end */
     if (fabsf(c->digital_x) > fabsf(x)) x = c->digital_x;
     if (fabsf(c->digital_y) > fabsf(y)) y = c->digital_y;
     c->adc_x = axis_to_adc(x, c->invert_x);

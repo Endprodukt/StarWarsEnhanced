@@ -18,6 +18,7 @@ static const char *const NAMES[SW_SOUND_REQUESTS] = {
 
 /* the Falcon's fly-by, in effects/ */
 static const char *const FALCON = "FALCON";
+static const char *const GROUND_BLAST = "AUDSXG";    /* AUDSX over the ground: towers and bunkers, no TIE engine */
 /* the engine's loops, in effects/ */
 static const char *const ENGINE[SW_ENGINE_LOOPS] = { "XWENG", "XWEXT" };
 
@@ -252,6 +253,14 @@ int sw_samples_load(sw_samples *s, const char *dir, int rate)
         s->falcon.last = -1;
         if (got) found++;
     }
+    if (!s->ground_blast.count) {
+        snprintf(sub, sizeof sub, "%s/effects", dir);
+        int got = load_set(dir, GROUND_BLAST, rate, s->ground_blast.var, SW_SAMPLE_VARIANTS, 0);
+        if (!got) got = load_set(sub, GROUND_BLAST, rate, s->ground_blast.var, SW_SAMPLE_VARIANTS, 0);
+        s->ground_blast.count = got;
+        s->ground_blast.last = -1;
+        if (got) found++;
+    }
     for (int i = 0; i < SW_ENGINE_LOOPS; i++) {
         if (s->engine[i].rec.pcm) continue;
         int got = load_set(dir, ENGINE[i], rate, &s->engine[i].rec, 1, 1);
@@ -274,6 +283,7 @@ void sw_samples_free(sw_samples *s)
     for (int i = 0; i < SW_SOUND_REQUESTS; i++)
         for (int k = 0; k < s->sound[i].count; k++) free(s->sound[i].var[k].pcm);
     for (int k = 0; k < s->falcon.count; k++) free(s->falcon.var[k].pcm);
+    for (int k = 0; k < s->ground_blast.count; k++) free(s->ground_blast.var[k].pcm);
     for (int i = 0; i < SW_ENGINE_LOOPS; i++) free(s->engine[i].rec.pcm);
     memset(s, 0, sizeof *s);
 }
@@ -333,7 +343,9 @@ int sw_samples_request(sw_samples *s, int n)
     if (n == SPKSKP) s->queued = 0;
     if (n == SPKYAU && s->hold_yahoo && s->enabled && s->sound[n].count) return 1;   /* (it comes with the Falcon) */
     if (n >= FIRST_MUSIC && n <= LAST_MUSIC) s->music.id = 0;
-    if (!s->enabled || !s->sound[n].count) return 0;
+    /* the small explosion over the ground: the plain blast when there is one */
+    sw_sample_set *set = n == AUDSX && s->on_ground && s->ground_blast.count ? &s->ground_blast : &s->sound[n];
+    if (!s->enabled || !set->count) return 0;
 
     s->clock++;
     if (n >= FIRST_MUSIC && n <= LAST_MUSIC) {
@@ -359,11 +371,13 @@ int sw_samples_request(sw_samples *s, int n)
         if (s->effect[i].started < s->effect[v].started) v = i;
     }
     s->effect[v].id = n;
-    s->effect[v].rec = pick(s, n);
+    s->effect[v].rec = pick_of(s, set);
     s->effect[v].at = 0;
     s->effect[v].started = s->clock;
     return 1;
 }
+
+void sw_samples_ground(sw_samples *s, int on) { s->on_ground = on != 0; }
 
 void sw_samples_engine(sw_samples *s, int which, float level, float rate)
 {

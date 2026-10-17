@@ -79,6 +79,7 @@ In attract mode the program plays the pieces through the table `TMUSIC`
 | 33 | AUDSH | Shield | Hit by a gun |
 | 34 | AUDSS | Fireball shot down | Enemy shot hit; initials entry |
 | 35 | AUDSX | Small explosion | TIE, bunker or tower shot down |
+|    | (AUDSXG) | not a request: the recordings AUDSX takes over the ground and in the trench (effects/AUDSXG.wav ...), plain blasts without a TIE fighter's engine; `sw_samples_ground` | tower or bunker shot down |
 | 36 | AUDTC | TIE fighter cannon | A TIE fires |
 | 37 | AUDTCZ | TIE fighter cannon, end | Fireball shot down |
 | 38 | AUDTH | Thrust | Approach to the Death Star |
