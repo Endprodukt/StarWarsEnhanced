@@ -88,6 +88,12 @@ int sw_app_open(sw_app *a, const char *title, int argc, char **argv, double boar
     if (a->frame_hz > 240.0) a->frame_hz = 240.0;
 
     if (a->on_board) {
+        /* The START lamps off: the game does not use the start buttons (the
+         * owner, 2026-10-17). The SDK writes the LEDs only when its mask
+         * changes, and it begins at 0, so lamps found lit would stay lit:
+         * set both first, then none. */
+        vp_lamps_set(VP_LAMP_START1 | VP_LAMP_START2);
+        vp_lamps_set(0);
         char path[1024];
         vp_marquee_show(vp_asset_path("marquee.png", path, sizeof path));
     }

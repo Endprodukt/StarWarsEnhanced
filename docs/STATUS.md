@@ -337,6 +337,15 @@ wiederholt sich alle 8000h, jedes Gebäude wird auf dieser und der nächsten
 Runde betrachtet. Standbilder: am Start der Oberfläche nichts neben dem
 Spieler, am Horizont die kleinen dunklen Türme.
 
+## Start-Lampen aus (2026-10-17, 0.3.24)
+
+* Beide START-Lampen leuchteten im Spiel (Besitzer). Das Spiel nutzt die
+  Start-Knöpfe nicht; `sw_app_open` schaltet sie auf dem Automaten jetzt aus.
+  Eigenheit des SDK (`vp_lamps.cpp`): es schreibt die LEDs nur bei einer
+  Änderung seiner Maske, die bei 0 beginnt, also erst beide setzen, dann
+  keine. Beim Ende stellt `vp_lamps_close` den vorgefundenen Zustand wieder
+  her; das Menü des Automaten übernimmt dann.
+
 ## Joch wieder ganz analog, Boden-Explosion ohne TIE-Triebwerk (2026-10-17, 0.3.23)
 
 * **Joch sprang an den Rand** (Besitzer, 0.3.21/22): Die vier Richtungen
