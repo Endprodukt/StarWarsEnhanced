@@ -14,6 +14,14 @@ Hinter der Seite stehen der Bildrand und das Mittelkreuz, damit man Größe
 und Lage sieht. Das Testbild (TEST PATTERN, vorher SCREEN CALIBRATION) zeigt
 in seiner Zeile jetzt den Wert des Modus. Am Automaten noch nicht gesehen.
 
+**Weißer Rand an den vier blauen Punkten (0.3.29):** Das Spiel zeichnet in
+jedem Bild vier blaue Punkte (am Anfang seiner Liste, VJINIT, bei ±119,5 /
+±137,5 Linieneinheiten = ±480 / ±552 VG-Einheiten). Der weiße Rand des
+Testbilds und hinter der SCREEN-Seite liegt jetzt genau durch sie (vorher am
+Rand des AVG-Fensters, weiter außen), und die vier Punkte sind blau mit
+eingezeichnet: Ist der weiße Rand ganz auf der Röhre, sind es die Punkte
+auch. Der Fensterrand bleibt im Testbild schwach sichtbar.
+
 ## Ziel (Wunsch des Besitzers, 2026-10-13)
 
 Hundertprozentig C, auch der Ton; keine Emulation. Eine feste Bildrate ohne

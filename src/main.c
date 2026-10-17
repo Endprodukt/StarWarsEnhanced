@@ -115,13 +115,22 @@ static void build_pattern(calib *c, const sw_display_cfg *cfg)
     float l = cfg->avg_left / GAME_SCALE, r = cfg->avg_right / GAME_SCALE;
     float b = cfg->avg_bottom / GAME_SCALE, t = cfg->avg_top / GAME_SCALE;
 
-    /* The game's screen edge, the clip limits (VGLIM*), the center cross. */
-    add(c, l, b, r, b, 7, 7, 0xff); add(c, r, b, r, t, 7, 7, 0xff);
-    add(c, r, t, l, t, 7, 7, 0xff); add(c, l, t, l, b, 7, 7, 0xff);
+    /* First (the menu's SCREEN page draws these ten): the white edge through
+     * the four blue points the game draws in every picture (VJINIT, at
+     * +-119.5, +-137.5 of the lines' units): when the edge is on the tube,
+     * so are they; the center cross; the four points themselves, blue. */
+    const float px = 119.5f / GAME_SCALE, py = 137.5f / GAME_SCALE;
+    add(c, -px, -py, px, -py, 7, 7, 0xff); add(c, px, -py, px, py, 7, 7, 0xff);
+    add(c, px, py, -px, py, 7, 7, 0xff); add(c, -px, py, -px, -py, 7, 7, 0xff);
+    add(c, -40, 0, 40, 0, 7, 7, 0xff); add(c, 0, -40, 0, 40, 7, 7, 0xff);
+    add(c, -px, -py, -px, -py, 1, 7, 0xff); add(c, px, -py, px, -py, 1, 7, 0xff);
+    add(c, px, py, px, py, 1, 7, 0xff); add(c, -px, py, -px, py, 1, 7, 0xff);
+    /* the AVG window's edge (dim), the clip limits (VGLIM*) */
+    add(c, l, b, r, b, 7, 3, 0x80); add(c, r, b, r, t, 7, 3, 0x80);
+    add(c, r, t, l, t, 7, 3, 0x80); add(c, l, t, l, b, 7, 3, 0x80);
     float cl = -480, cr = 480, cb = -552, ct = 408;
     add(c, cl, cb, cr, cb, 3, 4, 0x80); add(c, cr, cb, cr, ct, 3, 4, 0x80);
     add(c, cr, ct, cl, ct, 3, 4, 0x80); add(c, cl, ct, cl, cb, 3, 4, 0x80);
-    add(c, -40, 0, 40, 0, 7, 7, 0xff); add(c, 0, -40, 0, 40, 7, 7, 0xff);
 
     /* A circle: round on the tube when the aspect is right. The tube is 4:3
      * and the AVG window is not square, so the circle is drawn in tube
@@ -825,10 +834,10 @@ int main(int argc, char **argv)
             draw_text_lines(app.dvg, text, 1, 700);
         } else if (menu.open) {
             if (sw_menu_screen_page(&menu)) {
-                /* the picture's edge and its middle, behind the page of its settings */
+                /* the edge through the game's four blue points, its middle and
+                 * the points, behind the page of the picture's settings */
                 build_pattern(&cal, &cfg);
-                sw_draw_lines(app.dvg, &cfg, cal.lines, 4);
-                sw_draw_lines(app.dvg, &cfg, cal.lines + 8, 2);
+                sw_draw_lines(app.dvg, &cfg, cal.lines, 10);
             }
             sw_menu_draw(&menu, &cfg, &brd.m, app.dvg);
         } else if (brd.controls_test) {
