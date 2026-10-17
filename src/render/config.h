@@ -104,6 +104,10 @@ typedef struct sw_display_cfg {
      * one from inside the cockpit, one from outside, as the view is; in the
      * dogfight it runs up as the ship speeds up). Needs sound_replace. */
     int enh_engine;
+    /* The volumes of the four kinds of sound, percent (100: as the
+     * recordings were made; the board's own POKEYs take the effects', its
+     * speech chip the speech's). The test menu, SOUND. */
+    int vol_music, vol_effects, vol_speech, vol_engine;
 } sw_display_cfg;
 
 void sw_display_cfg_defaults(sw_display_cfg *c);

@@ -7,12 +7,16 @@
  * NOVRAM (coins, shields, difficulty, music), a sound test, the screen
  * calibration, and the way on to the arcade program's own operator
  * screens (statistics, the resets, the NOVRAM test). The main page leads
- * to four pages: GRAPHICS, SOUND, CONTROLS AND SCREEN, GAME OPTIONS.
+ * to five pages: GAME OPTIONS, GRAPHICS, SOUND (the recordings, the engine,
+ * the four volumes, the sound test), CONTROLS (the yoke's centring and the
+ * owner's own bindings of every digital input, platform/bind.h), SCREEN
+ * (the calibration).
  *
- *   yoke up / down      choose a line
- *   yoke left / right   change its value
- *   fire                change it, open a page, or do what the line says
- *   BACK                the main page again
+ *   yoke up / down      choose a line (also the arrow keys, the first joystick)
+ *   yoke left / right   change its value; on a binding: back to the cabinet's
+ *   fire / Return       change it, open a page, or do what the line says;
+ *                       on a binding: wait for the input to bind
+ *   thumb left / Backspace   the main page again
  *   F2 / test button    save the settings and go back to the game
  */
 #ifndef SWE_MENU_H
@@ -39,7 +43,9 @@ typedef struct sw_menu {
     int    item[8];         /* the line chosen on each page */
     int    sound;           /* the request of the sound test (docs/SOUNDS.md) */
     int    dir_x, dir_y;    /* where the yoke was held the last time */
+    int    ok_was, back_was;    /* the fire and the back key the last time */
     double repeat_at;       /* when a held yoke counts again (seconds) */
+    double now;             /* the time of the last update (the blinking) */
 } sw_menu;
 
 /* Once a frame while the menu is open, at the time now (seconds). Returns

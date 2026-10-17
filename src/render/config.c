@@ -1,4 +1,5 @@
 #include "render/config.h"
+#include "platform/bind.h"      /* (the bindings share the settings file) */
 
 #include <ctype.h>
 #include <stdio.h>
@@ -41,6 +42,7 @@ void sw_display_cfg_defaults(sw_display_cfg *c)
     c->enh_demo = 1;
     c->sound_replace = 1;
     c->enh_engine = 1;
+    c->vol_music = c->vol_effects = c->vol_speech = c->vol_engine = 100;
 }
 
 static char *trim(char *s)
@@ -72,7 +74,9 @@ static int set(sw_display_cfg *c, const char *key, const char *val)
         { "enh_clip", &c->enh_clip }, { "enh_falcon", &c->enh_falcon }, { "enh_blast", &c->enh_blast }, { "enh_camera", &c->enh_camera },
         { "enh_view", &c->enh_view }, { "enh_demo", &c->enh_demo },
         { "logo_yellow", &c->logo_yellow }, { "sound_replace", &c->sound_replace }, { "enh_engine", &c->enh_engine },
+        { "vol_music", &c->vol_music }, { "vol_effects", &c->vol_effects }, { "vol_speech", &c->vol_speech }, { "vol_engine", &c->vol_engine },
     };
+    if (sw_bind_parse(key, val)) return 0;      /* the owner's bindings of the digital inputs (platform/bind.h) */
     if (strcmp(key, "sort_strokes") == 0) return 0;     /* (gone: settings files from before may still have it) */
     for (size_t i = 0; i < sizeof floats / sizeof floats[0]; i++)
         if (strcmp(key, floats[i].k) == 0) { *floats[i].f = (float)atof(val); return 0; }
@@ -175,6 +179,11 @@ int sw_display_cfg_save(const sw_display_cfg *c, const char *path)
                "sound_replace = %d\n", c->sound_replace);
     fprintf(f, "\n; enhanced: the X-wing's engine is heard in flight (inside or outside, as the view)\n"
                "enh_engine = %d\n", c->enh_engine);
+    fprintf(f, "\n; the volumes, percent (100 as the recordings were made; the board's POKEYs take the\n"
+               "; effects', its speech chip the speech's)\n"
+               "vol_music = %d\nvol_effects = %d\nvol_speech = %d\nvol_engine = %d\n",
+            c->vol_music, c->vol_effects, c->vol_speech, c->vol_engine);
+    sw_bind_save(f);
     fclose(f);
     return 0;
 }

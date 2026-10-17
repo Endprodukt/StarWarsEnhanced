@@ -19,6 +19,7 @@
 #include "core/sched.h"
 #include "game/game.h"
 #include "platform/controls.h"
+#include "platform/bind.h"
 #include "platform/app.h"
 #include "platform/audio.h"
 #include "dogfight/dogfight.h"
@@ -142,9 +143,9 @@ static void build_pattern(calib *c, const sw_display_cfg *cfg)
 
 static void calib_adjust(calib *c, sw_display_cfg *cfg, vp_input *in)
 {
-    if (vp_input_pressed(in, "p1_button1")) c->mode = (c->mode + 1) % 4;
-    int dx = vp_input_pressed(in, "p1_right") - vp_input_pressed(in, "p1_left");
-    int dy = vp_input_pressed(in, "p1_up") - vp_input_pressed(in, "p1_down");
+    if (sw_act_pressed(ACT_FIRE_L)) c->mode = (c->mode + 1) % 4;
+    int dx = sw_act_pressed(ACT_RIGHT) - sw_act_pressed(ACT_LEFT);
+    int dy = sw_act_pressed(ACT_UP) - sw_act_pressed(ACT_DOWN);
     /* the cabinet has no such switches: a push of its yoke is a step too */
     static int held_x, held_y;
     float ax = vp_input_axis(in, "p1_stickx"), ay = vp_input_axis(in, "p1_sticky");
@@ -336,7 +337,11 @@ static void apply_enhanced(board *b, const sw_display_cfg *cfg)
     b->pic.enhance.view = on ? cfg->enh_view % SW_VIEWS : SW_VIEW_ARCADE;
     b->demo.enabled = on && cfg->enh_demo;
     b->m.camera_ease = (uint8_t)(on && cfg->enh_camera);
-    if (b->snd && b->snd->samples) b->snd->samples->enabled = on && cfg->sound_replace;
+    if (b->snd && b->snd->samples) {
+        b->snd->samples->enabled = on && cfg->sound_replace;
+        sw_samples_volumes(b->snd->samples, cfg->vol_music / 100.0f, cfg->vol_effects / 100.0f,
+                           cfg->vol_speech / 100.0f, cfg->vol_engine / 100.0f);
+    }
     /* the yoke: its rest as its middle, and passed through exactly (the
      * arcade machine's own learning comes back with the next start) */
     b->ctl.autocenter = cfg->yoke_autocenter != 0;
@@ -504,6 +509,7 @@ int main(int argc, char **argv)
 
     sw_app app;
     if (sw_app_open(&app, "Star Wars Enhanced", argc, argv, 50.0) != 0) return 1;
+    sw_bind_init();
 
     int calibrate = sw_flag(argc, argv, "--calibrate");
     static calib cal;
@@ -572,6 +578,7 @@ int main(int argc, char **argv)
     int status = 0;
     double dt;
     while (sw_app_poll(&app, &dt)) {
+        sw_bind_update(app.in);         /* the digital inputs, the cabinet's or the owner's own */
         /* (the yoke's rest is learned while nobody plays: in the attract mode) */
         brd.ctl.learn = RAM8(&brd.m, SW_PHASE) >= SW_PHSBNR && RAM8(&brd.m, SW_PHASE) <= SW_PHSHIS + 1;
         /* A game begins (the attract mode left, not by a demo flight): from
@@ -594,15 +601,15 @@ int main(int argc, char **argv)
         /* A coin or a button ends a demo flight: the attract mode is back
          * at once, and the coin or the button counts there. */
         if (brd.demo.active) {
-            static const char *const keys[] = { "p1_button1", "p1_button2", "p1_button3", "p1_button4", "p1_button5",
-                                                "start1", "start2", "coin1", "coin2" };
+            static const sw_action keys[] = { ACT_FIRE_L, ACT_THUMB_L, ACT_THUMB_R, ACT_FIRE_R, ACT_COIN_AUX,
+                                              ACT_START, ACT_START2, ACT_COIN1, ACT_COIN2 };
             for (size_t i = 0; i < sizeof keys / sizeof keys[0]; i++)
-                if (vp_input_pressed(app.in, keys[i])) brd.demo.interrupt = 1;
+                if (sw_act_pressed(keys[i])) brd.demo.interrupt = 1;
         }
         /* The dogfight: chosen as a fourth Death Star, by firing at it; flown
          * with the yoke, the thumb buttons faster and slower. */
         if (brd.native && !brd.df.active && !menu.open && sw_dogfight_chosen(&brd.m) &&
-            (vp_input_pressed(app.in, "p1_button1") || vp_input_pressed(app.in, "p1_button4") || vp_input_pressed(app.in, "start1"))) {
+            (sw_act_pressed(ACT_FIRE_L) || sw_act_pressed(ACT_FIRE_R) || sw_act_pressed(ACT_START))) {
             static sw_df_scores df_scores;
             static int df_scores_loaded;
             if (!df_scores_loaded) { df_scores_load(&df_scores); df_scores_loaded = 1; }
@@ -628,10 +635,10 @@ int main(int argc, char **argv)
             } else {
                 din.yaw = ((float)brd.ctl.adc_x - 128.0f) / 127.0f;
                 din.pitch = ((float)brd.ctl.adc_y - 128.0f) / 127.0f;
-                din.fire = vp_input_held(app.in, "p1_button1");
-                din.torpedo = vp_input_held(app.in, "p1_button4");
-                din.faster = vp_input_held(app.in, "p1_button2");
-                din.slower = vp_input_held(app.in, "p1_button3");
+                din.fire = sw_act_held(ACT_FIRE_L);
+                din.torpedo = sw_act_held(ACT_FIRE_R);
+                din.faster = sw_act_held(ACT_THUMB_L);
+                din.slower = sw_act_held(ACT_THUMB_R);
             }
             sw_dogfight_step(&brd.df, &din, dt);
             /* its sounds, one at a time, as the game asks the board */
@@ -653,7 +660,7 @@ int main(int argc, char **argv)
                 brd.m.sound_out_full = 1;
             }
         }
-        if (in_flight && vp_input_pressed(app.in, "start1")) {
+        if (in_flight && sw_act_pressed(ACT_START)) {
             cfg.enh_view = (cfg.enh_view % SW_VIEWS + 1) % SW_VIEWS;
             apply_enhanced(&brd, &cfg);
             if (sw_display_cfg_save(&cfg, cfg_path) != 0) fprintf(stderr, "swenhanced: cannot write %s\n", cfg_path);
@@ -673,17 +680,15 @@ int main(int argc, char **argv)
         int menu_left = 0;
         /* The F2 key does the same, as the service key of MAME (the
          * VectorPie cabinet has a keyboard, and no self-test button bound:
-         * all the buttons of its yoke are the fire button). */
-        static int f2_was;
-        int f2_is = SDL_GetKeyboardState(NULL)[SDL_SCANCODE_F2] != 0;
-        int f2 = f2_is && !f2_was;
-        f2_was = f2_is;
-        if (brd.df.active && (vp_input_pressed(app.in, "p1_button6") || f2)) {
+         * all the buttons of its yoke are the fire button); and whatever the
+         * owner bound to TEST MENU (platform/bind.h). */
+        int f2 = sw_bind_test_pressed();
+        if (brd.df.active && f2) {
             /* (stage 1: the service key leaves the dogfight, back to the attract mode) */
             brd.df.active = 0;
             brd.m.ram[SW_PHASE - 0x4800] = SW_PHSBNR;
             f2 = 0;
-        } else if (roms_ok && !calibrate && (vp_input_pressed(app.in, "p1_button6") || f2)) {
+        } else if (roms_ok && !calibrate && f2) {
             if (brd.ctl.self_test) brd.ctl.self_test = 0;
             else if (menu_calibrate) menu_calibrate = 0;
             else if (menu.open) menu_left = 1;
@@ -786,7 +791,7 @@ int main(int argc, char **argv)
             draw_text_lines(app.dvg, text, 5, 2600);
         } else if (calibrate || menu_calibrate) {
             calib_adjust(&cal, &cfg, app.in);
-            if (calibrate && vp_input_pressed(app.in, "p1_button2")) {
+            if (calibrate && sw_act_pressed(ACT_THUMB_L)) {
                 if (sw_display_cfg_save(&cfg, cfg_path) == 0) printf("swenhanced: saved %s\n", cfg_path);
                 else fprintf(stderr, "swenhanced: cannot write %s\n", cfg_path);
             }

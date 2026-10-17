@@ -198,12 +198,13 @@ static void emit_sample(sw_sndboard *s)
      * each part on its own: the POKEYs may be ducked, samples.h). */
     s->dc += (pk - s->dc) * 0.002f;
     s->dc_speech += (sp - s->dc_speech) * 0.002f;
-    float bg = 1.0f;
+    float bg = 1.0f, spg = 1.0f;
     if (s->samples) {
         s->samples->board_speaks = s->tms_out != 0;
-        bg = sw_samples_board_gain(s->samples);
+        bg = sw_samples_board_gain(s->samples);             /* (the ducking, and the effects' volume) */
+        spg = sw_samples_board_speech_gain(s->samples);     /* (the speech's volume) */
     }
-    float v = ((pk - s->dc) * bg + (sp - s->dc_speech)) * s->volume * 28000.0f;
+    float v = ((pk - s->dc) * bg + (sp - s->dc_speech) * spg) * s->volume * 28000.0f;
     float lr[2] = { v, v };
     if (s->samples) {
         int l, r;
