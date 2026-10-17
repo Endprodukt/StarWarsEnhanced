@@ -53,6 +53,10 @@ typedef struct sw_menu {
 int  sw_menu_update(sw_menu *u, sw_display_cfg *cfg, sw_machine *m, vp_input *in, double now);
 void sw_menu_draw(const sw_menu *u, const sw_display_cfg *cfg, const sw_machine *m, vp_dvg *d);
 
+/* 1 while the page of the picture's settings is shown (the program draws
+ * the picture's frame behind it, to be seen as it changes). */
+int  sw_menu_screen_page(const sw_menu *u);
+
 /* What request n asks the sound board for ("SPKRED"), "" if nothing. */
 const char *sw_menu_sound_name(int n);
 
