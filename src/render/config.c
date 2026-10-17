@@ -34,7 +34,6 @@ void sw_display_cfg_defaults(sw_display_cfg *c)
     c->steady_frames = 1;
     c->occlusion = 1;
     c->enh_surface = c->enh_stars = c->enh_towers = c->enh_dogfights = 1;
-    c->enh_deathstar = c->enh_xwing = 1;
     c->logo_yellow = 1;
     c->enh_clip = 1;
     c->enh_falcon = 1;
@@ -72,7 +71,6 @@ static int set(sw_display_cfg *c, const char *key, const char *val)
         { "occlusion", &c->occlusion },
         { "enh_surface", &c->enh_surface }, { "enh_stars", &c->enh_stars },
         { "enh_towers", &c->enh_towers }, { "enh_dogfights", &c->enh_dogfights },
-        { "enh_deathstar", &c->enh_deathstar }, { "enh_xwing", &c->enh_xwing },
         { "enh_clip", &c->enh_clip }, { "enh_falcon", &c->enh_falcon }, { "enh_blast", &c->enh_blast }, { "camera_ease", &c->enh_camera },
         { "enh_view", &c->enh_view }, { "enh_demo", &c->enh_demo },
         { "logo_yellow", &c->logo_yellow }, { "sound_replace", &c->sound_replace }, { "enh_engine", &c->enh_engine },
@@ -81,6 +79,7 @@ static int set(sw_display_cfg *c, const char *key, const char *val)
     if (sw_bind_parse(key, val)) return 0;      /* the owner's bindings of the digital inputs (platform/bind.h) */
     if (strcmp(key, "sort_strokes") == 0) return 0;     /* (gone: settings files from before may still have it) */
     if (strcmp(key, "enh_camera") == 0) return 0;       /* (retired 2026-10-17: on by default, it changed the game; now camera_ease, off) */
+    if (strcmp(key, "enh_deathstar") == 0 || strcmp(key, "enh_xwing") == 0) return 0;    /* (0.3.26 only: the owner keeps the game's colours) */
     for (size_t i = 0; i < sizeof floats / sizeof floats[0]; i++)
         if (strcmp(key, floats[i].k) == 0) { *floats[i].f = (float)atof(val); return 0; }
     for (size_t i = 0; i < sizeof ints / sizeof ints[0]; i++)
@@ -160,10 +159,6 @@ int sw_display_cfg_save(const sw_display_cfg *c, const char *path)
                "; towers in true perspective with more detail and from farther, chases far off\n"
                "enh_surface = %d\nenh_stars = %d\nenh_towers = %d\nenh_dogfights = %d\n",
             c->enh_surface, c->enh_stars, c->enh_towers, c->enh_dogfights);
-    fprintf(f, "\n; enhanced: the Death Star in the films' colours, lit by a sun, with more on its surface\n"
-               "enh_deathstar = %d\n", c->enh_deathstar);
-    fprintf(f, "\n; enhanced: the X-wing's nose and guns (the arcade's view) in the model's colours\n"
-               "enh_xwing = %d\n", c->enh_xwing);
     fprintf(f, "\n; enhanced, in the trench: near objects keep their shape, cut at the edge of the screen\n"
                "enh_clip = %d\n", c->enh_clip);
     fprintf(f, "\n; enhanced, in the trench: shortly before the exhaust port the Millennium Falcon\n"

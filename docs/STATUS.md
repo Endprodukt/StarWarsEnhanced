@@ -337,7 +337,16 @@ wiederholt sich alle 8000h, jedes Gebäude wird auf dieser und der nächsten
 Runde betrachtet. Standbilder: am Start der Oberfläche nichts neben dem
 Spieler, am Horizont die kleinen dunklen Türme.
 
-## Kamera aus, Musik klingt aus, Todesstern und X-Wing in Filmfarben (2026-10-17, 0.3.26)
+## Farben zurück auf das Original (2026-10-17, 0.3.27)
+
+* Der Todesstern in Filmfarben und die X-Wing-Farben aus 0.3.26 sind wieder
+  raus, auch nicht als Option (Besitzer: sieht nicht gut aus, es bleiben
+  die Originalfarben des Spiels). Der Code dazu ist entfernt (im Dogfight
+  bleibt sein eigener Todesstern wie bisher); die Schlüssel
+  `enh_deathstar`/`enh_xwing` aus gespeicherten Einstellungen werden
+  ignoriert.
+
+## Kamera aus, Musik klingt aus, Todesstern und X-Wing in Filmfarben (2026-10-17, 0.3.26, Farben in 0.3.27 zurückgenommen)
 
 * **Gegnerverhalten geprüft** (Besitzer: "Gegner kommen auf einmal von
   hinten", "Schwenk zum Todesstern nicht rechtzeitig"). Der Spielkern ist

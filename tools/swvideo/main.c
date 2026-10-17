@@ -273,7 +273,6 @@ int main(int argc, char **argv)
         pic.enhance.clip = 1;
         pic.enhance.falcon = 1;
         pic.enhance.blast = 1;
-        pic.enhance.deathstar = pic.enhance.xwing = 1;
         m.camera_ease = 0;          /* (off since 2026-10-17: it changed the game's turns) */
     }
 
