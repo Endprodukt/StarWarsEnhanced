@@ -1197,3 +1197,8 @@ daraus wurde:
 * Quelltext nie über Shell-Heredocs ändern (Backslashes und Apostrophe
   gehen dort kaputt).
 * Pi-Build: `cmake --build --preset pi-clang`, dann `sh tools/deploy.sh`.
+  **Unter Windows (Git Bash) mit dem retcomm-cmake im PATH (README), nicht
+  in WSL:** dort bricht der Build wegen des Windows-Caches in `build-pi` ab,
+  und `deploy.sh` kopiert dann still das alte Binary (gleiche md5 wie beim
+  letzten Mal ist das Warnzeichen; 2026-10-17 passiert). Der Linux-Build
+  und `ctest` laufen dagegen in WSL (`cmake --build --preset linux`).
