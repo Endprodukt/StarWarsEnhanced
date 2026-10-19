@@ -2,6 +2,14 @@
 
 Stand: 2026-10-13. Architektur und Hintergründe: [PLAN.md](PLAN.md).
 
+## Belegung wie bei allen Vektorspielen (2026-10-19)
+
+- `src/platform/bind.c` neu: jede Eingabe AUTO (direkt gelesen: die AdvanceMAME-Standards – Tasten, Knöpfe/Stick des Steuerhorns (Joystick mit "yoke" im Namen, sonst des ersten), Maustasten), NONE oder bis zu 4 eigene (Taste, Joystick-Knopf/-Achse/-Hat, Maustaste). Datei: `auto`, `off` (NONE), sonst `key:..`, ...; ein altes `none` heißt jetzt AUTO (war: wie der Automat).
+- Testmenü CONTROLS: START 1/Enter, dann ein Knopf; der erste seit der Cursor auf der Zeile steht ersetzt, jeder weitere fügt hinzu. Während des Wartens: Enter (bei Spielfunktionen auch START 1) zurück, START 2 NONE, Entf AUTO; Links/Rechts NONE/AUTO; Entf auf der Zeile AUTO. Kein 5-Sekunden-Abbruch mehr. Eine Taste darf mehrere Aktionen haben. Nie belegbar: Esc, F2, Enter, Keypad-Enter, Entf, Rücktaste; bei Spielfunktionen auch die START-/COIN-Tasten.
+- Das Menü geht nur über feste Eingaben (`src/platform/vpbind.[ch]`, Kopie aus dem Tempest-2000-Port): Pfeile, jeder Stick/Hat/das Steuerhorn, START 1/Enter/Keypad-Enter, Rücktaste zurück, F2/Testknopf raus. Daumen links/Feuer wirken im Menü nicht mehr.
+- Die Steuerhorn-Achsen werden direkt gelesen (Gerät mit "yoke" im Namen, sonst Joystick 1, Totzone wie bisher 0,02); die Bildkalibrierung bewegt sich mit den festen Menüeingaben.
+- Am PC geprüft (Windows-Testbuild `build-pcw` mit `-DSDL_MAIN_HANDLED`: ersetzen, hinzufügen, NONE/AUTO), Pi-Build am Automaten installiert (alte Datei `swenhanced.before-vpbind`), dort nicht ausprobiert.
+
 ## PMEND neu geschnitten (2026-10-17, 0.3.30)
 
 * `sounds/music/PMEND.wav` vom Besitzer neu bearbeitet; `build.py` neu

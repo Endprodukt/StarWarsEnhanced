@@ -1,6 +1,9 @@
 /* menu.c - see menu.h. */
 #include "platform/menu.h"
 #include "platform/bind.h"
+#include "platform/vpbind.h"
+
+#include <SDL.h>
 
 #include "game/game.h"
 #include "render/enhance.h"
@@ -85,15 +88,11 @@ static int page_lines(int p, uint8_t *out)
     return n;
 }
 
-/* Where the yoke is held, as a direction: -1, 0, 1. The cabinet's yoke is
- * analog; the digital inputs (the arrow keys, the bound ones) come through
- * sw_bind_menu_held. */
-static int direction(vp_input *in, const char *axis, int minus, int plus)
+/* A way the menu's own controls are held: -1, 0, 1 (sw_bind_menu_held:
+ * the arrow keys, any stick, hat or the yoke). */
+static int direction(int minus, int plus)
 {
-    float v = vp_input_axis(in, axis);
-    if (v < -0.5f || minus) return -1;
-    if (v > 0.5f || plus) return 1;
-    return 0;
+    return minus ? -1 : plus ? 1 : 0;
 }
 
 static int step(int v, int d, int lo, int hi)
@@ -129,8 +128,9 @@ int sw_menu_update(sw_menu *u, sw_display_cfg *cfg, sw_machine *m, vp_input *in,
     /* a push of the yoke counts once, and again and again while it is held */
     sw_menu_keys k;
     sw_bind_menu_held(&k);
-    int x = direction(in, "p1_stickx", k.left, k.right);
-    int y = direction(in, "p1_sticky", k.up, k.down);     /* up is the low end */
+    (void)in;
+    int x = direction(k.left, k.right);
+    int y = direction(k.up, k.down);    /* up is the low end */
     int dx = 0, dy = 0;
     if (x != u->dir_x || y != u->dir_y) {
         dx = x != u->dir_x ? x : 0;
@@ -148,7 +148,13 @@ int sw_menu_update(sw_menu *u, sw_display_cfg *cfg, sw_machine *m, vp_input *in,
     u->back_was = k.back;
 
     if (back && u->page != P_MAIN) { u->page = P_MAIN; return SW_MENU_NOTHING; }
-    if (dy) { u->item[u->page] = step(u->item[u->page], dy, 0, n - 1); return SW_MENU_NOTHING; }
+    /* Delete on a binding (also the keypad's): back to AUTO */
+    if ((vpb_key_pressed(SDL_SCANCODE_DELETE) || vpb_key_pressed(SDL_SCANCODE_KP_PERIOD)) && line >= L_BIND0 && line < L_BIND_END) {
+        sw_bind_clear((sw_action)(line - L_BIND0));
+        u->adding = 0;
+        return SW_MENU_CHANGED;
+    }
+    if (dy) { u->item[u->page] = step(u->item[u->page], dy, 0, n - 1); u->adding = 0; return SW_MENU_NOTHING; }
     int d = dx ? dx : (fire ? 1 : 0);
     if (!d) return SW_MENU_NOTHING;
 
@@ -158,16 +164,19 @@ int sw_menu_update(sw_menu *u, sw_display_cfg *cfg, sw_machine *m, vp_input *in,
         return SW_MENU_OPTION;
     }
     if (line >= L_BIND0 && line < L_BIND_END) {
-        /* fire: wait for the input to bind; left or right: the cabinet's again */
-        if (fire) sw_bind_capture_begin((sw_action)(line - L_BIND0));
-        else { sw_bind_clear((sw_action)(line - L_BIND0)); return SW_MENU_CHANGED; }
+        /* START / Enter: wait for the input to bind - the first since the
+         * cursor came replaces, every further one is added; left or right:
+         * NONE, or AUTO again */
+        sw_action a = (sw_action)(line - L_BIND0);
+        if (fire) { sw_bind_capture_begin(a, u->adding != line); u->adding = line; }
+        else { sw_bind_toggle(a); u->adding = 0; return SW_MENU_CHANGED; }
         return SW_MENU_NOTHING;
     }
     switch (line) {
     case L_PAGE_OPTIONS:  if (fire) u->page = P_OPTIONS; break;
     case L_PAGE_GRAPHICS: if (fire) u->page = P_GRAPHICS; break;
     case L_PAGE_SOUND:    if (fire) u->page = P_SOUND; break;
-    case L_PAGE_CONTROLS: if (fire) u->page = P_CONTROLS; break;
+    case L_PAGE_CONTROLS: if (fire) { u->page = P_CONTROLS; u->adding = 0; } break;
     case L_PAGE_SCREEN:   if (fire) u->page = P_SCREEN; break;
     case L_BACK:          if (fire) u->page = P_MAIN; break;
     case L_SMOOTH:        cfg->smooth = cfg->smooth ? 0 : 3; return SW_MENU_CHANGED;   /* 3: computed from the game */
@@ -253,7 +262,7 @@ static void describe(int line, const sw_menu *u, const sw_display_cfg *cfg, cons
             uint8_t lines[PAGE_MAX];
             page_lines(P_CONTROLS, lines);
             if (lines[u->item[P_CONTROLS]] == line) {
-                snprintf(value, size, "%s", ((int)(u->now * 3) & 1) ? "PRESS AN INPUT" : "");
+                snprintf(value, size, "%s", ((int)(u->now * 3) & 1) ? "PRESS THE BUTTON" : "");
                 return;
             }
         }
@@ -288,7 +297,7 @@ static void describe(int line, const sw_menu *u, const sw_display_cfg *cfg, cons
     case L_VOL_ENGINE:    *label = "ENGINE VOLUME";     snprintf(value, size, "%d", cfg->vol_engine); break;
     case L_SOUND_TEST:    *label = "SOUND TEST";        snprintf(value, size, "%02X %s", u->sound, sw_menu_sound_name(u->sound)); break;
     case L_YOKE:          *label = "YOKE AUTO CENTER";  snprintf(value, size, "%s", on_off(cfg->yoke_autocenter)); break;
-    case L_BIND_RESET:    *label = "ALL INPUTS AS THE CABINET'S"; break;
+    case L_BIND_RESET:    *label = "ALL INPUTS AUTO"; break;
     case L_CALIBRATE:     *label = "TEST PATTERN"; break;
     case L_SIZE_X:        *label = "SIZE ACROSS";       snprintf(value, size, "%.1f %%", (4096 - cfg->margin_left - cfg->margin_right) * 100.0 / 4096.0); break;
     case L_SIZE_Y:        *label = "SIZE UP";           snprintf(value, size, "%.1f %%", (4096 - cfg->margin_bottom - cfg->margin_top) * 100.0 / 4096.0); break;
@@ -345,8 +354,15 @@ void sw_menu_draw(const sw_menu *u, const sw_display_cfg *cfg, const sw_machine 
         k++;
     }
     vp_color(d, 110, 110, 110);
-    const char *hint = page == P_MAIN ? "YOKE CHOOSE   FIRE OPEN   F2 SAVE AND EXIT"
-                     : page == P_CONTROLS ? "FIRE BIND   LEFT RIGHT CABINET'S   F2 SAVE AND EXIT"
-                     : "YOKE CHOOSE AND CHANGE   FIRE DO   F2 SAVE AND EXIT";
-    vp_text(d, hint, 2048, 330, 60, VP_TEXT_CENTER);
+    const char *one = page == P_MAIN ? "YOKE CHOOSE   START OR ENTER OPEN" : "YOKE CHOOSE AND CHANGE   START OR ENTER DO";
+    const char *two = "BACKSPACE BACK   F2 SAVE AND EXIT";
+    if (sw_bind_capturing()) {
+        one = sw_bind_capture_adds() ? "PRESS THE BUTTON TO ADD" : "PRESS THE BUTTON";
+        two = "START 1 - BACK  DEL - AUTO  START 2 - NONE";
+    } else if (page == P_CONTROLS) {
+        one = "LEFT RIGHT - AUTO OR NONE   DEL - AUTO";
+        two = "START, ENTER - ADD BUTTON   F2 SAVE AND EXIT";
+    }
+    vp_text(d, one, 2048, 400, 60, VP_TEXT_CENTER);
+    vp_text(d, two, 2048, 290, 60, VP_TEXT_CENTER);
 }

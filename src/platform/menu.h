@@ -12,12 +12,15 @@
  * owner's own bindings of every digital input, platform/bind.h), SCREEN
  * (the calibration).
  *
- *   yoke up / down      choose a line (also the arrow keys, the first joystick)
- *   yoke left / right   change its value; on a binding: back to the cabinet's
- *   fire / Return       change it, open a page, or do what the line says;
- *                       on a binding: wait for the input to bind
- *   thumb left / Backspace   the main page again
+ *   yoke up / down      choose a line (also the arrow keys, any stick or hat)
+ *   yoke left / right   change its value; on a binding: NONE or AUTO
+ *   START 1 / Enter     change it, open a page, or do what the line says;
+ *                       on a binding: wait for the input to bind (platform/bind.h)
+ *   Delete              on a binding: AUTO
+ *   Backspace           the main page again
  *   F2 / test button    save the settings and go back to the game
+ *
+ * The menu's own controls only: nothing bound acts in it.
  */
 #ifndef SWE_MENU_H
 #define SWE_MENU_H
@@ -42,6 +45,7 @@ typedef struct sw_menu {
     int    page;            /* the page shown: 0 the main one, else one of its parts */
     int    item[8];         /* the line chosen on each page */
     int    sound;           /* the request of the sound test (docs/SOUNDS.md) */
+    int    adding;          /* the binding line that had an input laid out since the cursor came: the next is added */
     int    dir_x, dir_y;    /* where the yoke was held the last time */
     int    ok_was, back_was;    /* the fire and the back key the last time */
     double repeat_at;       /* when a held yoke counts again (seconds) */

@@ -1,5 +1,6 @@
 #include "platform/controls.h"
 #include "platform/bind.h"
+#include "platform/vpbind.h"
 
 #include <math.h>
 #include <string.h>
@@ -14,6 +15,15 @@ void sw_controls_init(sw_controls *c, vp_input *in)
     c->adc_x = c->adc_y = 0x80;
     c->start_fires = 1;
     if (in) vp_input_set_deadzone(in, c->deadzone);
+}
+
+/* An axis past its dead zone, scaled so that it still reaches 1. */
+static float yoke_axis(float v, float zone)
+{
+    float m = fabsf(v);
+    if (v < -1.0f) v = -1.0f;
+    if (m <= zone) return 0.0f;
+    return (v > 0.0f ? 1.0f : -1.0f) * (m - zone) / (1.0f - zone);
 }
 
 static uint8_t axis_to_adc(float v, int invert)
@@ -67,7 +77,11 @@ void sw_controls_read(sw_controls *c, vp_input *in)
     if (sw_act_pressed(ACT_COIN1) && c->coin_pulse[0] == 0) c->coin_pulse[0] = COIN_PULSE_IRQS;
     if (sw_act_pressed(ACT_COIN2) && c->coin_pulse[1] == 0) c->coin_pulse[1] = COIN_PULSE_IRQS;
 
-    float x = vp_input_axis(in, "p1_stickx"), y = vp_input_axis(in, "p1_sticky");
+    /* The yoke (by its name, else the first joystick), read directly, with
+     * the dead zone the SDK gave it. */
+    int yoke = vpb_yoke() >= 0 ? vpb_yoke() : 0;
+    float x = yoke_axis(vpb_joy_axis(yoke, 0), c->deadzone), y = yoke_axis(vpb_joy_axis(yoke, 1), c->deadzone);
+    (void)in;
     if (c->autocenter) {
         int near_middle = fabsf(x) < REST_MAX && fabsf(y) < REST_MAX;
         if (!c->centered && near_middle) {
