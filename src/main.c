@@ -20,6 +20,7 @@
 #include "game/game.h"
 #include "platform/controls.h"
 #include "platform/bind.h"
+#include "platform/vpbind.h"
 #include "platform/app.h"
 #include "platform/audio.h"
 #include "dogfight/dogfight.h"
@@ -161,8 +162,8 @@ static void calib_adjust(calib *c, sw_display_cfg *cfg, vp_input *in)
     int dy = sw_act_pressed(ACT_UP) - sw_act_pressed(ACT_DOWN);
     /* the cabinet has no such switches: a push of its yoke is a step too */
     static int held_x, held_y;
-    float ax = vp_input_axis(in, "p1_stickx"), ay = vp_input_axis(in, "p1_sticky");
-    int px = ax < -0.5f ? -1 : ax > 0.5f ? 1 : 0, py = ay < -0.5f ? 1 : ay > 0.5f ? -1 : 0;
+    int px = vpb_menu_way_x(), py = -vpb_menu_way_y();     /* (the yoke read directly: platform/vpbind.h) */
+    (void)in;
     if (px != held_x) dx += px;
     if (py != held_y) dy += py;
     held_x = px;
