@@ -14,3 +14,11 @@ package/sounds/music/*
 !package/sounds/music/PMSF2.wav
 # (PMSF2 is the collection's torpedo sound, not film music: it stays in the repository)
 __pycache__/
+# videos never go to GitHub
+*.mp4
+*.mkv
+*.avi
+*.mov
+*.webm
+*.wmv
+*.m4v
