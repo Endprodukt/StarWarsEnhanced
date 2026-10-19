@@ -1,69 +1,70 @@
 # Star Wars VP
 
-Star Wars (Atari, 1983) als nativer Port mit Remaster-Optionen für
+Star Wars (Atari, 1983) as a native port with remaster options for
 [VectorPie](https://github.com/Goldfinch2/VectorPie): Raspberry Pi 5,
-USB-DVG, Vektormonitor (Wells-Gardner 6100).
+USB-DVG, vector monitor (Wells-Gardner 6100).
 
-* Spiellogik originalgetreu: im Originaltakt (20,51 Hz Spiel, 41 Hz VG,
-  246 Hz IRQ), Math Box in Festkomma, geprüft gegen MAME-Aufnahmen
-* Darstellung flüssig: Interpolation zwischen den Ticks, 50–60 Hz auf dem
-  Monitor
-* Remaster: verdeckte Linien, neue Modelle, Sound wahlweise original
-  (POKEY/TMS5220) oder neu
+* Game logic true to the original: at the original pace (20.51 Hz game, 41 Hz VG,
+  246 Hz IRQ), Math Box in fixed point, checked against MAME captures
+* Smooth picture: interpolation between the ticks, 50–60 Hz on the
+  monitor
+* Remaster: hidden lines, new models, sound either original
+  (POKEY/TMS5220) or new
 
-Stand: **Schritt 3 von 8** (Grundgerüst, Math Box, Interrupt und Steuerung). Plan und Hintergründe:
+Status: **step 3 of 8** (skeleton, Math Box, interrupt and controls). The
+current work is on the branch `native-port`. Plan and background:
 [docs/PLAN.md](docs/PLAN.md).
 
 ## ROMs
 
-Die Daten des Spiels (Vektor-ROM, Objekte, Sound-Programm, Sprache) werden
-zur Laufzeit aus dem eigenen MAME-ROM-Satz **`starwars1`** gelesen. Ins
-Repository oder Paket kommt nichts davon. Gebraucht werden `starwars1.zip`
-und `starwars.zip` (der Parent-Satz). Gesucht wird in:
+The game's data (vector ROM, objects, sound program, speech) is read at run
+time from your own MAME ROM set **`starwars1`**. None of it goes into the
+repository or the package. Needed are `starwars1.zip` and `starwars.zip` (the
+parent set). Searched in:
 
-1. `--roms PFAD`
-2. `dir_rom` aus der `advmame.rc` des Automaten
+1. `--roms PATH`
+2. `dir_rom` from the cabinet's `advmame.rc`
 3. `$SWVP_ROMS`, `./roms`, `~/.advance/rom`, `~/mame/roms`, `/home/pi/.advance/rom`
 
-Die Dateien werden per CRC erkannt, Namen und Aufteilung auf die zips spielen
-keine Rolle.
+Files are recognized by CRC; names and how they are split across the zips do
+not matter.
 
-## Bauen
+## Building
 
 ```sh
-git clone --recursive <repo>            # oder: git submodule update --init
+git clone --recursive <repo>            # or: git submodule update --init
 cmake --preset linux && cmake --build --preset linux && ctest --preset linux
-cmake --preset pi    && cmake --build --preset pi       # Automat (WSL2 Debian trixie, siehe SDK)
+cmake --preset pi    && cmake --build --preset pi       # cabinet (WSL2 Debian trixie, see SDK)
 cmake --preset pc    && cmake --build --preset pc       # Windows .exe
 ```
 
-Das SDK liegt unverändert als Submodul unter `external/VectorPie`.
+The SDK lies unchanged as a submodule under `external/VectorPie`.
 
-## Programme
+## Programs
 
-| Programm | Zweck |
+| Program | Purpose |
 |---|---|
-| `starwarsvp` | das Spiel; zurzeit ROM- und Math-Box-Prüfung und ein Testbild für die Steuerung: Fadenkreuz am Joch (mit dem originalen Nachziehen und der Joch-Kalibrierung), Feuer färbt es rot, Münzen zählen Credits |
-| `starwarsvp --calibrate` | Kalibrierbild: Bildschirmrand, Clip-Grenzen, Kreis, alle Farben in 7 Helligkeiten. Joystick ändert, Knopf 1 wechselt den Modus (Größe, Lage, Gamma/Floor, Helligkeit), Knopf 2 speichert nach `save/starwarsvp.ini` |
-| `avgreplay AUFNAHME.swcap` | spielt in MAME aufgenommene Displaylisten im Originaltakt auf dem Monitor ab; `--lerp` zeigt die Interpolation, `--loop` wiederholt |
+| `starwarsvp` | the game; for now the ROM and Math Box check and a test picture for the controls: crosshair on the yoke (with the original's lag and the yoke calibration), fire turns it red, coins count credits |
+| `starwarsvp --calibrate` | calibration picture: screen edge, clip limits, circle, all colors at 7 brightnesses. The joystick changes, button 1 switches the mode (size, position, gamma/floor, brightness), button 2 saves to `save/starwarsvp.ini` |
+| `avgreplay CAPTURE.swcap` | plays display lists captured in MAME on the monitor at the original pace; `--lerp` shows the interpolation, `--loop` repeats |
 
-Allgemeine Optionen: `--dvg [PORT]`, `--window`, `--windowed`, `--vertical`,
-`--hz N` (Bildrate), `--config INI`. `VP_STATS=1` gibt die Kosten pro Bild aus
-(Vektoren, Leerwege, Weglängen).
+General options: `--dvg [PORT]`, `--window`, `--windowed`, `--vertical`,
+`--hz N` (picture rate), `--config INI`. `VP_STATS=1` prints the costs per
+picture (vectors, blank moves, path lengths).
 
-## Steuerung
+## Controls
 
-Belegung über die `advmame.rc` des Automaten, wie bei MAMEs Star Wars:
+Bound through the cabinet's `advmame.rc`, as with MAME's Star Wars:
 
-| Automat | VectorPie-Aktion |
+| Cabinet | VectorPie action |
 |---|---|
-| Joch links/rechts, hoch/runter | `p1_stickx`, `p1_sticky` |
-| Feuer links (auch Start) | `p1_button1`, `start1` |
-| Feuer rechts | `p1_button4`, `start2` |
-| Daumen links / rechts | `p1_button2` / `p1_button3` |
-| Münze L / R | `coin1` / `coin2` |
+| Yoke left/right, up/down | `p1_stickx`, `p1_sticky` |
+| Left fire (also start) | `p1_button1`, `start1` |
+| Right fire | `p1_button4`, `start2` |
+| Left / right thumb | `p1_button2` / `p1_button3` |
+| Coin L / R | `coin1` / `coin2` |
 
-## Aufnahmen aus MAME
+## Captures from MAME
 
 ```sh
 SWCAP_OUT=attract.swcap SWCAP_TICKS=2000 \
@@ -71,33 +72,32 @@ SWCAP_OUT=attract.swcap SWCAP_TICKS=2000 \
 build-linux/avgreplay attract.swcap --lerp --windowed
 ```
 
-Pro Spieltick werden VG-RAM, RAM und Math-Box-RAM gespeichert, Format in
-`src/capture/capture.h`. Die Aufnahmen dienen zum Kalibrieren und als
-Referenz für den nativen Kern.
+For each game tick VG RAM, RAM and Math Box RAM are saved, format in
+`src/capture/capture.h`. The captures serve for calibration and as the
+reference for the native core.
 
 ## Math Box
 
-`tools/mbasm.py` assembliert den originalen Mikrocode (SWMP.MAC aus
-historicalsource/star-wars) und prüft ihn gegen die CRCs der PROMs. Daraus
-erzeugt es `src/mbox/mbox_programs.c`:
+`tools/mbasm.py` assembles the original microcode (SWMP.MAC from
+historicalsource/star-wars) and checks it against the PROMs' CRCs. From it
+it generates `src/mbox/mbox_programs.c`:
 
 ```sh
 python3 -I tools/mbasm.py SWMP.MAC --check
 python3 -I tools/mbasm.py SWMP.MAC --c src/mbox/mbox_programs.c --prom-header tests/mbox_prom.h
 ```
 
-## Symbole
+## Symbols
 
-`src/core/sw_symbols.h` enthält alle Adressen der originalen Load-Map
-(`WSROOT.MAP`) unter ihren Originalnamen und wird mit `tools/mapsyms.py`
-erzeugt.
+`src/core/sw_symbols.h` holds all addresses of the original load map
+(`WSROOT.MAP`) under their original names and is generated with
+`tools/mapsyms.py`.
 
-## Rechtliches
+## Legal
 
-Star Wars ist ein Warenzeichen von Lucasfilm, das Spiel stammt von Atari.
-Programm-ROMs, Vektor-ROM und Sound-ROMs sind nicht enthalten, sie kommen
-aus dem eigenen ROM-Satz. Der Math-Box-Mikrocode ist dagegen enthalten, als
-generierter C-Code und als Testdatei (`tests/mbox_prom.h`). Er ist aus dem
-veröffentlichten Quelltext (SWMP.MAC) erzeugt und entspricht inhaltlich den
-PROMs. Das Projekt ist für den privaten Einsatz am eigenen Automaten
-gedacht.
+Star Wars is a trademark of Lucasfilm, the game is by Atari. Program ROMs,
+vector ROM and sound ROMs are not included, they come from your own ROM set.
+The Math Box microcode, however, is included, as generated C code and as a
+test file (`tests/mbox_prom.h`). It is generated from the published source
+(SWMP.MAC) and matches the PROMs in content. The project is meant for private
+use on your own cabinet.
