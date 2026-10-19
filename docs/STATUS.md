@@ -233,7 +233,7 @@ Soundplatine, die Zeit des Vektorgenerators.
   Musiktreiber fertig ist, Sprache bis der Sprachchip fertig ist, Effekte
   bis zur Stille), jeden in den Ordner seiner Art: `sounds/voice/` (22
   Sätze), `sounds/music/` (11 Stücke), `sounds/effects/` (18), `sounds/test/`
-  (4, der Selbsttest der Platine). Alle 55 liegen am PC (nicht im Repo,
+  (4, der Selbsttest der Platine). Alle 55 liegen am PC (im privaten Repo,
   nicht am Automaten); `SPKI`, `SPKSKP`, `AUDPBZ` und `AUDTCZ` machen keinen
   Ton und bekommen keine Datei. Der Lader sucht eine Datei in `sounds/`
   selbst und im Ordner ihrer Art. Folge am PC: Weil die Originale jetzt in
@@ -550,7 +550,7 @@ wieder mit den Vorgaben.
 * **Ansicht beim Spielstart:** Jedes Spiel und jeder Dogfight beginnt in der
   Arcade-Ansicht, gleich was zuletzt mit Start gewählt war; Start schaltet
   wie bisher weiter.
-* **Filmmusik (privat, nicht im Repo, nicht im Paket):** Aus Soundtrack-
+* **Filmmusik (privat, im privaten Repo, nicht im Paket):** Aus Soundtrack-
   Ausschnitten des Besitzers (Desktop) geschnitten, nach dem Arcade-Stück
   gefunden (Melodieband-Chroma, Tempo und Tonart gesucht, Einsätze
   verglichen), mit hartem Schnitt wie im Original und Nachhall danach:
@@ -1323,3 +1323,8 @@ daraus wurde:
   Spiel steht (Log: `Could not queue pageflip: -13`, keine Statistik;
   2026-10-17). Meldet das Skript `MENU-STILL-RUNNING`, auf dem Pi
   `sudo systemctl stop getty@tty1` und `run.sh` neu starten.
+
+Repository (2026-10-19): `sounds/` (Originale der Platine, Filmmusik,
+Filmsätze) und `package/sounds/music` (Filmmusik) liegen jetzt im Repo, das
+privat ist. Die SW Ultimate SFX Collection (1,4 GB) und Videos bleiben
+draußen.
