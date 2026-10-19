@@ -1328,3 +1328,5 @@ Repository (2026-10-19): `sounds/` (Originale der Platine, Filmmusik,
 Filmsätze) und `package/sounds/music` (Filmmusik) liegen jetzt im Repo, das
 privat ist. Die SW Ultimate SFX Collection (1,4 GB) und Videos bleiben
 draußen.
+
+GitHub-Release (2026-10-19): `v0.3.31` mit demselben Paket wie im Google-Drive-Ordner `games`. Bei jedem neuen Paket im Drive auch ein Release anlegen (`gh release create v<version> <paket>.vpk`).
