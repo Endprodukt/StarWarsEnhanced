@@ -73,6 +73,12 @@ typedef struct sw_sndboard {
 void sw_sndboard_init(sw_sndboard *s, sw_machine *m);
 void sw_sndboard_reset(sw_sndboard *s);
 
+/* Silence at once: the board reset, and nothing it was playing let die
+ * away (the recordings stopped dead, the music without its release, the
+ * engine with them). For a quiet demo flight's end (main.c): what it played
+ * at volume 0 is not to be heard in the attract mode after it. */
+void sw_sndboard_hush(sw_sndboard *s);
+
 /* The board's bus, for the program in C. */
 uint8_t sw_snd_rd(sw_sndboard *s, uint16_t a);
 void    sw_snd_wr(sw_sndboard *s, uint16_t a, uint8_t v);

@@ -2,6 +2,55 @@
 
 Stand: 2026-10-13. Architektur und Hintergründe: [PLAN.md](PLAN.md).
 
+## Demo-Flug wie ein echtes Spiel, kein Ton im stillen Attract (2026-10-21)
+
+Rückmeldung des Besitzers: Im Attract kamen trotz MUSIC IN ATTRACT: NO
+manchmal kurze Ton-Blips; im Demo-Flug flog der Spieler in alles hinein,
+ohne dass es etwas kostete. Nur lokal gebaut, gemessen und gefilmt, **nicht
+am Automaten**.
+
+* **Blips:** Sie kamen vom Ende eines stummen Demo-Flugs. Die Lautstärke
+  wurde nur einmal pro Bild nach dem Spielschritt gesetzt, und das
+  Zurücksetzen der Platine (Anforderung 00) lässt die Filmmusik 0,7 s
+  ausklingen und den Gleichanteil-Filter langsam nachlaufen, beides dann
+  wieder bei voller Lautstärke. Jetzt setzt `demo_sound` (main.c) die
+  Stummschaltung bei jedem Interrupt, und am Ende eines stummen Demos
+  macht `sw_sndboard_hush` die Platine sofort still (Aufnahmen und Musik
+  ohne Ausklang, Triebwerk, Sprachchip, Gleichanteil). Auf den
+  Attract-Seiten laufen weder Triebwerk noch Falcon an, auch nicht aus dem
+  letzten Bild eines Demos. Mit MUSIC IN ATTRACT: YES klingt ein Demo wie
+  bisher aus.
+* **Ein Pilot statt Pendeln** (`platform/demo.c`): Er sieht das zuletzt
+  gezeichnete Bild (die Vektorliste mit ihren Tags, wie der Renderer sie
+  läuft) und hält das Joch so, dass das Fadenkreuz dorthin geht
+  (`pot_for`: RHLIM umgekehrt, auch ohne YOKE AUTO CENTER). Zuerst der
+  nächste scharfe Feuerball, den das Fadenkreuz erreichen kann; sonst im
+  Weltraum ein TIE, über der Oberfläche ein Turmhut oder Bunker. Gefeuert
+  wird, wenn das Fadenkreuz darauf steht und der letzte Strahl vorbei ist.
+* **Ausweichen:** Über der Oberfläche rechnet er für jede Fadenkreuzlage
+  voraus, ob ein Turm ins Kollisionsfeld kommt (GDVIEW: nah und im Blick).
+  Dazu gehört die Schräglage: das Schiff rollt mit dem Fadenkreuz und nach
+  einem Treffer stark, und die Math Box dreht damit die hohe Turmmitte zur
+  Seite (gemessen: 2·YP = cos r·dy + sin r·(TZ − 1E00), r = GD.ACT, 78 je
+  5 Grad). Im Graben dasselbe für die Kraftfelder (PNLW/PNRW, Höhe ±200,
+  erste Hälfte des Abschnitts). Erst ein Weg mit Abstand, dann der schon
+  gewählte, dann ein knapper; einmal pro Spielframe.
+* **Abgasschacht:** Am Ende des Grabens hat er Vorrang vor allem: das
+  Fadenkreuz so, dass der Laser den Grabenboden auf dem Schacht trifft
+  (CLBLZ), dann fliegen die Torpedos.
+* **Schilde:** Treffer kosten Schilde wie im Spiel. Nur das letzte geht nie
+  verloren (der Demo soll nicht mitten im Flug enden).
+* **Wahl des Todessterns** über das Fadenkreuz statt eines rohen
+  Potiwerts: Ohne YOKE AUTO CENTER nahm der Demo vorher den leichten
+  Todesstern ohne Oberfläche.
+* Gemessen über 20 Demos (beide Joch-Einstellungen): vorher 23 bis 29
+  Treffer und der Schacht verfehlt (Nase an der Wand, Graben noch einmal);
+  jetzt 1 bis 5 Treffer (meist Feuerbälle über der Oberfläche, selten ein
+  Kraftfeld), der Todesstern explodiert jedes Mal (~102 s), danach beginnt
+  Welle 4 im Weltraum. `tests/test_demo.c` prüft das (Treffer kosten
+  Schilde, höchstens 8, Schacht getroffen), `tests/test_samples.c` das
+  sofortige Verstummen.
+
 ## Belegung wie bei allen Vektorspielen (2026-10-19)
 
 - `src/platform/bind.c` neu: jede Eingabe AUTO (direkt gelesen: die AdvanceMAME-Standards – Tasten, Knöpfe/Stick des Steuerhorns (Joystick mit "yoke" im Namen, sonst des ersten), Maustasten), NONE oder bis zu 4 eigene (Taste, Joystick-Knopf/-Achse/-Hat, Maustaste). Datei: `auto`, `off` (NONE), sonst `key:..`, ...; ein altes `none` heißt jetzt AUTO (war: wie der Automat).
@@ -1272,6 +1321,13 @@ daraus wurde:
 * Der NOVRAM-Test der Optionsseite ist portiert, aber in keiner Aufnahme
   sicher ausgelöst worden. Er hält das Bild im Original 66 Frames an; hier
   wird die Arbeit sofort getan und danach 66 Frames gewartet.
+* **Demo-Pilot**: Er fliegt nur den mittleren Todesstern (Welle 3) und
+  kennt Türme und Kraftfelder aus dem RAM, Feuerbälle und Ziele aus dem
+  Bild. Feuerballsalven über der Oberfläche treffen ihn manchmal, selten
+  ein Kraftfeld. Fällt er auf das letzte Schild und wird wieder getroffen,
+  sagt das Spiel "I've lost R2" (nur hörbar mit MUSIC IN ATTRACT: YES).
+  Spiel und Pilot zusammen rechnen am PC 112 s Demo in 0,3 s; auf dem Pi
+  nicht gemessen.
 
 ## Als Nächstes
 

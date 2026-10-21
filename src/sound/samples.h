@@ -136,6 +136,10 @@ void sw_samples_free(sw_samples *s);
  * music is to stop. */
 int  sw_samples_request(sw_samples *s, int n);
 
+/* Everything stopped dead: as request 00, but the music without its
+ * release, and the engine down at once (sw_sndboard_hush). */
+void sw_samples_hush(sw_samples *s);
+
 /* Request n's recording (or, n SW_CUE_FALCON, the Falcon's fly-by) to begin
  * `delay` seconds from now, in a voice of its own (a negative delay: that
  * much of its beginning left out). Speech among them counts as speech. */

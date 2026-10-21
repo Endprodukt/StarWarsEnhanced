@@ -216,8 +216,26 @@ typedef struct board {
     sw_sndboard *snd;                          /* the sound board (its chips; its program in C too), NULL: none */
     int         original;                      /* --original: the whole original program on the 6809 */
     sw_demo     demo;                          /* the demo flight of the attract mode */
+    int         demo_quiet;                    /* it is flown without sound (demo_sound) */
     sw_dogfight df;                            /* the dogfight (a fourth Death Star to choose) */
 } board;
+
+/* With the attract mode's sound off (the operator's option MUSIC IN
+ * ATTRACT: NO, the game's "sick and tired of the music"), a demo flight,
+ * a game the program plays itself in the attract mode, is quiet as well:
+ * its shots, music and voices are not heard. Set at every interrupt, so
+ * that nothing of a demo's first moments gets through; and as it ends the
+ * board is silenced at once, so that what it was playing (the music's
+ * release, the engine, a shot) does not die away, heard, in the attract
+ * mode after it. */
+static void demo_sound(board *b)
+{
+    if (!b->snd) return;
+    int quiet = b->demo.active && sw_option_get(&b->m, 7, NULL) == 1;
+    if (b->demo_quiet && !quiet) sw_sndboard_hush(b->snd);
+    b->demo_quiet = quiet;
+    b->snd->volume = quiet ? 0.0f : 1.0f;
+}
 
 static float vg13(uint16_t v) { return (float)((int16_t)(uint16_t)(v << 3) >> 3); }
 
@@ -232,7 +250,10 @@ static void on_irq(void *u)
 {
     board *b = (board *)u;
     sw_controls_tick(&b->ctl, &b->m);
-    if (b->native) sw_demo_tick(&b->demo, &b->m);  /* (a demo flight: its own player) */
+    if (b->native) {
+        sw_demo_tick(&b->demo, &b->m);              /* (a demo flight: its own player) */
+        demo_sound(b);
+    }
     b->irqs++;
     sw_picture_irq_begin(&b->pic, (double)b->irqs / SW_IRQ_HZ);
     if (b->controls_test) {
@@ -755,11 +776,12 @@ int main(int argc, char **argv)
         } else {
             sw_sched_advance(&sched, dt, roms_ok ? &hooks : NULL);
         }
-        /* With the attract mode's sound off (the operator's option MUSIC IN
-         * ATTRACT: NO, the game's "sick and tired of the music"), a demo
-         * flight, a game the program plays itself in the attract mode, is
-         * quiet as well: its shots, music and voices are not heard. */
-        if (brd.snd) brd.snd->volume = roms_ok && brd.demo.active && sw_option_get(&brd.m, 7, NULL) == 1 ? 0.0f : 1.0f;
+        /* (a demo flight ended from here, by the menu: quiet as above) */
+        if (roms_ok) demo_sound(&brd);
+        /* (the attract mode's pages: no flight, and so no engine or Falcon,
+         * not even from a demo's last picture still on the screen) */
+        uint8_t phase_now = RAM8(&brd.m, SW_PHASE);
+        int on_pages = phase_now >= SW_PHSBNR && phase_now <= SW_PHSHIS + 1;
         /* The Falcon flies over (render/enhance.h): its fly-by loudest just as
          * it passes, and "Yahoo, you're all clear, kid" with it (the game's
          * own request for that line is then not played: samples.h). */
@@ -767,8 +789,10 @@ int main(int argc, char **argv)
             brd.snd->samples->hold_yahoo = brd.pic.enhance.falcon;
             if (brd.pic.enhance.falcon_cue) {
                 brd.pic.enhance.falcon_cue = 0;
-                sw_samples_cue(brd.snd->samples, SW_CUE_FALCON, brd.pic.enhance.falcon_pass_in - SW_FALCON_PEAK);
-                sw_samples_cue(brd.snd->samples, 0x1a, brd.pic.enhance.falcon_pass_in);     /* SPKYAU */
+                if (!on_pages) {
+                    sw_samples_cue(brd.snd->samples, SW_CUE_FALCON, brd.pic.enhance.falcon_pass_in - SW_FALCON_PEAK);
+                    sw_samples_cue(brd.snd->samples, 0x1a, brd.pic.enhance.falcon_pass_in);     /* SPKYAU */
+                }
             }
         }
         /* The X-wing's own engine (enhanced): in flight, from inside the
@@ -776,7 +800,7 @@ int main(int argc, char **argv)
          * as the view is; in the dogfight it runs up as the ship speeds up. */
         if (brd.snd && brd.snd->samples) {
             int flying = !menu.open && cfg.enh_engine &&
-                         (brd.df.active ? brd.df.stage == SW_DF_PLAY && !brd.df.over : brd.pic.enhance.plane_seen);
+                         (brd.df.active ? brd.df.stage == SW_DF_PLAY && !brd.df.over : brd.pic.enhance.plane_seen && !on_pages);
             float thrust = brd.df.active ? sw_dogfight_thrust(&brd.df) : 0.0f;
             int outside = brd.pic.enhance.view == SW_VIEW_OUTSIDE;
             sw_samples_engine(brd.snd->samples, !flying ? -1 : outside ? SW_ENGINE_OUTSIDE : SW_ENGINE_COCKPIT,
