@@ -341,6 +341,13 @@ void sw_samples_cue(sw_samples *s, int n, double delay)
     if (s->cue[v].at >= r->n) s->cue[v].rec = NULL;
 }
 
+void sw_samples_hush(sw_samples *s)
+{
+    sw_samples_request(s, 0);
+    s->tail.rec = NULL;
+    for (int i = 0; i < SW_ENGINE_LOOPS; i++) s->engine[i].gain = s->engine[i].want = 0.0f;
+}
+
 int sw_samples_request(sw_samples *s, int n)
 {
     if (n == 0) {                           /* the board's reset */

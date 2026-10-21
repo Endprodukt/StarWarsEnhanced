@@ -176,6 +176,19 @@ void sw_sndboard_reset(sw_sndboard *s)
     else m6809_reset(&s->cpu);
 }
 
+void sw_sndboard_hush(sw_sndboard *s)
+{
+    sw_sndboard_reset(s);
+    if (s->samples) sw_samples_hush(s->samples);
+    /* the POKEYs and the speech chip are silent now: so is what is still
+     * pending of them, and nothing standing is left to be taken out */
+    s->tms_out = 0;
+    s->pokey_sum = 0.0f;
+    s->pokey_done = s->pending_ticks;
+    s->last_pokey = 0.0f;
+    s->dc = s->dc_speech = 0.0f;
+}
+
 void sw_sndboard_init(sw_sndboard *s, sw_machine *m)
 {
     memset(s, 0, sizeof *s);

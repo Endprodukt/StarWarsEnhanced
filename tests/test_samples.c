@@ -150,6 +150,18 @@ int main(void)
     sw_samples_request(&s, 0x3a);
     sw_samples_request(&s, 0);
     if (loud(1000) != 0) { printf("sound after the reset\n"); fail = 1; }
+    /* the reset lets the music die away; the hush (the end of a quiet demo
+     * flight) stops it dead, with everything else */
+    sw_samples_request(&s, 0x24);
+    sw_samples_request(&s, 0x3a);
+    loud(100);
+    sw_samples_request(&s, 0);
+    if (loud(100) == 0) { printf("the reset cut the music dead, no release\n"); fail = 1; }
+    sw_samples_request(&s, 0x24);
+    sw_samples_request(&s, 0x3a);
+    loud(100);
+    sw_samples_hush(&s);
+    if (loud(1000) != 0) { printf("sound after the hush\n"); fail = 1; }
 
     sw_samples_free(&s);
 

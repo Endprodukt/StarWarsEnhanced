@@ -145,5 +145,33 @@ int main(void)
             fails++;
         }
     }
+
+    /* the hush (the end of a quiet demo flight): a piece of music playing
+     * is silent at once, nothing of it left dying away */
+    static side q;
+    sw_machine_init(&q.m, &rom);
+    q.m.sound_board = 1;
+    sw_sndboard_init(&q.snd, &q.m);
+    q.snd.native = 1;
+    sw_sndboard_reset(&q.snd);
+    sw_sndboard_run(&q.snd, 20000);
+    q.m.sound_out = 0x24;                   /* PMTH5 */
+    q.m.sound_out_full = 1;
+    int loud = 0, after = 0;
+    for (int i = 0; i < 300; i++) {         /* 0.4 s */
+        sw_sndboard_run(&q.snd, 2000);
+        int got;
+        while ((got = sw_sndboard_read(&q.snd, pcm, 4096)) > 0)
+            for (int j = 0; j < got; j++) loud |= abs(pcm[j]) > 200;
+    }
+    sw_sndboard_hush(&q.snd);
+    for (int i = 0; i < 300; i++) {
+        sw_sndboard_run(&q.snd, 2000);
+        int got;
+        while ((got = sw_sndboard_read(&q.snd, pcm, 4096)) > 0)
+            for (int j = 0; j < got; j++) if (abs(pcm[j]) > 1) after++;
+    }
+    printf("hush     music before it %s, samples heard after it %d\n", loud ? "heard" : "NOT HEARD", after);
+    if (!loud || after) { printf("  FAIL: the hush does not silence the board at once\n"); fails++; }
     return fails ? 1 : 0;
 }
