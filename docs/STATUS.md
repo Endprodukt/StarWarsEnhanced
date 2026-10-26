@@ -1410,4 +1410,5 @@ Filmsätze) und `package/sounds/music` (Filmmusik) liegen jetzt im Repo, das
 privat ist. Die SW Ultimate SFX Collection (1,4 GB) und Videos bleiben
 draußen.
 
-GitHub-Release (2026-10-19): `v0.3.31` mit demselben Paket wie im Google-Drive-Ordner `games`. Bei jedem neuen Paket im Drive auch ein Release anlegen (`gh release create v<version> <paket>.vpk`).
+GitHub-Release (2026-10-19): `v0.3.31` mit demselben Paket wie im Google-Drive-Ordner `games`.
+GitHub-Release (2026-10-26): `v0.3.32` (Demo in kurzen Stücken, keine Ton-Blips im stillen Attract); noch nicht im Drive-Ordner. Bei jedem neuen Paket im Drive auch ein Release anlegen (`gh release create v<version> <paket>.vpk`).
