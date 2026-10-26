@@ -307,8 +307,8 @@ Soundplatine, die Zeit des Vektorgenerators.
   Musiktreiber fertig ist, Sprache bis der Sprachchip fertig ist, Effekte
   bis zur Stille), jeden in den Ordner seiner Art: `sounds/voice/` (22
   Sätze), `sounds/music/` (11 Stücke), `sounds/effects/` (18), `sounds/test/`
-  (4, der Selbsttest der Platine). Alle 55 liegen am PC (im privaten Repo,
-  nicht am Automaten); `SPKI`, `SPKSKP`, `AUDPBZ` und `AUDTCZ` machen keinen
+  (4, der Selbsttest der Platine). Alle 55 liegen am PC (Musik und Sätze
+  nicht im Repo, das öffentlich ist; nicht am Automaten); `SPKI`, `SPKSKP`, `AUDPBZ` und `AUDTCZ` machen keinen
   Ton und bekommen keine Datei. Der Lader sucht eine Datei in `sounds/`
   selbst und im Ordner ihrer Art. Folge am PC: Weil die Originale jetzt in
   `sounds/` liegen, spielt die PC-Fassung sie als "Ersatz" ab (klingt
@@ -1406,9 +1406,17 @@ daraus wurde:
   `sudo systemctl stop getty@tty1` und `run.sh` neu starten.
 
 Repository (2026-10-19): `sounds/` (Originale der Platine, Filmmusik,
-Filmsätze) und `package/sounds/music` (Filmmusik) liegen jetzt im Repo, das
-privat ist. Die SW Ultimate SFX Collection (1,4 GB) und Videos bleiben
-draußen.
+Filmsätze) und `package/sounds/music` (Filmmusik) kamen ins Repo, in der
+Annahme, es sei privat. **Es ist öffentlich** (2026-10-26 bemerkt). Deshalb
+sind Filmmusik und Filmsätze (`sounds/music`, `sounds/voice`,
+`package/sounds/music`, `package/sounds/voice`) auf Wunsch des Besitzers
+aus der ganzen Historie von `native-port` und den Tags `v0.3.31`,
+`v0.3.32` entfernt (neu geschrieben, force-push) und stehen in
+`.gitignore`; sie liegen nur noch am PC. Das Teilen-Paket (`tools/pack.sh`
+ohne `WITH_MUSIC=1`) hat seitdem auch keine Filmsätze mehr. Der lokale
+Branch `esb-port` (nicht auf GitHub) hat noch die alte Historie mit den
+Dateien: nicht so pushen. Die SW Ultimate SFX Collection (1,4 GB) und
+Videos bleiben draußen.
 
 GitHub-Release (2026-10-19): `v0.3.31` mit demselben Paket wie im Google-Drive-Ordner `games`.
 GitHub-Release (2026-10-26): `v0.3.32` (Demo in kurzen Stücken, keine Ton-Blips im stillen Attract); noch nicht im Drive-Ordner. Bei jedem neuen Paket im Drive auch ein Release anlegen (`gh release create v<version> <paket>.vpk`).

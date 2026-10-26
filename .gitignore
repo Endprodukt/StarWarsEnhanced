@@ -5,7 +5,12 @@ roms/
 video/
 # (the collection of sounds the recordings are taken from: in the project's folder, 1.4 GB)
 SW Ultimate SFX Collection/
-# (sounds/ and package/sounds/music, the film music included, are in the repository: it is private)
+# (the film music and the film lines never go to GitHub: the repository is public; they stay
+#  on the PC, and only the owner's own package has them, dist/private/)
+sounds/music/
+sounds/voice/
+package/sounds/music/
+package/sounds/voice/
 __pycache__/
 # videos never go to GitHub
 *.mp4

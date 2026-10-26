@@ -161,7 +161,8 @@ sound for the same thing (its speech -29 dB, its effects -37 dB, its music
 Death Star -28.5 dB.
 
 Music: the owner's own cuts from the films' soundtrack (private: in
-`sounds/music`, made into `package/sounds/music`, both in the private repository;
+`sounds/music`, made into `package/sounds/music`, both on the PC only, never in
+the repository, which is public; the film lines in `sounds/voice` likewise;
 the build tool leaves them out where they are not there), in stereo, -30
 dB (a little under speech): PMTH5, PMTHB, PMDAR, PM4TH, PMCNT. The other
 pieces are the board's own. Darth Vader's four

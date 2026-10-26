@@ -15,10 +15,12 @@ mkdir "$stage/swenhanced"
 cp build-pi/swenhanced package/game.ini package/swenhanced.ini package/marquee.png "$stage/swenhanced/"
 cp -r package/sounds "$stage/swenhanced/sounds"     # (the recordings that replace the board's sounds)
 find "$stage/swenhanced/sounds" -type d -exec chmod 755 {} + -o -type f -exec chmod 644 {} +
-# The owner's film music (package/sounds/music, private) only with WITH_MUSIC=1: a
-# package to share has the board's own music (PMSF2 is the collection's torpedo, it stays).
-if [ "${WITH_MUSIC:-0}" != 1 ] && [ -d "$stage/swenhanced/sounds/music" ]; then
-    find "$stage/swenhanced/sounds/music" -name '*.wav' ! -name 'PMSF2.wav' -delete
+# The owner's film music and film lines (package/sounds/music and voice, on the PC
+# only, never on GitHub) only with WITH_MUSIC=1: a package to share has the board's
+# own music and speech (PMSF2 is the collection's torpedo, it stays).
+if [ "${WITH_MUSIC:-0}" != 1 ]; then
+    [ -d "$stage/swenhanced/sounds/music" ] && find "$stage/swenhanced/sounds/music" -name '*.wav' ! -name 'PMSF2.wav' -delete
+    rm -rf "$stage/swenhanced/sounds/voice"
 fi
 chmod 755 "$stage/swenhanced/swenhanced"
 chmod 644 "$stage/swenhanced/game.ini" "$stage/swenhanced/swenhanced.ini" "$stage/swenhanced/marquee.png"
