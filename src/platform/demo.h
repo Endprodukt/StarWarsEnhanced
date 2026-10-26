@@ -1,22 +1,28 @@
 /* demo.h - a demo flight in the attract mode (enhanced; the arcade machine
  * has none: its attract mode is pages of text).
  *
- * When the attract mode comes from the page of scores to the high scores
- * and nobody has paid, the machine as it is is put aside, and a game is
- * played by itself: a credit given, fire to start, the Death Star in the
- * middle chosen, then flown by a pilot who plays as a player would (demo.c):
- * he looks at the picture the game has drawn, puts the sight on the
- * fireball coming nearest and shoots it down, else on a TIE fighter, a
- * tower's top or a bunker; over the surface he steers clear of the towers,
- * in the trench of the force fields, and at its end he shoots for the
- * exhaust port. What hits him costs shields as in any game; only the last
- * one is never lost (the demo is not to end in the middle of its flight).
- * Each part of the flight (space, the surface, the trench) is seen from
- * another view (render/enhance.h), and the next demo starts with the next
- * one. After DEMO_SECONDS, or as soon as anybody puts a coin in or presses
- * a button, the machine is put back as it was: the demo leaves nothing
- * behind (no credit, no score, no count of plays in the NOVRAM), and the
- * coin or the button then acts as ever.
+ * A game played by itself, in short pieces between the attract mode's
+ * pages: whenever the attract mode goes on to a new page (the banner, the
+ * instructions, the scores, the high scores) and nobody has paid, the
+ * machine as it is is put aside, and the game of the last piece goes on
+ * for CLIP_SECONDS (demo.c); then the page comes as ever. The first piece
+ * begins a game: a credit given, fire to start, the Death Star in the
+ * middle chosen. It is flown by a pilot who plays as a player would: he
+ * looks at the picture the game has drawn, puts the sight on the fireball
+ * coming nearest and shoots it down, else on a TIE fighter, a tower's top
+ * or a bunker; over the surface he steers clear of the towers, in the
+ * trench of the force fields, and at its end he shoots for the exhaust
+ * port. What hits him costs shields as in any game.
+ *
+ * A game ends (and the next piece begins a new one) when the torpedoes are
+ * on their way into the port (the Death Star's end is not shown), or when
+ * the ship is lost (its end shown, no GAME OVER): the next page comes at
+ * once. Each piece is seen from another view (render/enhance.h), and so is
+ * each new part of the flight within one. As soon as anybody puts a coin
+ * in or presses a button, the piece ends too. Every time the machine is
+ * put back as it was: the demo leaves nothing behind (no credit, no score,
+ * no count of plays in the NOVRAM), and the coin or the button then acts
+ * as ever.
  */
 #ifndef SWE_DEMO_H
 #define SWE_DEMO_H
@@ -38,16 +44,16 @@ typedef struct sw_demo_thing {
 
 typedef struct sw_demo {
     int         enabled;        /* the setting enh_demo */
-    int         active;         /* a demo is being flown */
+    int         active;         /* a piece is being flown */
     int         interrupt;      /* set by the program: somebody wants to play (a coin, a button) */
-    int         ended;          /* the demo has just ended: the program puts its own view back */
+    int         ended;          /* a piece has just ended: the program puts its own view back */
     int         view;           /* the view of the moment (SW_VIEW_...) */
-    sw_machine *saved;          /* the machine as it was before the demo */
-    long        irq;            /* interrupts since the demo began */
+    sw_machine *saved;          /* the machine as it was before the piece */
+    sw_machine *game;           /* the game between two pieces (NULL: the next begins one) */
+    long        irq;            /* interrupts since the piece began */
+    long        dead, away;     /* interrupts since the ship was lost, since the torpedoes left (0: not) */
     uint8_t     last_phase;
-    int         parts;          /* parts of the flight seen so far */
     int         begun;          /* the game has begun (it has left the attract mode's pages) */
-    int         first_view;     /* the view the next demo starts with */
     /* the pilot: the picture he has looked at, what he saw in it */
     uint8_t    *space;          /* the vector generator's memory, for running the picture */
     sw_avg_list seen;
@@ -65,7 +71,8 @@ typedef struct sw_demo {
  * starts, flies or ends the demo. */
 void sw_demo_tick(sw_demo *d, sw_machine *m);
 
-/* Ends a demo at once (the menu is opened, the program quits). */
+/* Ends a piece at once (the menu is opened, the program quits); its game
+ * goes on in the next. */
 void sw_demo_stop(sw_demo *d, sw_machine *m);
 
 #endif

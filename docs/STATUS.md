@@ -2,6 +2,31 @@
 
 Stand: 2026-10-13. Architektur und Hintergründe: [PLAN.md](PLAN.md).
 
+## Demo in kurzen Stücken zwischen den Attract-Seiten (2026-10-21)
+
+Wunsch des Besitzers: keine Todesstern-Explosion im Attract, kürzere
+Spielszenen, über den Attract verteilt statt einer langen Runde; stirbt
+der Pilot, gleich die nächste Seite, kein GAME OVER.
+
+* An **jedem Seitenwechsel** des Attract (Logo, Anleitung, Punkte,
+  Highscores; ein Durchlauf der Seiten dauert ~97 s) kommt ein Stück von
+  `CLIP_SECONDS` = 14 s, danach die Seite wie immer. Das Spiel geht von
+  Stück zu Stück weiter (die Maschine des Spiels wird zwischen den Stücken
+  aufgehoben; NOVRAM, Tempo und Joch-Einstellung kommen jeweils vom
+  laufenden Programm): Weltraum, Oberfläche, Graben über etwa acht Stücke.
+  Jedes Stück und jeder neue Abschnitt darin aus der nächsten Ansicht.
+* **Ende eines Spiels:** 1 s nachdem die Torpedos zum Schacht fliegen (oder
+  früher, wenn das Grabenende naht), vor der Explosion; die
+  Explosionsphasen, die nächste Welle und GAME OVER kommen nie ins Bild.
+  Wird das Schiff zerstört, sieht man 2 s davon, dann die nächste Seite.
+  Das nächste Stück beginnt ein neues Spiel.
+* Kein Schild-Boden mehr: der Pilot kann verlieren.
+* `tests/test_demo.c`: 600 s Attract mit 16 Stücken (je höchstens 14 s,
+  jedes aus anderer Ansicht, Maschine danach wie vorher), das Spiel läuft
+  durch Weltraum, Oberfläche und Graben und endet am Schacht, nie eine
+  Explosions- oder GAME-OVER-Phase; ein verlorenes Schiff beendet sein
+  Stück nach 2,1 s.
+
 ## Demo-Flug wie ein echtes Spiel, kein Ton im stillen Attract (2026-10-21)
 
 Rückmeldung des Besitzers: Im Attract kamen trotz MUSIC IN ATTRACT: NO
@@ -38,8 +63,8 @@ am Automaten**.
 * **Abgasschacht:** Am Ende des Grabens hat er Vorrang vor allem: das
   Fadenkreuz so, dass der Laser den Grabenboden auf dem Schacht trifft
   (CLBLZ), dann fliegen die Torpedos.
-* **Schilde:** Treffer kosten Schilde wie im Spiel. Nur das letzte geht nie
-  verloren (der Demo soll nicht mitten im Flug enden).
+* **Schilde:** Treffer kosten Schilde wie im Spiel (zuerst blieb das letzte
+  immer, seit den kurzen Stücken nicht mehr, siehe oben).
 * **Wahl des Todessterns** über das Fadenkreuz statt eines rohen
   Potiwerts: Ohne YOKE AUTO CENTER nahm der Demo vorher den leichten
   Todesstern ohne Oberfläche.
@@ -1324,8 +1349,8 @@ daraus wurde:
 * **Demo-Pilot**: Er fliegt nur den mittleren Todesstern (Welle 3) und
   kennt Türme und Kraftfelder aus dem RAM, Feuerbälle und Ziele aus dem
   Bild. Feuerballsalven über der Oberfläche treffen ihn manchmal, selten
-  ein Kraftfeld. Fällt er auf das letzte Schild und wird wieder getroffen,
-  sagt das Spiel "I've lost R2" (nur hörbar mit MUSIC IN ATTRACT: YES).
+  ein Kraftfeld. Ein Stück kann mitten in einem Übergang (Anflug, Abstieg
+  in den Graben) beginnen oder enden: es ist ein harter Schnitt.
   Spiel und Pilot zusammen rechnen am PC 112 s Demo in 0,3 s; auf dem Pi
   nicht gemessen.
 

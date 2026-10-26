@@ -10,7 +10,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define DEMO_SECONDS 112.0      /* space, the surface, the trench of the Death Star in the middle, its exhaust port */
+#define CLIP_SECONDS 14.0       /* a piece of the game between two pages of the attract mode */
+#define DEAD_SECONDS 2.0        /* the ship's end seen, then the next page */
+#define PORT_SECONDS 1.0        /* the torpedoes on their way into the port, then the next page */
 
 static uint8_t ram(const sw_machine *m, uint16_t a) { return m->ram[(a - 0x4800) & 0x7ff]; }
 static uint16_t ram16(const sw_machine *m, uint16_t a) { return (uint16_t)(ram(m, a) << 8 | ram(m, (uint16_t)(a + 1))); }
@@ -62,6 +64,10 @@ static float vg13(uint16_t v) { return (float)((int16_t)(uint16_t)(v << 3) >> 3)
 
 /* --- the demo itself --------------------------------------------------------------- */
 
+/* A piece of the game: the attract mode as it is put aside, and the game
+ * of the last piece taken up again (what is the program's setting, not
+ * the game's, as it is now: the NOVRAM with the options, the pacing, the
+ * yoke), or a new one begun with a credit given. */
 static void start(sw_demo *d, sw_machine *m)
 {
     d->saved = (sw_machine *)malloc(sizeof *d->saved);
@@ -71,21 +77,42 @@ static void start(sw_demo *d, sw_machine *m)
     *d->saved = *m;
     d->active = 1;
     d->irq = 0;
-    d->parts = 0;
-    d->begun = 0;
-    d->view = d->first_view;
+    d->dead = 0;
+    d->away = 0;
     d->vg_seen = m->vg_starts;
     d->fire = 0;
     d->dodge = 0;
     memset(d->shot, 0, sizeof d->shot);
     d->things = 0;
-    if (ram(m, SW_SSCRDT) == 0) m->ram[SW_SSCRDT - 0x4800] = 1;     /* a credit, for the demo only */
+    if (d->game) {
+        *m = *d->game;
+        memcpy(m->nvram, d->saved->nvram, sizeof m->nvram);
+        memcpy(m->nvstore, d->saved->nvstore, sizeof m->nvstore);
+        m->steady = d->saved->steady;
+        m->yoke_exact = d->saved->yoke_exact;
+        m->camera_ease = d->saved->camera_ease;
+        d->begun = 1;
+    } else {
+        d->begun = 0;
+        if (ram(m, SW_SSCRDT) == 0) m->ram[SW_SSCRDT - 0x4800] = 1;     /* a credit, for the demo only */
+    }
+    d->view = (d->view + 1) % SW_VIEWS;     /* (each piece from the next view) */
+    d->last_phase = ram(m, SW_PHASE);
 }
 
-void sw_demo_stop(sw_demo *d, sw_machine *m)
+/* The piece ends: the game kept for the next one (or not: it is over),
+ * and the attract mode back as it was. */
+static void end(sw_demo *d, sw_machine *m, int keep)
 {
     if (!d->active) return;
-    *m = *d->saved;             /* as it was: the attract mode going on to the high scores */
+    if (keep && !d->game) d->game = (sw_machine *)malloc(sizeof *d->game);
+    if (keep && d->game) {
+        *d->game = *m;
+    } else {
+        free(d->game);
+        d->game = NULL;
+    }
+    *m = *d->saved;             /* as it was: the attract mode going on to its next page */
     free(d->saved);
     d->saved = NULL;
     free(d->space);
@@ -93,10 +120,15 @@ void sw_demo_stop(sw_demo *d, sw_machine *m)
     sw_avg_list_free(&d->seen);
     d->active = 0;
     d->ended = 1;
-    d->first_view = (d->first_view + 1) % SW_VIEWS;
+    d->last_phase = ram(m, SW_PHASE);
     /* the demo's sound stops: the board is reset, as by request 00 */
     m->sound_out = 0;
     m->sound_out_full = 1;
+}
+
+void sw_demo_stop(sw_demo *d, sw_machine *m)
+{
+    end(d, m, d->begun && !d->dead);
 }
 
 /* --- what the pilot sees ------------------------------------------------------------ */
@@ -459,28 +491,44 @@ static void fly(sw_demo *d, sw_machine *m, uint8_t phase)
     if (shoot && on_it(m, x, y, r)) pull(d, m);
 }
 
+/* The attract mode's pages (the banner, the instructions, the scores, the
+ * high scores; each first sets itself up in its odd phase, then runs in
+ * the even one above): before a game has begun, or after it is over.
+ * Choosing the Death Star comes in between, numbered lower. */
+static int on_pages(uint8_t phase) { return phase >= SW_PHSBNR && phase <= SW_PHSHIS + 1; }
+
 void sw_demo_tick(sw_demo *d, sw_machine *m)
 {
     uint8_t phase = ram(m, SW_PHASE);
     if (!d->active) {
-        /* from the page of scores to the high scores, nobody having paid
-         * (in free play the attract mode always holds its credit) */
+        /* a new page of the attract mode, nobody having paid (in free play
+         * the attract mode always holds its credit) */
         int free_play = (m->nvram[(SW_OPTS0 + 1) & 0xff] & 0x03) == 0;
         int paid = ram(m, SW_SSCRDT) != 0 && !free_play;
-        if (d->enabled && !paid && (phase == SW_PHSHIS || phase == SW_PHSHIS + 1) && d->last_phase == SW_PHSSCR + 1)
-            start(d, m);
+        int page = on_pages(phase) && (phase & 1) && on_pages(d->last_phase) && !(d->last_phase & 1);
         d->last_phase = phase;
+        if (d->enabled && !paid && page) start(d, m);
         if (!d->active) return;
+        phase = ram(m, SW_PHASE);   /* (the game's, taken up again) */
     }
-    /* (the attract mode's pages: before the game has begun, or after it is
-     * over; choosing the Death Star comes in between, numbered lower) */
-    int attract = phase >= SW_PHSBNR && phase <= SW_PHSHIS + 1;
-    if (!attract) d->begun = 1;
-    if (d->interrupt || d->irq > (long)(DEMO_SECONDS * SW_IRQ_HZ) || (d->begun && attract) ||
-        (!d->begun && d->irq > (long)(15.0 * SW_IRQ_HZ))) {
+    if (!on_pages(phase)) d->begun = 1;
+    /* the ship lost (DEAD_SECONDS of its end are seen), the torpedoes away
+     * into the exhaust port (they are seen on their way, the Death Star's
+     * end is not: PORT_SECONDS, or as the trench's end comes near) */
+    if (d->begun && !d->dead && (ram(m, SW_S_GAS) & 0x80)) d->dead = 1;
+    if (d->dead) d->dead++;
+    if (!d->away && ram(m, SW_PT_LIV)) d->away = 1;
+    if (d->away) d->away++;
+    int near_end = ram(m, SW_BS_EFL) && (uint16_t)(ram16(m, SW_BS_ELC) - (uint16_t)ship(m, S1_TX)) < 0x1400;
+    int over = (d->begun && on_pages(phase)) || (phase >= SW_PHSDX1 && phase <= SW_PHSDX3 + 1) ||
+               (phase >= SW_PHSNXT && !d->dead) || phase >= SW_PHSEGM || (!d->begun && d->irq > (long)(15.0 * SW_IRQ_HZ)) ||
+               d->dead > (long)(DEAD_SECONDS * SW_IRQ_HZ) || d->away > (long)(PORT_SECONDS * SW_IRQ_HZ) ||
+               (d->away && near_end);
+    /* the piece is long enough: the game kept for the next page but one */
+    int enough = d->irq > (long)(CLIP_SECONDS * SW_IRQ_HZ) && phase >= SW_PHSSP1 && !d->dead && !d->away;
+    if (d->interrupt || over || enough) {
         d->interrupt = 0;
-        sw_demo_stop(d, m);
-        d->last_phase = ram(m, SW_PHASE);
+        end(d, m, !over);
         return;
     }
     d->irq++;
@@ -505,17 +553,12 @@ void sw_demo_tick(sw_demo *d, sw_machine *m)
         } else if (d->fire < 0 && d->fire > -1000) {
             d->fire--;
         }
-        /* what hits him costs shields, as in any game; only the last one
-         * is never lost (the demo is not to end in the middle) */
-        if ((int8_t)ram(m, SW_S_GAS) < 1) m->ram[SW_S_GAS - 0x4800] = 1;
     }
     m->in.in0 = in0;
     m->in.in1 = 0xff;
 
     /* a new part of the flight, a new view */
-    if (phase != d->last_phase && (phase == SW_PHSSP1 + 1 || phase == SW_PHSGD + 1 || phase == SW_PHSBS + 1)) {
-        d->view = (d->first_view + d->parts) % SW_VIEWS;
-        d->parts++;
-    }
+    if (phase != d->last_phase && (phase == SW_PHSSP1 + 1 || phase == SW_PHSGD + 1 || phase == SW_PHSBS + 1))
+        d->view = (d->view + 1) % SW_VIEWS;
     d->last_phase = phase;
 }
