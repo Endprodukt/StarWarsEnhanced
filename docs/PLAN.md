@@ -1,217 +1,220 @@
-# Star Wars Enhanced – Architektur und Plan
+# Star Wars Enhanced – Architecture and plan
 
-Ziel: Gameplay möglichst identisch zum Automaten von 1983, deutlich flüssigere
-Darstellung auf einem Raspberry Pi 5 mit USB-DVG und Wells-Gardner 6100,
-dazu Remaster-Optionen für Grafik und Sound. Grundlage ist der originale
-Quellcode samt Kommentaren
+Goal: gameplay as identical as possible to the 1983 cabinet, a much smoother
+picture on a Raspberry Pi 5 with USB-DVG and Wells-Gardner 6100, plus remaster
+options for graphics and sound. The basis is the original source code with
+its comments
 ([historicalsource/star-wars](https://github.com/historicalsource/star-wars)).
 
-## Timing des Originals (WSINT.MAC, WSMAIN.MAC)
+## Timing of the original (WSINT.MAC, WSMAIN.MAC)
 
-| Takt | Rate | Inhalt |
+| Clock | Rate | Purpose |
 |---|---|---|
-| IRQ | 12,096 MHz / 4096 / 12 = **246,09 Hz** | Münzen, Entprellen der Schalter, Potis (A/D), Spielzeit |
-| VG | jede 6. IRQ = **41,02 Hz** | Puffertausch, Fadenkreuz (`RHPOS`), Laser-, Blitz- und Schuss-Animationen |
-| Spiel | jede 12. IRQ = **20,51 Hz** | die gesamte Simulation (`GMTIMR = 11`, `WAITFRAME` → `TPHASE`) |
+| IRQ | 12.096 MHz / 4096 / 12 = **246.09 Hz** | Coins, switch debouncing, pots (A/D), game time |
+| VG | every 6th IRQ = **41.02 Hz** | Buffer swap, crosshair (`RHPOS`), laser, flash and shot animations |
+| Game | every 12th IRQ = **20.51 Hz** | The entire simulation (`GMTIMR = 11`, `WAITFRAME` → `TPHASE`) |
 
-* Bewegungen laufen **pro Tick**, ohne Zeitfaktor. Phasenzeiten zählen Ticks
+* Movements run **per tick**, with no time factor. Phase times count ticks
   (`CMPD #2*20.` = 2 s).
-* Doppelpuffer über `VGSYNC`: Jedes 20-Hz-Bild wird etwa zweimal gezeichnet.
-  Das ist die Ursache für das Ruckeln.
-* Die Rotation ist schon im Original getrennt: Der Simulationszustand ändert
-  sich in Stufen von 4,99° bzw. 0,895°, der Rest (`RH$RSD`) wird nur auf eine
-  Kopie für die Anzeige angewandt (`RESIDU`).
-* Die Weltkoordinaten laufen in 16 Bit über (Bodenphase: `IFVS → INC GD.SEQ`),
-  deshalb wird modulo 2¹⁶ interpoliert.
+* Double buffering via `VGSYNC`: Each 20 Hz frame is drawn about twice.
+  This is the cause of the judder.
+* The rotation is already separate in the original: The simulation state
+  changes in steps of 4.99° or 0.895°, the remainder (`RH$RSD`) is applied
+  only to a copy for the display (`RESIDU`).
+* The world coordinates overflow at 16 bits (ground phase: `IFVS → INC GD.SEQ`),
+  so interpolation is done modulo 2¹⁶.
 
-## Aufbau
+## Structure
 
 ```
-sw_core   C, Festkomma, bitgenau      Takte · Math Box (Q2.14) · Phasen
-  │                                    aus WSMAIN, WSGRND, WSBASE …
-  ├─ Weltzustand pro Tick  ──►  Renderer „Original“: Linien wie beim AVG,
-  │                              interpoliert
-  │                         └─►  Renderer „Remaster“: vp3d, verdeckte Linien,
-  │                              Nebel, neue Modelle
-  ├─ Sound-Ereignisse (AUDxx / SPKxx)
-  │                         ──►  „Original“: Sound-Treiber aus SND*.MAC
-  │                              + POKEY ×4 + TMS5220, emuliert
-  │                         └─►  „Remaster“: Samples / OGG
-  └─ AVG-Displayliste (HUD, Text) ──► avg.c ──► dvgmap.c ──► vp_dvg ──► USB-DVG
+sw_core   C, fixed point, bit-exact   clocks · Math Box (Q2.14) · phases
+  │                                    from WSMAIN, WSGRND, WSBASE …
+  ├─ world state per tick  ──►  renderer "Original": lines like the AVG,
+  │                              interpolated
+  │                         └─►  renderer "Remaster": vp3d, hidden lines,
+  │                              fog, new models
+  ├─ sound events (AUDxx / SPKxx)
+  │                         ──►  "Original": sound driver from SND*.MAC
+  │                              + POKEY ×4 + TMS5220, emulated
+  │                         └─►  "Remaster": samples / OGG
+  └─ AVG display list (HUD, text) ──► avg.c ──► dvgmap.c ──► vp_dvg ──► USB-DVG
 ```
 
-### Warum eine eigene Schleife statt `vp_run`
+### Why a loop of its own instead of `vp_run`
 
-Das SDK bleibt unverändert. `vp_run` gibt `draw()` keinen Interpolationsfaktor
-und taktet Updates nur in ganzen Hz. `src/platform/app.c` übernimmt daher die
-Konventionen von `vp_run` (Wahl der Ausgabe, `--dvg/--window/--windowed`,
-`ui_cancel`, Ctrl+C, Marquee, `VP_STATS=1`) und ergänzt den 246-Hz-Takt sowie
-eine frei wählbare Bildrate. Alle benutzten SDK-Funktionen sind öffentlich.
+The SDK stays unchanged. `vp_run` gives `draw()` no interpolation factor
+and clocks updates only in whole Hz. `src/platform/app.c` therefore takes over
+the conventions of `vp_run` (choice of output, `--dvg/--window/--windowed`,
+`ui_cancel`, Ctrl+C, marquee, `VP_STATS=1`) and adds the 246 Hz clock and a
+freely selectable frame rate. All SDK functions used are public.
 
-### Sound ohne Änderung am SDK
+### Sound without changes to the SDK
 
-`vp_audio` spielt nur Samples und Dateien, einen Callback für selbst erzeugten
-Ton gibt es nicht. Der Original-Sound (emulierte POKEYs und TMS5220 in
-Echtzeit) läuft deshalb über ein eigenes SDL-Audiogerät mit eigenem Mixer.
-SDL2 wird über das SDK ohnehin gelinkt. Remaster-Samples laufen durch
-denselben Mixer, damit es nur ein Audiogerät gibt.
+`vp_audio` only plays samples and files; there is no callback for self-generated
+sound. The original sound (emulated POKEYs and TMS5220 in real time) therefore
+runs through an SDL audio device of its own with its own mixer. SDL2 is linked
+through the SDK anyway. Remaster samples go through the same mixer, so there
+is only one audio device.
 
-### Referenz für „identisch“
+### Reference for "identical"
 
-`tools/mame/swcapture.lua` zeichnet in MAME (`starwars1`) pro Spieltick
-VG-RAM, RAM und Math-Box-RAM auf. Der native Kern muss Tick für Tick denselben
-Zustand liefern. Für Determinismus werden später auch die gelesenen
-Eingaben und Zufallszahlen (`PRNG`, 0x4703) mitgeschnitten und eingespeist.
+`tools/mame/swcapture.lua` records VG RAM, RAM and Math Box RAM in MAME
+(`starwars1`) for every game tick. The native core has to deliver the same
+state, tick by tick. For determinism, the inputs read and the random numbers
+(`PRNG`, 0x4703) will also be recorded and fed in later.
 
-## Zwei Wege, ein Spiel (seit 2026-10-13)
+## Two ways, one game (since 2026-10-13)
 
-Das Spiel von Hand zu portieren heißt rund 20.000 Zeilen 6809-Assembler.
-Damit es vorher schon vollständig und unverändert läuft, gibt es zwei Wege
-nebeneinander:
+Porting the game by hand means about 20,000 lines of 6809 assembler.
+So that it already runs completely and unchanged before that, there are two
+ways side by side:
 
-1. **Das Originalprogramm auf einem 6809-Kern** (`src/cpu/m6809.c`,
-   `src/core/emu.c`), der Standard von `swenhanced`. Es läuft gegen die
-   native Maschine (`sw_machine`: RAM, Math Box, Dividierer, NOVRAM,
-   Schalter, Zeit des Vektorgenerators). Das Tempo ergibt sich aus den
-   gezählten Zyklen; Math Box und Vektorgenerator brauchen ihre Zeit wie in
-   MAME. Die Soundplatine läuft genauso mit (`src/sound`).
-2. **Die von Hand portierten Routinen** (`src/game`, `swenhanced --native`).
-   Sie rechnen Frame für Frame dasselbe und werden mit `swcompare` gegen
-   dieselben MAME-Aufnahmen geprüft. Sie sind der Weg zum Remaster: Erst
-   wenn eine Phase nativ vorliegt, kann ihr Bild aus dem Spielzustand statt
-   aus der Displayliste gezeichnet werden.
+1. **The original program on a 6809 core** (`src/cpu/m6809.c`,
+   `src/core/emu.c`), the default of `swenhanced`. It runs against the
+   native machine (`sw_machine`: RAM, Math Box, divider, NOVRAM,
+   switches, vector generator timing). The pace comes from the counted
+   cycles; Math Box and vector generator take their time as in MAME. The
+   sound board runs along the same way (`src/sound`).
+2. **The routines ported by hand** (`src/game`, `swenhanced --native`).
+   They compute the same thing frame by frame and are checked with
+   `swcompare` against the same MAME captures. They are the way to the
+   remaster: Only once a phase exists natively can its picture be drawn from
+   the game state instead of from the display list.
 
-Die Darstellung ist für beide dieselbe: Displayliste, AVG-Interpreter,
-Zwischenbilder, Platine.
+The display is the same for both: display list, AVG interpreter,
+in-between frames, board.
 
-### Zwischenbilder
+### In-between frames
 
-`src/render/smooth.c`. Jede Linie einer Displayliste bekommt eine Kennung
-(`sw_avg_run_tagged`): welche Routine das Wort geschrieben hat (beim
-Originalprogramm die Rücksprungadresse auf dem Stack, bei den portierten
-Routinen ein Tag aus `core/tags.h`), die wievielte Anweisung dieses Aufrufs
-es ist, welche Vektor-ROM-Routine die Linie zeichnet und die wievielte
-Linie darin. Linien mit gleicher Kennung in zwei aufeinanderfolgenden
-Frames sind dieselbe Linie; bei mehreren (alle Sterne, derselbe Buchstabe,
-dieselbe Kante zweier Schiffe) gilt die nächstliegende. Dazwischen wird
-linear bewegt. Das Fadenkreuz gehört nicht zum Frame: Der Interrupt bewegt
-es, gezeigt wird es dort, wo das Joch es jetzt hat.
+`src/render/smooth.c`. Every line of a display list gets an identifier
+(`sw_avg_run_tagged`): which routine wrote the word (for the original
+program the return address on the stack, for the ported routines a tag from
+`core/tags.h`), which instruction of that call it is, which vector ROM
+routine draws the line and which line within it. Lines with the same
+identifier in two consecutive frames are the same line; where there are
+several (all stars, the same letter, the same edge of two ships), the nearest
+one counts. In between, the line is moved linearly. The crosshair does not
+belong to the frame: The interrupt moves it, and it is shown where the yoke
+has it now.
 
-## Fahrplan
+## Roadmap
 
-- [x] **1 Grundgerüst**: CMake gegen das unveränderte SDK (Presets linux/pc/pi),
-      ROM-Lader (CRC, zip oder Ordner), Scheduler mit den drei Takten,
-      AVG-Interpreter (Befehlssatz aus WSVGMC.MAC), Abbildung auf den DVG mit
-      Konfiguration für den WG6100, Kalibrierbild, MAME-Aufnahme und
-      `avgreplay`, Symboltabelle aus WSROOT.MAP, Tests
-- [x] **2 Math Box**: `tools/mbasm.py` assembliert SWMP.MAC nach den Makros
-      von TCODE2.MAC. Das Ergebnis trifft die CRCs aller vier PROMs
-      (136021-110…113), und alle 13 Einsprünge liegen dort, wo das Spiel sie
-      aufruft. Daraus wird `src/mbox/mbox_programs.c` erzeugt: eine
-      C-Funktion pro Programm, Mikrobefehl für Mikrobefehl, mit den
-      Originalkommentaren. Dazu ein Mikrocode-Interpreter als Referenz,
-      Tests gegen ihn und gegen die Formeln aus SWMP.DOC, der Divider, und
-      beim Start ein Selbsttest gegen die PROMs des eigenen ROM-Satzes
-- [x] **3 Interrupt und Steuerung**: WSINT nativ (`src/game/irq.c`):
-      Spieltakt über `GMTIMR`/`GMSYNC`, Entprellen, Feuer-Flanken
-      (`VG.LON`), Potifilter (`DOPOTS`), Spielzeit-Timer in BCD,
-      VG-Neustart mit Pufferwechsel, Joch-Kalibrierung (`RHLIM`),
-      Fadenkreuz (`RHPOS`, `GNSITE`), Laser-, Schuss- und Blitz-Tabellen,
-      Laser-Splash (TCSPLS). Münzen über Ataris MOOLAH (COIN69) 1:1.
-      Speicherbild mit den Originaladressen (`src/core/machine.c`),
-      Steuerung über `vp_input` (`src/platform/controls.c`), Live-Testbild
-      für Joch, Knöpfe und Münzen
-- [ ] **4 Phasen**, jede gegen die MAME-Aufnahme geprüft (`tools/swcompare`):
-  - [x] Hauptschleife (WAITFRAME, IFRAME, TPHASE), Attract: Banner mit
-        Lauftext, Fluganweisungen, Punktetabelle, Highscores; dazu
-        Spielstart bis zur Wahl des Todessterns und Initialen-Eingabe.
-        Meldungen (TCMES), Highscores (TCHSCR), Sterne (WSSTAR), EEROM für
-        Reset und Attract (TCEROM), Fadenkreuz (WSSITE). 3006 von 3006
-        Frames der Attract-Aufnahme stimmen bitgenau (RAM, Math-Box-RAM,
-        Displayliste, Zahl der gelesenen Zufallszahlen)
-  - [ ] Weltraumwellen (SP1/SP2). Erledigt: Welle aufbauen (`NWNSHP`),
-        Choreografie-Interpreter, Objekte (`INOBJ`, `ADBOBJ`, `OBJPNT`,
-        `OBJDRW`). Offen: `VIEW`, Spielerbewegung, `CPU`, `AIM`, WSLAZR,
-        WSGUNS, WSXPLD, WSPANL, WSGAS, WSGLOW (Reihenfolge in STATUS.md)
-  - [ ] Boden und Türme (WSGRND)
-  - [ ] Graben (WSBASE)
-  - [ ] Todesstern-Explosion (DX1–DX3), Spielende, nächste Welle
-  - [ ] Statistik- und Optionsseite (EEACC, EEOPT), Selbsttest (TCTEST)
-  Unabhängig vom Stand der Portierung läuft das ganze Spiel über den
-  6809-Kern (siehe oben), geprüft mit 2623 von 2623 Frames einer gespielten
-  Aufnahme.
-- [x] **5a Zwischenbilder aus der Displayliste** (`src/render/smooth.c`),
-      Strich-Sortierung, Fadenkreuz-Zentrierung
-- [x] **6a Ton über die Soundplatine**: zweiter 6809 mit dem Sound-Programm,
-      RIOT, POKEY, TMS5220 (`src/sound`). Am Automaten noch nicht gehört.
-- [ ] **5 Renderer „Original“** mit Interpolation (Slerp der Matrizen,
-      Positionen modulo 2¹⁶, keine Interpolation bei Spawn/Despawn)
-- [ ] **6 Sound „Original“**: Sound-Treiber aus SNDAUD/SNDPM/SNDSPK nativ,
-      POKEY- und TMS5220-Emulation, Sprachdaten aus den Sound-ROMs
-- [ ] **7 Remaster**: vp3d-Szenen mit verdeckten Linien, Nebel, eigene Modelle,
-      Sample-Sound; umschaltbar
-- [ ] **8 Paket**: `.vpk`, Highscores über `vp_hiscore`, Marquee
+- [x] **1 Framework**: CMake against the unchanged SDK (presets linux/pc/pi),
+      ROM loader (CRC, zip or folder), scheduler with the three clocks,
+      AVG interpreter (instruction set from WSVGMC.MAC), mapping to the DVG
+      with configuration for the WG6100, calibration image, MAME capture and
+      `avgreplay`, symbol table from WSROOT.MAP, tests
+- [x] **2 Math Box**: `tools/mbasm.py` assembles SWMP.MAC according to the
+      macros of TCODE2.MAC. The result matches the CRCs of all four PROMs
+      (136021-110…113), and all 13 entry points lie where the game calls
+      them. From this `src/mbox/mbox_programs.c` is generated: one
+      C function per program, microinstruction by microinstruction, with the
+      original comments. Also a microcode interpreter as a reference,
+      tests against it and against the formulas from SWMP.DOC, the divider,
+      and at startup a self-test against the PROMs of the ROM set in use
+- [x] **3 Interrupt and controls**: WSINT natively (`src/game/irq.c`):
+      game clock via `GMTIMR`/`GMSYNC`, debouncing, fire edges
+      (`VG.LON`), pot filter (`DOPOTS`), game time timer in BCD,
+      VG restart with buffer swap, yoke calibration (`RHLIM`),
+      crosshair (`RHPOS`, `GNSITE`), laser, shot and flash tables,
+      laser splash (TCSPLS). Coins via Atari's MOOLAH (COIN69) 1:1.
+      Memory image with the original addresses (`src/core/machine.c`),
+      controls via `vp_input` (`src/platform/controls.c`), live test image
+      for yoke, buttons and coins
+- [ ] **4 Phases**, each checked against the MAME capture (`tools/swcompare`):
+  - [x] Main loop (WAITFRAME, IFRAME, TPHASE), attract: banner with
+        scrolling text, flight instructions, score table, high scores; also
+        game start up to the choice of the Death Star and entry of initials.
+        Messages (TCMES), high scores (TCHSCR), stars (WSSTAR), EEROM for
+        reset and attract (TCEROM), crosshair (WSSITE). 3006 of 3006
+        frames of the attract capture match bit for bit (RAM, Math Box RAM,
+        display list, number of random numbers read)
+  - [ ] Space waves (SP1/SP2). Done: building the wave (`NWNSHP`),
+        choreography interpreter, objects (`INOBJ`, `ADBOBJ`, `OBJPNT`,
+        `OBJDRW`). Open: `VIEW`, player movement, `CPU`, `AIM`, WSLAZR,
+        WSGUNS, WSXPLD, WSPANL, WSGAS, WSGLOW (order in STATUS.md)
+  - [ ] Surface and towers (WSGRND)
+  - [ ] Trench (WSBASE)
+  - [ ] Death Star explosion (DX1–DX3), game over, next wave
+  - [ ] Statistics and options page (EEACC, EEOPT), self-test (TCTEST)
+  Regardless of the state of the port, the whole game runs through the
+  6809 core (see above), checked with 2623 of 2623 frames of a played
+  capture.
+- [x] **5a In-between frames from the display list** (`src/render/smooth.c`),
+      line sorting, crosshair centering
+- [x] **6a Sound via the sound board**: second 6809 with the sound program,
+      RIOT, POKEY, TMS5220 (`src/sound`). Not yet heard on the cabinet.
+- [ ] **5 Renderer "Original"** with interpolation (matrix slerp,
+      positions modulo 2¹⁶, no interpolation on spawn/despawn)
+- [ ] **6 Sound "Original"**: sound driver from SNDAUD/SNDPM/SNDSPK natively,
+      POKEY and TMS5220 emulation, speech data from the sound ROMs
+- [ ] **7 Remaster**: vp3d scenes with hidden lines, fog, own models,
+      sample sound; switchable
+- [ ] **8 Package**: `.vpk`, high scores via `vp_hiscore`, marquee
 
-## Tempo des Originals
+## Pace of the original
 
-Das Original läuft nicht mit festen 20,5 Hz. Ein Frame beginnt erst, wenn
-der 12. Interrupt da ist **und** der Interrupt den VG-Puffer des vorigen
-Bildes übergeben hat. Die Hauptschleife des 6809 braucht im Attract-Modus
-25 bis 50 ms pro Frame, der Vektorgenerator bis 40 ms pro Bild. Auf der
-Anleitungsseite ergibt das 18,6 statt 12 Interrupts pro Frame, also 13 statt
-20,5 Bilder pro Sekunde. Davon hängt die Geschwindigkeit von allem ab.
+The original does not run at a fixed 20.5 Hz. A frame starts only when
+the 12th interrupt has arrived **and** the interrupt has handed over the VG
+buffer of the previous picture. In attract mode the 6809's main loop needs
+25 to 50 ms per frame, and the vector generator up to 40 ms per picture. On
+the instructions page this gives 18.6 instead of 12 interrupts per frame,
+so 13 instead of 20.5 pictures per second. The speed of everything depends
+on this.
 
-Nativ ist beides sofort fertig, deshalb wird die Zeit nachgebildet:
+Natively, both are finished instantly, so the time is reproduced:
 
-* **Vektorgenerator**: `sw_avg_cycles` (src/avg/avg.c) rechnet die Zeichenzeit
-  einer Displayliste nach MAMEs AVG-Zustandsmaschine (Zustände pro Befehl,
-  Vektortimer mit Normalisierung). Gegen das Zustands-PROM geprüft: exakt.
-  Der native Interrupt startet das nächste Bild erst, wenn diese Zeit um ist.
-* **6809**: `src/game/pace.c`. Die Routinen zählen ihre Arbeit (Zeichen,
-  Ziffern, Meldungen, Sterne), jede Art hat einen Preis. Die Preise sind an
-  MAME angepasst: `swcapture.lua` misst die Rechenzeit jedes Frames (TIME),
-  `swcompare --csv` schreibt sie neben die nativen Zähler. Fehler im
-  Attract-Modus: 1 ms (rms) bei 25 bis 50 ms.
+* **Vector generator**: `sw_avg_cycles` (src/avg/avg.c) calculates the draw
+  time of a display list from MAME's AVG state machine (states per
+  instruction, vector timer with normalization). Checked against the state
+  PROM: exact. The native interrupt starts the next picture only when this
+  time is up.
+* **6809**: `src/game/pace.c`. The routines count their work (characters,
+  digits, messages, stars), and each kind has a price. The prices are fitted
+  to MAME: `swcapture.lua` measures the compute time of each frame (TIME),
+  `swcompare --csv` writes it next to the native counters. Error in attract
+  mode: 1 ms (rms) at 25 to 50 ms.
 
-Ergebnis (Interrupts pro Frame, Original/nativ): Banner 12,2/13,5,
-Anleitung 18,6/18,3, Punktetabelle 12,1/12,0, Highscores 18,0/17,9. Jede
-neu portierte Phase braucht eigene Zähler und eine neue Anpassung.
+Result (interrupts per frame, original/native): banner 12.2/13.5,
+instructions 18.6/18.3, score table 12.1/12.0, high scores 18.0/17.9. Each
+newly ported phase needs its own counters and a new fit.
 
-## Offene Punkte
+## Open points
 
-Für das Originalprogramm auf dem 6809-Kern (der Standard):
+For the original program on the 6809 core (the default):
 
-* Zwischenbilder und Ton sind am Automaten noch nicht gesehen und gehört
+* In-between frames and sound have not yet been seen and heard on the cabinet
   (docs/STATUS.md).
-* POKEY ohne Hochpassfilter, TMS5220 vereinfacht (Interpolation und
-  Anregung nach Datenblatt, nicht taktgenau wie MAME).
-* Menüeintrag und Paket fehlen.
+* POKEY without high-pass filter, TMS5220 simplified (interpolation and
+  excitation per the data sheet, not clock-exact like MAME).
+* Menu entry and package are missing.
 
-Für die von Hand portierten Routinen (`--native`, `src/game`):
+For the routines ported by hand (`--native`, `src/game`):
 
-* Es fehlen alle Spielphasen ab der Weltraumwelle. Phasen, die fehlen,
-  führen zurück zum Banner.
-* Das Tempo kommt dort aus einem Modell (`src/game/pace.c`), das den Banner
-  nur auf 10 % trifft (13,5 statt 12,2 Interrupts pro Frame). Der 6809-Kern
-  braucht kein Modell.
-* Buchhaltung beim Münzeinwurf und Spielende (`EEACCU`, `EEACCT`),
-  Statistik- und Optionsseite fehlen.
-* Beim Vergleich der portierten Routinen werden die Werte, die die
-  Hauptschleife mitten im Frame vom Interrupt liest, nur für das Fadenkreuz
-  eingespeist. Der 6809-Weg bekommt sie vollständig aus der Aufnahme (IRDS).
-* Beim Vergleich fehlt der Dividend des Dividierers in der Aufnahme;
-  `swcompare` setzt ihn auf den Wert aus `IMATH`. WSGUNS und WSLAZR
-  schreiben andere Werte: dann mit aufnehmen.
+* All game phases from the space wave on are missing. Phases that are
+  missing lead back to the banner.
+* The pace there comes from a model (`src/game/pace.c`) that hits the banner
+  only to within 10% (13.5 instead of 12.2 interrupts per frame). The 6809
+  core needs no model.
+* Bookkeeping for coin insertion and game over (`EEACCU`, `EEACCT`),
+  statistics and options page are missing.
+* When comparing the ported routines, the values that the main loop reads
+  from the interrupt in the middle of the frame are fed in only for the
+  crosshair. The 6809 way gets them completely from the capture (IRDS).
+* When comparing, the divider's dividend is missing from the capture;
+  `swcompare` sets it to the value from `IMATH`. WSGUNS and WSLAZR
+  write other values: then record them as well.
 
-Allgemein:
+General:
 
-* Bildlage: Das Spiel zeichnet mit `VGSCAL` in Viertelgröße, der Bildrand
-  (VGEDG*: ±510 × −612…+600 in Vektorworten) liegt also bei ±127,5 ×
-  −153…+150 AVG-Einheiten. So steht es jetzt in `swenhanced.ini`; am
-  Automaten füllt das Bild die Röhre. Feinabgleich mit `--calibrate` steht
-  aus.
-* Die Skalierung der AVG-Vektoren folgt MAME (lineare Skala `^0xFF`/256,
-  binäre Skala 1/2ⁿ). Ob das exakt stimmt, zeigt der Vergleich der
-  Aufnahmen mit MAMEs eigener Darstellung.
-* Strahlbudget: Der USB-DVG schafft laut SDK etwa 3 Mio. Punkte pro Sekunde.
-  Wie viele Hz im Graben möglich sind, zeigt `VP_STATS=1`.
+* Picture position: The game draws with `VGSCAL` at quarter size, so the
+  picture edge (VGEDG*: ±510 × −612…+600 in vector words) lies at ±127.5 ×
+  −153…+150 AVG units. This is how it is set in `swenhanced.ini` now; on the
+  cabinet the picture fills the tube. Fine adjustment with `--calibrate` is
+  still to do.
+* The scaling of the AVG vectors follows MAME (linear scale `^0xFF`/256,
+  binary scale 1/2ⁿ). Whether this is exactly right will show in the
+  comparison of the captures with MAME's own display.
+* Beam budget: According to the SDK, the USB-DVG manages about 3 million
+  points per second. How many Hz are possible in the trench is shown by
+  `VP_STATS=1`.
