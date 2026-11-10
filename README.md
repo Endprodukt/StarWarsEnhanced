@@ -27,7 +27,8 @@ picture smooth.
   second) every line is moved, the picture comes at the board's rate. The
   crosshair follows the yoke directly and is centered from the first
   picture.
-* **Sound**: the sound program in C, four POKEYs, TMS5220 speech.
+* **Sound**: the sound program in C, four POKEYs, TMS5220 speech. Follows
+  the VectorPie menu's MUSIC VOLUME and SOUND VOLUME (SDK 0.9).
 * **Way to a remaster**: From the game state of the C routines (`src/game`)
   the picture can later be drawn anew (hidden lines, new models).
 
@@ -195,7 +196,7 @@ size after `advmame.rc`, `vector_aux_marquee_display_mode`).
 | `steady_frames` | `1` (default): the frames of a phase come at a fixed interval, the cabinet's average in that phase; the same pace as the original, without wobble. `2`: 20.5 per second everywhere (in the game about 50 % faster than the cabinet). `0`: every frame as long as the cabinet's 6809 computed on it |
 | `smooth` | Movement between the game frames: `3` (default, ON in the menu) recomputed from the game state, without delay and with correct perspective; on the attract pages the lines move toward the picture of the next frame, computed ahead. `0` (OFF): every game picture as in the original. (`1` and `2`, lines moved between or ahead of the last frames, are still read but no longer offered: one shows the world a frame late, the other overshoots.) |
 | `yoke_autocenter` | `1` (default): crosshair centered from the first picture. The yoke goes through exactly, and its rest position counts as the middle: it is learned at start-up and followed while the yoke lies still in attract mode. `0`: like the 1983 cabinet, which learns the yoke's range anew after every power-on |
-| `vol_music`, `vol_effects`, `vol_speech`, `vol_engine` | volumes of the four groups of replaced sounds in percent (default `100`; 0 to 200). Speech also applies to the speech chip; effects also to the POKEYs |
+| `vol_music`, `vol_effects`, `vol_speech`, `vol_engine` | volumes of the four groups of replaced sounds in percent (default `100`; 0 to 200). Speech also applies to the speech chip; effects also to the POKEYs. On the cabinet the VectorPie menu's MUSIC VOLUME (music) and SOUND VOLUME (effects, speech, engine, POKEYs) apply on top; the test menu's SOUND page shows them as CABINET VOLUMES |
 | `bind_left`, `bind_right`, `bind_up`, `bind_down`, `bind_fire_l`, `bind_fire_r`, `bind_thumb_l`, `bind_thumb_r`, `bind_start`, `bind_start2`, `bind_coin1`, `bind_coin2`, `bind_coin_aux`, `bind_test` | your own binding of a digital input, up to two separated by a comma: `key:N` (SDL scancode), `joyN:buttonN`, `joyN:axisN+`/`-`, `joyN:hatN:up` (`down`, `left`, `right`). Without the key, the cabinet's `advmame.rc` applies |
 | `sound_replace` | Enhanced. `1` (default): sounds for which a WAV file with their name lies in `sounds/` (in `voice/`, `music/`, `effects/` or `test/`) come from the file ([docs/SOUNDS.md](docs/SOUNDS.md)). `0`: all sounds from the chips as on the cabinet |
 | `yoke_center_x`, `yoke_center_y`, `yoke_center_known` | the yoke's learned rest position; the program writes these itself |

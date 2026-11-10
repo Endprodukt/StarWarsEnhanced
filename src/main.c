@@ -374,8 +374,10 @@ static void apply_enhanced(board *b, const sw_display_cfg *cfg)
     b->m.camera_ease = (uint8_t)(on && cfg->enh_camera);
     if (b->snd && b->snd->samples) {
         b->snd->samples->enabled = on && cfg->sound_replace;
-        sw_samples_volumes(b->snd->samples, cfg->vol_music / 100.0f, cfg->vol_effects / 100.0f,
-                           cfg->vol_speech / 100.0f, cfg->vol_engine / 100.0f);
+        /* (the test menu's volumes, times the cabinet's own) */
+        const float cm = cfg->cab_music / 100.0f, cs = cfg->cab_sound / 100.0f;
+        sw_samples_volumes(b->snd->samples, cfg->vol_music / 100.0f * cm, cfg->vol_effects / 100.0f * cs,
+                           cfg->vol_speech / 100.0f * cs, cfg->vol_engine / 100.0f * cs);
     }
     /* the yoke: its rest as its middle, and passed through exactly (the
      * arcade machine's own learning comes back with the next start) */
@@ -523,6 +525,9 @@ int main(int argc, char **argv)
         snprintf(cfg_path, sizeof cfg_path, "%s/swenhanced.ini", vp_save_dir());
     }
     sw_display_cfg_load(&cfg, cfg_path);
+    /* the cabinet's MUSIC VOLUME and SOUND VOLUME, as the menu has them */
+    if (sw_cabinet_volumes(SW_CABINET_AUDIO_CFG, &cfg.cab_music, &cfg.cab_sound))
+        printf("swenhanced: the cabinet's volumes: music %d, sound %d\n", cfg.cab_music, cfg.cab_sound);
 
     static sw_romset roms;
     const char *paths[MAX_PATHS];

@@ -274,7 +274,7 @@ int sw_samples_load(sw_samples *s, const char *dir, int rate)
     }
     if (!s->engine_rate) s->engine_rate = 1.0f;
     if (!s->duck_speech) s->duck_speech = s->duck_big = 1.0f;
-    if (s->vol[0] == 0.0f && s->vol[1] == 0.0f) s->vol[0] = s->vol[1] = s->vol[2] = s->vol[3] = 1.0f;
+    if (!s->vol_set) s->vol[0] = s->vol[1] = s->vol[2] = s->vol[3] = 1.0f;
     s->rate = rate;
     if (!s->rng) s->rng = 0x9e3779b9u;
     return found;
@@ -433,9 +433,27 @@ void sw_samples_volumes(sw_samples *s, float music, float effects, float speech,
     s->vol[1] = effects;
     s->vol[2] = speech;
     s->vol[3] = engine;
+    s->vol_set = 1;
 }
 
-static float vol_of(const sw_samples *s, int k) { return s->vol[0] == 0.0f && s->vol[1] == 0.0f ? 1.0f : s->vol[k]; }
+/* (never set: as made; set, even all to 0: as set) */
+static float vol_of(const sw_samples *s, int k) { return s->vol_set ? s->vol[k] : 1.0f; }
+
+int sw_cabinet_volumes(const char *path, int *music, int *sound)
+{
+    *music = *sound = 100;
+    FILE *f = path ? fopen(path, "r") : NULL;
+    if (!f) return 0;
+    /* (as the SDK reads them, vp_audio.cpp: the lines anywhere in the file) */
+    char line[256];
+    int v;
+    while (fgets(line, sizeof line, f)) {
+        if (sscanf(line, " music_volume %d", &v) == 1) *music = v < 0 ? 0 : v > 100 ? 100 : v;
+        if (sscanf(line, " effects_volume %d", &v) == 1) *sound = v < 0 ? 0 : v > 100 ? 100 : v;
+    }
+    fclose(f);
+    return 1;
+}
 
 float sw_samples_board_gain(const sw_samples *s)
 {

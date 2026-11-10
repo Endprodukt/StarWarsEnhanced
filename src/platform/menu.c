@@ -27,7 +27,7 @@ enum {
     /* graphics */
     L_SMOOTH, L_CAMERA, L_STEADY, L_OCCLUSION, L_LOGO, L_SURFACE, L_TOWERS, L_DOGFIGHTS, L_STARS, L_CLIP, L_FALCON, L_COCKPIT, L_DEMO, L_BLAST,
     /* sound */
-    L_SAMPLES, L_ENGINE, L_VOL_MUSIC, L_VOL_EFFECTS, L_VOL_SPEECH, L_VOL_ENGINE, L_SOUND_TEST,
+    L_SAMPLES, L_ENGINE, L_VOL_MUSIC, L_VOL_EFFECTS, L_VOL_SPEECH, L_VOL_ENGINE, L_VOL_CABINET, L_SOUND_TEST,
     /* controls: the yoke, then one line per digital input (platform/bind.h) */
     L_YOKE, L_BIND0, L_BIND_END = L_BIND0 + ACT_COUNT, L_BIND_RESET = L_BIND_END,
     /* screen: the picture's size and place, its brightness, as numbers */
@@ -50,7 +50,7 @@ static const struct { const char *title; uint8_t lines[PAGE_MAX + 4]; } PAGES[N_
     { "TEST MENU", { L_PAGE_OPTIONS, L_PAGE_GRAPHICS, L_PAGE_SOUND, L_PAGE_CONTROLS, L_PAGE_SCREEN, 0, L_OPERATOR, L_EXIT, N_LINES } },
     { "GAME OPTIONS", { L_OPT0, L_OPT0 + 1, L_OPT0 + 2, L_OPT0 + 3, 0, L_OPT0 + 4, L_OPT0 + 5, L_OPT0 + 6, L_OPT0 + 7, 0, L_BACK, N_LINES } },
     { "GRAPHICS", { L_SMOOTH, L_CAMERA, L_STEADY, L_OCCLUSION, L_LOGO, L_COCKPIT, L_DEMO, L_BLAST, L_SURFACE, L_TOWERS, L_DOGFIGHTS, 0, L_STARS, L_CLIP, L_FALCON, 0, L_BACK, N_LINES } },
-    { "SOUND", { L_SAMPLES, L_ENGINE, 0, L_VOL_MUSIC, L_VOL_EFFECTS, L_VOL_SPEECH, L_VOL_ENGINE, 0, L_SOUND_TEST, 0, L_BACK, N_LINES } },
+    { "SOUND", { L_SAMPLES, L_ENGINE, 0, L_VOL_MUSIC, L_VOL_EFFECTS, L_VOL_SPEECH, L_VOL_ENGINE, L_VOL_CABINET, 0, L_SOUND_TEST, 0, L_BACK, N_LINES } },
     { "CONTROLS", { L_YOKE, 0,
                     L_BIND0 + ACT_LEFT, L_BIND0 + ACT_RIGHT, L_BIND0 + ACT_UP, L_BIND0 + ACT_DOWN,
                     L_BIND0 + ACT_FIRE_L, L_BIND0 + ACT_FIRE_R, L_BIND0 + ACT_THUMB_L, L_BIND0 + ACT_THUMB_R,
@@ -295,6 +295,8 @@ static void describe(int line, const sw_menu *u, const sw_display_cfg *cfg, cons
     case L_VOL_EFFECTS:   *label = "EFFECTS VOLUME";    snprintf(value, size, "%d", cfg->vol_effects); break;
     case L_VOL_SPEECH:    *label = "SPEECH VOLUME";     snprintf(value, size, "%d", cfg->vol_speech); break;
     case L_VOL_ENGINE:    *label = "ENGINE VOLUME";     snprintf(value, size, "%d", cfg->vol_engine); break;
+    /* (shown only: set in the VectorPie menu, it applies on top of the four above) */
+    case L_VOL_CABINET:   *label = "CABINET VOLUMES";   snprintf(value, size, "MUSIC %d SOUND %d", cfg->cab_music, cfg->cab_sound); break;
     case L_SOUND_TEST:    *label = "SOUND TEST";        snprintf(value, size, "%02X %s", u->sound, sw_menu_sound_name(u->sound)); break;
     case L_YOKE:          *label = "YOKE AUTO CENTER";  snprintf(value, size, "%s", on_off(cfg->yoke_autocenter)); break;
     case L_BIND_RESET:    *label = "ALL INPUTS AUTO"; break;

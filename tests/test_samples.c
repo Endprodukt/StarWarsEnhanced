@@ -121,6 +121,37 @@ int main(void)
     int n = loud(6000);
     if (n != 4410) { printf("AUDXL sounded for %d samples, 4410 expected\n", n); fail = 1; }
 
+    /* every volume at 0 (the test menu's times the cabinet's) is silence, not "never set" */
+    sw_samples_volumes(&s, 0.0f, 0.0f, 0.0f, 0.0f);
+    sw_samples_request(&s, 0x3a);
+    if (loud(6000) != 0) { printf("AUDXL heard with every volume at 0\n"); fail = 1; }
+    if (sw_samples_board_gain(&s) != 0.0f) { printf("the board heard with every volume at 0\n"); fail = 1; }
+    sw_samples_volumes(&s, 1.0f, 1.0f, 1.0f, 1.0f);
+
+    /* the cabinet's volumes, from the VectorPie menu's settings */
+    {
+        char cfgp[1024];
+        snprintf(cfgp, sizeof cfgp, "%s/vector_pie_menu.cfg", dir);
+        FILE *f = fopen(cfgp, "w");
+        if (f) {
+            fputs("[video]\nwidth 1024\n[audio]\n# effects_volume: menu sound effects volume 0-100%\n"
+                  "master_volume 100\neffects_volume 50\nmusic_volume 63\neffects_enabled false\n[input]\n", f);
+            fclose(f);
+            int cm = 0, cs = 0;
+            if (sw_cabinet_volumes(cfgp, &cm, &cs) != 1 || cm != 63 || cs != 50) {
+                printf("the cabinet's volumes read as %d / %d, 63 / 50 expected\n", cm, cs); fail = 1;
+            }
+            f = fopen(cfgp, "w");
+            if (f) { fputs("[audio]\neffects_volume 150\nmusic_volume -5\n", f); fclose(f); }
+            sw_cabinet_volumes(cfgp, &cm, &cs);
+            if (cm != 0 || cs != 100) { printf("the cabinet's volumes not held to 0..100: %d / %d\n", cm, cs); fail = 1; }
+            remove(cfgp);
+            if (sw_cabinet_volumes(cfgp, &cm, &cs) != 0 || cm != 100 || cs != 100) {
+                printf("no menu settings: %d / %d, 100 / 100 expected\n", cm, cs); fail = 1;
+            }
+        }
+    }
+
     /* AUDPBZ ends AUDPB */
     sw_samples_request(&s, 0x2a);
     loud(100);

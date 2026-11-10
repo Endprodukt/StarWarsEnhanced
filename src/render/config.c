@@ -43,6 +43,7 @@ void sw_display_cfg_defaults(sw_display_cfg *c)
     c->sound_replace = 1;
     c->enh_engine = 1;
     c->vol_music = c->vol_effects = c->vol_speech = c->vol_engine = 100;
+    c->cab_music = c->cab_sound = 100;
 }
 
 static char *trim(char *s)

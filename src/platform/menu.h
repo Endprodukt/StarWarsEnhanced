@@ -8,7 +8,7 @@
  * calibration, and the way on to the arcade program's own operator
  * screens (statistics, the resets, the NOVRAM test). The main page leads
  * to five pages: GAME OPTIONS, GRAPHICS, SOUND (the recordings, the engine,
- * the four volumes, the sound test), CONTROLS (the yoke's centring and the
+ * the four volumes, the cabinet's own two shown, the sound test), CONTROLS (the yoke's centring and the
  * owner's own bindings of every digital input, platform/bind.h), SCREEN
  * (the calibration).
  *

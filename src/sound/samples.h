@@ -109,6 +109,7 @@ typedef struct sw_samples {
     float    engine_rate;           /* how fast it is played (1: as recorded) */
     /* the volumes (test menu, SOUND): music, effects, speech, engine, 1 = as made */
     float    vol[4];
+    int      vol_set;               /* (0: never set, all as made) */
     /* ducking: the gains as they are now (1: none), and the board's speech */
     float    duck_speech, duck_big;
     int      board_speaks;          /* set by the board: its speech chip makes sound now */
@@ -167,6 +168,17 @@ int  sw_samples_next(sw_samples *s);
 /* The volumes of the four kinds of sound (1 = as the recordings were made;
  * the board's own POKEYs take the effects', its speech chip the speech's). */
 void sw_samples_volumes(sw_samples *s, float music, float effects, float speech, float engine);
+
+/* The cabinet's own volumes: MUSIC VOLUME and SOUND VOLUME of the VectorPie
+ * menu, which the SDK applies to every game since SDK 0.9 (its
+ * docs/04-audio.md). This game has a sound device of its own
+ * (platform/audio.c), so it reads them itself, from the same file and the
+ * same lines ([audio] music_volume, effects_volume, 0-100): the music by
+ * the first, effects, speech and engine (and the board's own POKEYs) by
+ * the second. Both 100 when the file is not there (a PC): returns 0 then,
+ * else 1. */
+#define SW_CABINET_AUDIO_CFG "/usr/local/share/advance/vector_pie_menu.cfg"
+int  sw_cabinet_volumes(const char *path, int *music, int *sound);
 
 /* How loud the board's own POKEYs (its music and effects) are to be now,
  * after the ducking (1 when nothing ducks, or the recordings are off) and

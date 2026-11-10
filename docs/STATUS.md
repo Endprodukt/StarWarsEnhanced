@@ -1,6 +1,43 @@
 # Status and next steps
 
-As of: 2026-10-13. Architecture and background: [PLAN.md](PLAN.md).
+As of: 2026-11-10. Architecture and background: [PLAN.md](PLAN.md).
+
+## SDK 0.9.0 and the cabinet's volumes (2026-11-10, 0.3.33)
+
+* **SDK**: `external/VectorPie` moved from `be77e1c` (SDK 0.1.0) to
+  `b00d537` (SDK 0.9.0, the menu's 1.1.13 changes); `game.ini` says
+  `sdk = 0.9`. The game builds against it unchanged (Linux and Pi, all 13
+  tests pass). What the new SDK brings that this game does not use (yet):
+  physics, textures, `vp_controls.h` (a game's own control layout),
+  screensavers, `leds.cfg` and voice clips for the menu's control guide in
+  the package, per-board `frame_hz` in `game.ini`, `vp_dvg_save_png`,
+  `vp_stream_play` (a game's own audio stream), `vp_music_play_mem`,
+  `vp_audio_recent`.
+* **The cabinet's volumes**: since SDK 0.9 every SDK game follows the
+  VectorPie menu's MUSIC VOLUME and SOUND VOLUME
+  (`/usr/local/share/advance/vector_pie_menu.cfg`, `[audio]` `music_volume`
+  and `effects_volume`, 0-100). The SDK does that only for sound played
+  through `vp_audio`; this game has an SDL sound device of its own
+  (`platform/audio.c`), so it reads the two lines itself, the same way
+  (`sw_cabinet_volumes`, `sound/samples.c`), once at the start. They apply
+  on top of the test menu's four volumes: MUSIC VOLUME to the music, SOUND
+  VOLUME to effects, speech and engine, and with the effects to the board's
+  own POKEYs (its music too: the board's music and effects come out of the
+  same chips). On a PC (no file) both are 100. The test menu's SOUND page
+  shows them (CABINET VOLUMES, read-only: they are set in the VectorPie
+  menu). At start the program prints them (`the cabinet's volumes: music
+  63, sound 50`).
+* **Fixed on the way**: the test menu's MUSIC and EFFECTS VOLUME both at 0
+  played everything at full volume (0 / 0 was taken as "never set").
+  `sw_samples` now has a flag for that; `tests/test_samples.c` checks it
+  and the reading of the menu's file.
+* Why not `vp_stream_play`: the SDK mixes a stream at the menu's MUSIC
+  VOLUME as a whole, and this game's one mix holds music, effects and
+  speech together; the effects would then follow the wrong control.
+* **Not tried on the cabinet** (a game was running there): to check, set
+  MUSIC VOLUME and SOUND VOLUME in the VectorPie menu, start the game,
+  listen, and look at TEST MENU, SOUND, CABINET VOLUMES.
+* All documents in English now (STATUS.md and PLAN.md were German).
 
 ## Demo in short pieces between the attract pages (2026-10-21)
 
@@ -1412,3 +1449,4 @@ videos stay out.
 
 GitHub release (2026-10-19): `v0.3.31` with the same package as in the Google Drive folder `games`.
 GitHub release (2026-10-26): `v0.3.32` (demo in short pieces, no sound blips in the quiet attract mode); not yet in the Drive folder. With every new package in the Drive, also create a release (`gh release create v<version> <package>.vpk`).
+GitHub release (2026-11-10): `v0.3.33` (SDK 0.9.0, the cabinet's MUSIC VOLUME and SOUND VOLUME); not yet in the Drive folder.

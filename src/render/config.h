@@ -108,6 +108,11 @@ typedef struct sw_display_cfg {
      * recordings were made; the board's own POKEYs take the effects', its
      * speech chip the speech's). The test menu, SOUND. */
     int vol_music, vol_effects, vol_speech, vol_engine;
+    /* The cabinet's MUSIC VOLUME and SOUND VOLUME (the VectorPie menu's,
+     * sw_cabinet_volumes in sound/samples.h), percent, on top of the four
+     * above: music by the first, the rest by the second. Read at the
+     * start, never saved (100 on a PC). */
+    int cab_music, cab_sound;
 } sw_display_cfg;
 
 void sw_display_cfg_defaults(sw_display_cfg *c);
